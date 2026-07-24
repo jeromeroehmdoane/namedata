@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+  <title>Name Data Loader Test</title>
+
+  <style>
+    :root {
+      color-scheme: light;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f5f7fa;
+      color: #171717;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 24px));
+      margin: 24px auto 48px;
+    }
+
+    h1,
+    h2 {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+      font-size: clamp(1.6rem, 3vw, 2.25rem);
+    }
+
+    .subhead {
+      margin-top: 0;
+      color: #5f6368;
+    }
+
+    .panel {
+      margin-top: 16px;
+      padding: 18px;
+      border: 1px solid #dfe3e8;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 2px 10px rgb(0 0 0 / 5%);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        minmax(180px, 2fr)
+        minmax(90px, 0.7fr)
+        minmax(100px, 0.8fr)
+        auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      font-size: 0.86rem;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #c9cfd6;
+      border-radius: 9px;
+      background: #ffffff;
+      color: #171717;
+      font: inherit;
+    }
+
+    button {
+      min-height: 42px;
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 9px;
+      background: #2457c5;
+      color: #ffffff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1744a8;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    #status {
+      min-height: 22px;
+      margin: 14px 0 0;
+      color: #4b5563;
+    }
+
+    #status.error {
+      color: #b42318;
+      font-weight: 650;
+    }
+
+    #status.success {
+      color: #147a3d;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-height: 84px;
+      padding: 12px;
+      border: 1px solid #e3e7eb;
+      border-radius: 10px;
+      background: #fbfcfd;
+    }
+
+    .stat .label {
+      color: #667085;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .stat .value {
+      margin-top: 7px;
+      overflow-wrap: anywhere;
+      font-size: 1.08rem;
+      font-weight: 750;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+
+    th,
+    td {
+      padding: 8px 9px;
+      border-bottom: 1px solid #e7eaee;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f6f8fa;
+      font-weight: 750;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    .empty {
+      color: #667085;
+      font-style: italic;
+    }
+
+    .section-note {
+      margin-top: -4px;
+      color: #667085;
+      font-size: 0.88rem;
+    }
+
+    details {
+      margin-top: 16px;
+    }
+
+    pre {
+      max-height: 380px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 9px;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 760px) {
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      button {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Name Data Loader Test</h1>
+
+    <p class="subhead">
+      Verifies hashing, bucket retrieval, packet decoding,
+      yearly lookups, and state representation data.
+    </p>
+
+    <section class="panel">
+      <form id="test-form" class="controls">
+        <label>
+          Name
+          <input
+            id="name-input"
+            value="Olivia"
+            autocomplete="off"
+          >
+        </label>
+
+        <label>
+          State
+          <input
+            id="state-input"
+            value="NE"
+            maxlength="2"
+            autocomplete="off"
+          >
+        </label>
+
+        <label>
+          Year
+          <input
+            id="year-input"
+            type="number"
+            value="2025"
+            min="1880"
+            max="2025"
+          >
+        </label>
+
+        <button id="run-button" type="submit">
+          Load data
+        </button>
+      </form>
+
+      <p id="status" role="status"></p>
+    </section>
+
+    <section id="summary-panel" class="panel" hidden>
+      <h2>Lookup summary</h2>
+      <div id="summary-grid" class="summary-grid"></div>
+    </section>
+
+    <section id="selected-panel" class="panel" hidden>
+      <h2>Selected year and state</h2>
+      <div id="selected-grid" class="summary-grid"></div>
+    </section>
+
+    <section id="national-panel" class="panel" hidden>
+      <h2>First national yearly rows</h2>
+      <p class="section-note">
+        Rows are decoded using the field order in
+        <code>packet-schema.json</code>.
+      </p>
+      <div id="national-table" class="table-wrap"></div>
+    </section>
+
+    <section id="state-panel" class="panel" hidden>
+      <h2>First state yearly rows</h2>
+      <div id="state-table" class="table-wrap"></div>
+    </section>
+
+    <section
+      id="representation-panel"
+      class="panel"
+      hidden
+    >
+      <h2>All-time state representation</h2>
+      <p class="section-note">
+        Top five and bottom five states by combined all-time
+        proportion.
+      </p>
+      <div
+        id="representation-table"
+        class="table-wrap"
+      ></div>
+    </section>
+
+    <section id="raw-panel" class="panel" hidden>
+      <details>
+        <summary>Raw decoded packet</summary>
+        <pre id="raw-output"></pre>
+      </details>
+    </section>
+  </main>
+
+  <script type="module">
+    import NameData from "./assets/js/name-data-loader.js";
+
+    const form = document.getElementById("test-form");
+    const runButton = document.getElementById("run-button");
+    const status = document.getElementById("status");
+
+    const panels = [
+      "summary-panel",
+      "selected-panel",
+      "national-panel",
+      "state-panel",
+      "representation-panel",
+      "raw-panel",
+    ].map((id) => document.getElementById(id));
+
+    function setStatus(message, kind = "") {
+      status.textContent = message;
+      status.className = kind;
+    }
+
+    function showPanels(show) {
+      for (const panel of panels) {
+        panel.hidden = !show;
+      }
+    }
+
+    function formatInteger(value) {
+      const number = Number(value);
+
+      return Number.isFinite(number)
+        ? number.toLocaleString()
+        : "—";
+    }
+
+    function formatProportion(value, digits = 4) {
+      const number = Number(value);
+
+      return Number.isFinite(number)
+        ? number.toLocaleString(
+            undefined,
+            {
+              style: "percent",
+              minimumFractionDigits: digits,
+              maximumFractionDigits: digits,
+            },
+          )
+        : "—";
+    }
+
+    function addStat(container, label, value) {
+      const card = document.createElement("div");
+      card.className = "stat";
+
+      const labelNode = document.createElement("div");
+      labelNode.className = "label";
+      labelNode.textContent = label;
+
+      const valueNode = document.createElement("div");
+      valueNode.className = "value";
+      valueNode.textContent = String(value ?? "—");
+
+      card.append(labelNode, valueNode);
+      container.appendChild(card);
+    }
+
+    function renderStats(containerId, entries) {
+      const container = document.getElementById(containerId);
+      container.replaceChildren();
+
+      for (const [label, value] of entries) {
+        addStat(container, label, value);
+      }
+    }
+
+    function renderTable(
+      containerId,
+      rows,
+      columns,
+      formatters = {},
+    ) {
+      const container = document.getElementById(containerId);
+      container.replaceChildren();
+
+      if (!rows.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No rows available.";
+        container.appendChild(empty);
+        return;
+      }
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const tbody = document.createElement("tbody");
+      const headerRow = document.createElement("tr");
+
+      for (const column of columns) {
+        const th = document.createElement("th");
+        th.textContent = column;
+        headerRow.appendChild(th);
+      }
+
+      thead.appendChild(headerRow);
+
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+
+        for (const column of columns) {
+          const td = document.createElement("td");
+          const formatter = formatters[column];
+          const rawValue = row[column];
+
+          td.textContent = formatter
+            ? formatter(rawValue, row)
+            : String(rawValue ?? "—");
+
+          tr.appendChild(td);
+        }
+
+        tbody.appendChild(tr);
+      }
+
+      table.append(thead, tbody);
+      container.appendChild(table);
+    }
+
+    function representationRows(statePacket) {
+      const sorted = NameData.sortStateRepresentation(
+        statePacket,
+        { mode: "c" },
+      );
+
+      if (sorted.length <= 10) {
+        return sorted;
+      }
+
+      const top = sorted.slice(0, 5);
+      const bottom = sorted.slice(-5);
+
+      return [
+        ...top,
+        {
+          state: "…",
+          frequency_c: null,
+          proportion_c: null,
+          representation_rank_c: null,
+        },
+        ...bottom,
+      ];
+    }
+
+    async function runTest() {
+      const name = (
+        document.getElementById("name-input").value
+      );
+      const state = (
+        document.getElementById("state-input").value
+      );
+      const year = Number(
+        document.getElementById("year-input").value,
+      );
+
+      runButton.disabled = true;
+      showPanels(false);
+      setStatus("Loading manifest and name packets…");
+
+      try {
+        const [manifest, packet] = await Promise.all([
+          NameData.loadManifest(),
+          NameData.getNamePacket(name),
+        ]);
+
+        if (!packet.national) {
+          setStatus(
+            `No national packet was found for "${name.trim()}".`,
+            "error",
+          );
+          return;
+        }
+
+        const nationalYear = NameData.findNationalYear(
+          packet.national,
+          year,
+        );
+
+        const stateYear = NameData.findStateYear(
+          packet.state,
+          state,
+          year,
+        );
+
+        const stateAllTime = NameData.findStateAllTime(
+          packet.state,
+          state,
+        );
+
+        renderStats(
+          "summary-grid",
+          [
+            ["Display name", packet.national.displayName],
+            ["Canonical key", packet.key],
+            [
+              "National bucket",
+              packet.assignments.nationalBucket,
+            ],
+            [
+              "State bucket",
+              packet.assignments.stateBucket,
+            ],
+            [
+              "All-time frequency",
+              formatInteger(
+                packet.national.summary.total_frequency,
+              ),
+            ],
+            [
+              "All-time rank",
+              formatInteger(
+                packet.national.summary.all_time_rank,
+              ),
+            ],
+            [
+              "National yearly rows",
+              formatInteger(
+                packet.national.yearly.length,
+              ),
+            ],
+            [
+              "State yearly rows",
+              packet.state
+                ? formatInteger(packet.state.yearly.length)
+                : "No state packet",
+            ],
+            [
+              "State all-time rows",
+              packet.state
+                ? formatInteger(packet.state.allTime.length)
+                : "No state packet",
+            ],
+            [
+              "Data version",
+              manifest.dataVersion,
+            ],
+          ],
+        );
+
+        renderStats(
+          "selected-grid",
+          [
+            ["Selected year", year],
+            [
+              "National frequency",
+              nationalYear
+                ? formatInteger(nationalYear.frequency_c)
+                : "No reported row",
+            ],
+            [
+              "National proportion",
+              nationalYear
+                ? formatProportion(
+                    nationalYear.proportion_c,
+                  )
+                : "No reported row",
+            ],
+            [
+              "National rank",
+              nationalYear
+                ? formatInteger(nationalYear.rank_c)
+                : "No reported row",
+            ],
+            [
+              "Selected state",
+              NameData.normalizeState(state) || "—",
+            ],
+            [
+              "State frequency",
+              stateYear
+                ? formatInteger(stateYear.frequency_c)
+                : "No reported row",
+            ],
+            [
+              "State proportion",
+              stateYear
+                ? formatProportion(
+                    stateYear.proportion_c,
+                  )
+                : "No reported row",
+            ],
+            [
+              "State representation rank",
+              stateAllTime
+                ? formatInteger(
+                    stateAllTime.representation_rank_c,
+                  )
+                : "No state packet",
+            ],
+          ],
+        );
+
+        renderTable(
+          "national-table",
+          packet.national.yearly.slice(0, 12),
+          [
+            "year",
+            "frequency_m",
+            "frequency_f",
+            "frequency_c",
+            "proportion_c",
+            "rank_c",
+          ],
+          {
+            frequency_m: formatInteger,
+            frequency_f: formatInteger,
+            frequency_c: formatInteger,
+            proportion_c: formatProportion,
+            rank_c: formatInteger,
+          },
+        );
+
+        renderTable(
+          "state-table",
+          packet.state
+            ? packet.state.yearly.slice(0, 12)
+            : [],
+          [
+            "state",
+            "year",
+            "frequency_m",
+            "frequency_f",
+            "frequency_c",
+            "proportion_c",
+            "rank_c",
+          ],
+          {
+            frequency_m: formatInteger,
+            frequency_f: formatInteger,
+            frequency_c: formatInteger,
+            proportion_c: formatProportion,
+            rank_c: formatInteger,
+          },
+        );
+
+        renderTable(
+          "representation-table",
+          packet.state
+            ? representationRows(packet.state)
+            : [],
+          [
+            "state",
+            "representation_rank_c",
+            "frequency_c",
+            "proportion_c",
+          ],
+          {
+            representation_rank_c: formatInteger,
+            frequency_c: formatInteger,
+            proportion_c: formatProportion,
+          },
+        );
+
+        document.getElementById(
+          "raw-output",
+        ).textContent = JSON.stringify(
+          packet,
+          null,
+          2,
+        );
+
+        showPanels(true);
+
+        setStatus(
+          `Successfully loaded ${packet.national.displayName}.`,
+          "success",
+        );
+      } catch (error) {
+        console.error(error);
+
+        setStatus(
+          error?.message ?? String(error),
+          "error",
+        );
+      } finally {
+        runButton.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      runTest();
+    });
+
+    runTest();
+  </script>
+</body>
+</html>
