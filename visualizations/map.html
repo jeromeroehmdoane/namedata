@@ -1,0 +1,1305 @@
+<!-- PASTE THIS FULL VERSION OF map.html -->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Name Popularity by State</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:#fff;
+      color:#111;
+    }
+
+    .wrap{
+      height:100%;
+      max-width:1100px;
+      margin:0 auto;
+      padding:14px;
+      box-sizing:border-box;
+    }
+
+    .card{
+      height:100%;
+      background:#fff;
+      border:1px solid #e6e6e6;
+      border-radius:14px;
+      padding:14px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.04);
+      box-sizing:border-box;
+
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .controlsBar{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .ctrl{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:140px;
+    }
+    .ctrlLabel{
+      font-size:12px;
+      color:#6b7280;
+      white-space:nowrap;
+      margin:0;
+    }
+    select, input{
+      font-size:14px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid #e6e6e6;
+      background:#fff;
+      color:#111;
+      width:100%;
+      box-sizing:border-box;
+    }
+    .spacer{
+      flex:1 1 auto;
+      min-width:10px;
+    }
+
+    .status{
+      font-size:13px;
+      color:#555;
+      min-height:18px;
+    }
+
+    #plot{
+      width:100%;
+      flex:1 1 auto;
+      min-height:420px;
+
+      touch-action: pan-y;
+      -ms-touch-action: pan-y;
+    }
+
+    @media (max-width: 520px){
+      #plot{ min-height:360px; }
+    }
+
+    /* Landscape small screens: prioritize map height and reduce dead space */
+    @media (orientation: landscape) and (max-height: 520px){
+      .wrap{ padding:8px; }
+      .card{ padding:10px; gap:6px; }
+      #plot{ min-height:240px; }
+    }
+
+    .hidden{ display:none; }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="card">
+
+    <div class="controlsBar">
+      <div class="ctrl" style="align-items:flex-start;">
+        <div class="ctrlLabel">Sex</div>
+        <select id="sexSelect">
+          <option value="combined" selected>Combined</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+        </select>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="ctrl" style="align-items:flex-end;">
+        <div class="ctrlLabel">Color</div>
+        <select id="metricSelect">
+          <option value="frequency">Frequency</option>
+          <option value="percentage" selected>Percentage</option>
+          <option value="rank">Rank</option>
+        </select>
+      </div>
+    </div>
+
+    <input id="nameInput" class="hidden" />
+    <button id="goBtn" class="hidden">Show</button>
+
+    <div class="status" id="status"></div>
+    <div id="plot"></div>
+  </div>
+</div>
+
+<script type="module">
+import NameData from "../assets/js/name-data-loader.js";
+
+const STATUS = document.getElementById("status");
+const PLOT = document.getElementById("plot");
+const NAME_INPUT = document.getElementById("nameInput");
+const SEX_SELECT = document.getElementById("sexSelect");
+const METRIC_SELECT = document.getElementById("metricSelect");
+const GO_BUTTON = document.getElementById("goBtn");
+
+const ALL_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME",
+  "MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI",
+  "SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+];
+
+const FEMALE_SHARE_METRIC = "female_share";
+const ALL_PERIOD = "All";
+const STATE_YEAR_START = 1910;
+
+const FEMALE_SHARE_SCALE = [
+  [0.00, "#295da6"],
+  [0.15, "#60a5fa"],
+  [0.40, "#bfdbfe"],
+  [0.50, "#ebebeb"],
+  [0.60, "#fbcfe8"],
+  [0.85, "#f472b6"],
+  [1.00, "#d13b6a"]
+];
+
+let CURRENT_STATE_PACKET = null;
+let CURRENT_MANIFEST = null;
+let CURRENT_DISPLAY_NAME = "";
+let ACTIVE_PERIOD = ALL_PERIOD;
+let LOAD_TOKEN = 0;
+
+function setStatus(msg){
+  STATUS.textContent = msg || "";
+}
+
+function safeLower(value){
+  return String(value || "").trim().toLowerCase();
+}
+
+function isNarrowScreen(){
+  return window.innerWidth <= 520;
+}
+
+function isLandscapeTight(){
+  return window.matchMedia(
+    "(orientation: landscape) and (max-height: 520px)"
+  ).matches;
+}
+
+function finiteNumber(value, fallback = null){
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function rankOrNull(value){
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0
+    ? number
+    : null;
+}
+
+function proportionToPercent(value){
+  return 100 * (finiteNumber(value, 0) || 0);
+}
+
+function sexSuffix(sexChoice){
+  if(sexChoice === "M") return "m";
+  if(sexChoice === "F") return "f";
+  return "c";
+}
+
+function stateYearEnd(manifest, statePacket){
+  const manifestEnd = Number(
+    manifest?.yearRanges?.state?.[1]
+  );
+
+  if(Number.isFinite(manifestEnd)){
+    return Math.max(STATE_YEAR_START, manifestEnd);
+  }
+
+  const packetYears = (statePacket?.yearly || [])
+    .map(row => Number(row.year))
+    .filter(Number.isFinite);
+
+  return packetYears.length
+    ? Math.max(STATE_YEAR_START, ...packetYears)
+    : STATE_YEAR_START;
+}
+
+function completePeriodLabels(manifest, statePacket){
+  const latestYear = stateYearEnd(manifest, statePacket);
+  const labels = [ALL_PERIOD];
+
+  for(let year = STATE_YEAR_START; year <= latestYear; year += 1){
+    labels.push(String(year));
+  }
+
+  return labels;
+}
+
+function percentile(arr, p){
+  const xs = arr
+    .filter(Number.isFinite)
+    .sort((a,b) => a-b);
+
+  if(xs.length === 0) return null;
+
+  const idx = (p / 100) * (xs.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+
+  if(lo === hi) return xs[lo];
+
+  const weight = idx - lo;
+  return xs[lo] * (1 - weight) + xs[hi] * weight;
+}
+
+function metricTitle(metric){
+  if(metric === "percentage") return "Percentage";
+  if(metric === "rank") return "Rank";
+  if(metric === FEMALE_SHARE_METRIC) return "Sex Balance";
+  return "Frequency";
+}
+
+function updateMetricOptions(){
+  const sexChoice = SEX_SELECT.value;
+  const current = METRIC_SELECT.value;
+
+  const existingFemaleShare = Array.from(
+    METRIC_SELECT.options
+  ).find(option => option.value === FEMALE_SHARE_METRIC);
+
+  if(sexChoice === "combined"){
+    if(!existingFemaleShare){
+      const option = document.createElement("option");
+      option.value = FEMALE_SHARE_METRIC;
+      option.textContent = "Sex Balance";
+      METRIC_SELECT.appendChild(option);
+    }
+  }else{
+    if(existingFemaleShare){
+      existingFemaleShare.remove();
+    }
+
+    if(current === FEMALE_SHARE_METRIC){
+      METRIC_SELECT.value = "percentage";
+    }
+  }
+}
+
+function hoverTemplate(metric){
+  if(metric === FEMALE_SHARE_METRIC){
+    return (
+      "State: %{customdata[0]}" +
+      "<br>Period: %{customdata[4]}" +
+      "<br>% Female: %{customdata[1]:.1%}" +
+      "<br># Female: %{customdata[2]:,.0f}" +
+      "<br># Male: %{customdata[3]:,.0f}" +
+      "<extra></extra>"
+    );
+  }
+
+  const boldFreq =
+    metric === "frequency"
+      ? "<b>Freq: %{customdata[1]:,.0f}</b>"
+      : "Freq: %{customdata[1]:,.0f}";
+
+  const boldPct =
+    metric === "percentage"
+      ? "<b>Pct: %{customdata[2]:.2f}%</b>"
+      : "Pct: %{customdata[2]:.2f}%";
+
+  const rankLine =
+    metric === "rank"
+      ? "<b>%{customdata[5]}: %{customdata[3]}</b>"
+      : "%{customdata[5]}: %{customdata[3]}";
+
+  return (
+    "State: %{customdata[0]}" +
+    "<br>Period: %{customdata[4]}" +
+    "<br>" + boldFreq +
+    "<br>" + boldPct +
+    "<br>" + rankLine +
+    "<extra></extra>"
+  );
+}
+
+function sexHighColor(sexChoice){
+  if(sexChoice === "M") return "#0000A3";
+  if(sexChoice === "F") return "#ad028e";
+  return "#640191";
+}
+
+function colorscaleFor(sexChoice, metric){
+  if(metric === FEMALE_SHARE_METRIC){
+    return FEMALE_SHARE_SCALE;
+  }
+
+  const low = "#ebebeb";
+  const high = sexHighColor(sexChoice);
+
+  if(metric === "rank"){
+    return [[0, high], [1, low]];
+  }
+
+  return [[0, low], [1, high]];
+}
+
+function buildPacketLookups(statePacket){
+  const yearly = new Map();
+  const allTime = new Map();
+
+  for(const row of statePacket?.yearly || []){
+    const year = Number(row.year);
+    const state = String(row.state || "");
+
+    if(!Number.isFinite(year) || !ALL_STATES.includes(state)){
+      continue;
+    }
+
+    if(!yearly.has(year)){
+      yearly.set(year, new Map());
+    }
+
+    yearly.get(year).set(state, row);
+  }
+
+  for(const row of statePacket?.allTime || []){
+    const state = String(row.state || "");
+
+    if(ALL_STATES.includes(state)){
+      allTime.set(state, row);
+    }
+  }
+
+  return { yearly, allTime };
+}
+
+function annualStats(row, sexChoice){
+  const suffix = sexSuffix(sexChoice);
+
+  return {
+    frequency: finiteNumber(
+      row?.[`frequency_${suffix}`],
+      0
+    ) || 0,
+
+    percentage: proportionToPercent(
+      row?.[`proportion_${suffix}`]
+    ),
+
+    rank: rankOrNull(
+      row?.[`rank_${suffix}`]
+    ),
+
+    rankLabel: "Rank"
+  };
+}
+
+function allTimeStats(row, sexChoice){
+  const suffix = sexSuffix(sexChoice);
+
+  return {
+    frequency: finiteNumber(
+      row?.[`frequency_${suffix}`],
+      0
+    ) || 0,
+
+    percentage: proportionToPercent(
+      row?.[`proportion_${suffix}`]
+    ),
+
+    rank: rankOrNull(
+      row?.[`representation_rank_${suffix}`]
+    ),
+
+    rankLabel: "State rank"
+  };
+}
+
+function femaleShareStats(row, allTime = false){
+  const femaleFrequency = finiteNumber(
+    row?.frequency_f,
+    0
+  ) || 0;
+
+  const maleFrequency = finiteNumber(
+    row?.frequency_m,
+    0
+  ) || 0;
+
+  const total = femaleFrequency + maleFrequency;
+
+  return {
+    share: total > 0
+      ? femaleFrequency / total
+      : 0.5,
+
+    femaleFrequency,
+    maleFrequency,
+    periodType: allTime ? "all-time" : "annual"
+  };
+}
+
+function metricValue(stats, metric){
+  if(metric === FEMALE_SHARE_METRIC){
+    return stats.share;
+  }
+
+  return stats[metric];
+}
+
+function collectRangeValues(
+  packetLookups,
+  periodLabels,
+  sexChoice,
+  metric
+){
+  const values = [];
+
+  for(const period of periodLabels){
+    if(period === ALL_PERIOD){
+      for(const state of ALL_STATES){
+        const row = packetLookups.allTime.get(state);
+
+        const stats =
+          metric === FEMALE_SHARE_METRIC
+            ? femaleShareStats(row, true)
+            : allTimeStats(row, sexChoice);
+
+        const value = metricValue(stats, metric);
+
+        if(Number.isFinite(value)){
+          values.push(value);
+        }
+      }
+
+      continue;
+    }
+
+    const stateRows = packetLookups.yearly.get(
+      Number(period)
+    ) || new Map();
+
+    for(const row of stateRows.values()){
+      const stats =
+        metric === FEMALE_SHARE_METRIC
+          ? femaleShareStats(row, false)
+          : annualStats(row, sexChoice);
+
+      const value = metricValue(stats, metric);
+
+      if(Number.isFinite(value)){
+        values.push(value);
+      }
+    }
+  }
+
+  return values;
+}
+
+function computeColorAxisRangeP95(values, metric){
+  if(metric === FEMALE_SHARE_METRIC){
+    return {
+      cmin: 0,
+      cmax: 1,
+      cmid: 0.5
+    };
+  }
+
+  if(values.length === 0){
+    if(metric === "rank"){
+      return {
+        cmin: Math.log10(1),
+        cmax: Math.log10(4000),
+        minRaw: 1,
+        maxRaw: 4000
+      };
+    }
+
+    return {
+      cmin: 0,
+      cmax: 1
+    };
+  }
+
+  if(metric === "rank"){
+    const ranks = values
+      .filter(value => Number.isFinite(value) && value > 0)
+      .map(value => Math.max(1, value));
+
+    if(ranks.length === 0){
+      return {
+        cmin: Math.log10(1),
+        cmax: Math.log10(4000),
+        minRaw: 1,
+        maxRaw: 4000
+      };
+    }
+
+    const minRank = Math.min(...ranks);
+    let p95Rank = percentile(ranks, 95);
+
+    if(!Number.isFinite(p95Rank)){
+      p95Rank = Math.max(...ranks);
+    }
+
+    p95Rank = Math.max(
+      p95Rank,
+      minRank * 1.01
+    );
+
+    return {
+      cmin: Math.log10(minRank),
+      cmax: Math.log10(p95Rank),
+      minRaw: minRank,
+      maxRaw: p95Rank
+    };
+  }
+
+  const nonnegativeValues = values.filter(
+    value => Number.isFinite(value) && value >= 0
+  );
+
+  let cmax = percentile(nonnegativeValues, 95);
+
+  if(!Number.isFinite(cmax)){
+    cmax = nonnegativeValues.length
+      ? Math.max(...nonnegativeValues)
+      : 1;
+  }
+
+  if(!(cmax > 0)){
+    cmax = 1e-9;
+  }
+
+  return {
+    cmin: 0,
+    cmax
+  };
+}
+
+function buildColorbar(metric, range){
+  const titleText = metricTitle(metric);
+
+  if(metric === "percentage"){
+    return {
+      title: {
+        text: titleText,
+        side: "top"
+      },
+      tickformat: ".2f",
+      ticksuffix: "%"
+    };
+  }
+
+  if(metric === "frequency"){
+    return {
+      title: {
+        text: titleText,
+        side: "top"
+      },
+      tickformat: ",.0f"
+    };
+  }
+
+  if(metric === FEMALE_SHARE_METRIC){
+    return {
+      title: {
+        text: titleText,
+        side: "top"
+      },
+      tickformat: ".0%",
+      tickvals: [0, 0.25, 0.5, 0.75, 1],
+      ticktext: ["0%", "25%", "50%", "75%", "100%"]
+    };
+  }
+
+  const candidates = Array.from(
+    new Set([
+      range.minRaw ?? 1,
+      10,
+      100,
+      1000,
+      4000
+    ])
+  )
+    .filter(value => Number.isFinite(value) && value >= 1)
+    .sort((a,b) => a-b);
+
+  const tickvals = [];
+  const ticktext = [];
+
+  for(const rank of candidates){
+    const logRank = Math.log10(Math.max(1, rank));
+
+    if(
+      logRank >= range.cmin - 1e-12 &&
+      logRank <= range.cmax + 1e-12
+    ){
+      tickvals.push(logRank);
+      ticktext.push(String(Math.round(rank)));
+    }
+  }
+
+  return {
+    title: {
+      text: titleText,
+      side: "top"
+    },
+    tickvals,
+    ticktext
+  };
+}
+
+function colorbarLayout(metric, range){
+  const base = buildColorbar(metric, range);
+
+  if(isNarrowScreen()){
+    const tight = isLandscapeTight();
+
+    return Object.assign({}, base, {
+      orientation: "h",
+      x: 0.5,
+      xanchor: "center",
+      y: tight ? 0.075 : 0.06,
+      yanchor: "bottom",
+      len: 0.92,
+      thickness: tight ? 8 : 10
+    });
+  }
+
+  return Object.assign({}, base, {
+    orientation: "v",
+    x: 1.02,
+    xanchor: "left",
+    y: 0.5,
+    yanchor: "middle",
+    len: 0.9,
+    thickness: 14
+  });
+}
+
+function buildAnimatedChoropleth(
+  statePacket,
+  manifest,
+  name,
+  sexChoice,
+  metric,
+  requestedPeriod
+){
+  const packetLookups = buildPacketLookups(
+    statePacket
+  );
+
+  const periodLabels = completePeriodLabels(
+    manifest,
+    statePacket
+  );
+
+  const rangeValues = collectRangeValues(
+    packetLookups,
+    periodLabels,
+    sexChoice,
+    metric
+  );
+
+  const range = computeColorAxisRangeP95(
+    rangeValues,
+    metric
+  );
+
+  const scale = colorscaleFor(
+    sexChoice,
+    metric
+  );
+
+  const missingRankRaw = Math.max(
+    4000,
+    range.maxRaw || 4000
+  );
+
+  function frameDataForPeriod(period){
+    const locations = ALL_STATES.slice();
+    const z = [];
+    const customdata = [];
+
+    const isAllTime = period === ALL_PERIOD;
+    const annualRows = isAllTime
+      ? null
+      : (
+          packetLookups.yearly.get(
+            Number(period)
+          ) || new Map()
+        );
+
+    for(const state of locations){
+      const row = isAllTime
+        ? packetLookups.allTime.get(state)
+        : annualRows.get(state);
+
+      if(metric === FEMALE_SHARE_METRIC){
+        const stats = femaleShareStats(
+          row,
+          isAllTime
+        );
+
+        z.push(stats.share);
+
+        customdata.push([
+          state,
+          stats.share,
+          stats.femaleFrequency,
+          stats.maleFrequency,
+          period
+        ]);
+
+        continue;
+      }
+
+      const stats = isAllTime
+        ? allTimeStats(row, sexChoice)
+        : annualStats(row, sexChoice);
+
+      let rawValue = metricValue(
+        stats,
+        metric
+      );
+
+      if(metric === "rank"){
+        const displayRank = Number.isFinite(
+          stats.rank
+        )
+          ? String(Math.round(stats.rank))
+          : "—";
+
+        const rankForColor = Number.isFinite(
+          rawValue
+        )
+          ? Math.max(1, rawValue)
+          : missingRankRaw;
+
+        z.push(
+          Math.log10(rankForColor)
+        );
+
+        customdata.push([
+          state,
+          stats.frequency,
+          stats.percentage,
+          displayRank,
+          period,
+          stats.rankLabel
+        ]);
+      }else{
+        if(!Number.isFinite(rawValue)){
+          rawValue = 0;
+        }
+
+        z.push(rawValue);
+
+        customdata.push([
+          state,
+          stats.frequency,
+          stats.percentage,
+          Number.isFinite(stats.rank)
+            ? String(Math.round(stats.rank))
+            : "—",
+          period,
+          stats.rankLabel
+        ]);
+      }
+    }
+
+    return {
+      locations,
+      z,
+      customdata
+    };
+  }
+
+  const validRequestedPeriod = (
+    periodLabels.includes(
+      String(requestedPeriod)
+    )
+      ? String(requestedPeriod)
+      : ALL_PERIOD
+  );
+
+  const activeIndex = periodLabels.indexOf(
+    validRequestedPeriod
+  );
+
+  const initialData = frameDataForPeriod(
+    validRequestedPeriod
+  );
+
+  const trace = {
+    type: "choropleth",
+    locationmode: "USA-states",
+    locations: initialData.locations,
+    z: initialData.z,
+    customdata: initialData.customdata,
+    hovertemplate: hoverTemplate(metric),
+    coloraxis: "coloraxis",
+    marker: {
+      line: {
+        color: "white",
+        width: 0.7
+      }
+    }
+  };
+
+  const frames = periodLabels.map(period => {
+    const data = frameDataForPeriod(period);
+
+    return {
+      name: String(period),
+      data: [{
+        locations: data.locations,
+        z: data.z,
+        customdata: data.customdata
+      }]
+    };
+  });
+
+  const steps = periodLabels.map(period => ({
+    method: "animate",
+    label: String(period),
+    args: [
+      [String(period)],
+      {
+        mode: "immediate",
+        transition: {
+          duration: 0
+        },
+        frame: {
+          duration: 250,
+          redraw: true
+        }
+      }
+    ]
+  }));
+
+  const narrow = isNarrowScreen();
+  const tight = isLandscapeTight();
+  const bottomMargin = narrow
+    ? (tight ? 44 : 76)
+    : 12;
+
+  const sliderY = tight
+    ? 0.20
+    : 0.00;
+
+  const sliderPadT = tight
+    ? 0
+    : (narrow ? 6 : 18);
+
+  const layout = {
+    title: {
+      text: `${name} by State`,
+      x: 0.5,
+      y: 1.0,
+      yref: "paper",
+      yanchor: "top",
+      font: {
+        size: narrow ? 16 : 18
+      },
+      pad: {
+        t: 0,
+        b: 0
+      }
+    },
+
+    geo: {
+      scope: "usa"
+    },
+
+    margin: {
+      l: 8,
+      r: 8,
+      t: narrow ? 24 : 28,
+      b: bottomMargin
+    },
+
+    dragmode: false,
+
+    coloraxis: {
+      colorscale: scale,
+      cmin: range.cmin,
+      cmax: range.cmax,
+      ...(Number.isFinite(range.cmid)
+        ? {cmid: range.cmid}
+        : {}),
+      colorbar: colorbarLayout(
+        metric,
+        range
+      )
+    },
+
+    sliders: [{
+      active: activeIndex,
+      x: 0.02,
+      y: sliderY,
+      xanchor: "left",
+      len: 0.96,
+      pad: {
+        t: sliderPadT,
+        b: 0
+      },
+      currentvalue: {
+        prefix: "Year: ",
+        visible: true,
+        xanchor: "right"
+      },
+      steps
+    }]
+  };
+
+  return {
+    data: [trace],
+    layout,
+    frames,
+    activePeriod: validRequestedPeriod
+  };
+}
+
+async function drawCurrentPacket(){
+  if(
+    !CURRENT_STATE_PACKET ||
+    !CURRENT_MANIFEST
+  ){
+    return;
+  }
+
+  const sexChoice = SEX_SELECT.value;
+  const metric = METRIC_SELECT.value;
+
+  const figure = buildAnimatedChoropleth(
+    CURRENT_STATE_PACKET,
+    CURRENT_MANIFEST,
+    CURRENT_DISPLAY_NAME,
+    sexChoice,
+    metric,
+    ACTIVE_PERIOD
+  );
+
+  ACTIVE_PERIOD = figure.activePeriod;
+
+  Plotly.purge(PLOT);
+
+  const gd = await Plotly.newPlot(
+    PLOT,
+    figure.data,
+    figure.layout,
+    {
+      responsive: true,
+      displayModeBar: false,
+      scrollZoom: false,
+      doubleClick: false
+    }
+  );
+
+  await Plotly.addFrames(
+    PLOT,
+    figure.frames
+  );
+
+  gd.on("plotly_sliderchange", event => {
+    const label = event?.step?.label;
+
+    if(label !== undefined){
+      ACTIVE_PERIOD = String(label);
+    }
+  });
+}
+
+async function loadAndRender(
+  nameRaw,
+  {
+    resetPeriod = false,
+    requestedPeriod = null
+  } = {}
+){
+  const requestedName = String(
+    nameRaw || ""
+  ).trim();
+
+  const loadToken = ++LOAD_TOKEN;
+
+  if(!requestedName){
+    CURRENT_STATE_PACKET = null;
+    CURRENT_MANIFEST = null;
+    CURRENT_DISPLAY_NAME = "";
+    ACTIVE_PERIOD = ALL_PERIOD;
+
+    setStatus("Enter a name first.");
+    Plotly.purge(PLOT);
+    return;
+  }
+
+  if(resetPeriod){
+    ACTIVE_PERIOD = requestedPeriod !== null
+      ? String(requestedPeriod)
+      : ALL_PERIOD;
+  }else if(requestedPeriod !== null){
+    ACTIVE_PERIOD = String(requestedPeriod);
+  }
+
+  setStatus("Loading…");
+
+  try{
+    const [manifest, statePacket] = await Promise.all([
+      NameData.loadManifest(),
+      NameData.getStateName(requestedName)
+    ]);
+
+    if(loadToken !== LOAD_TOKEN){
+      return;
+    }
+
+    if(!statePacket){
+      CURRENT_STATE_PACKET = null;
+      CURRENT_MANIFEST = manifest;
+      CURRENT_DISPLAY_NAME = requestedName;
+
+      setStatus(
+        `No state data for "${requestedName}" found. ` +
+        "Names with fewer than 5 occurrences in a state and year are not included in the dataset."
+      );
+
+      Plotly.purge(PLOT);
+      return;
+    }
+
+    CURRENT_STATE_PACKET = statePacket;
+    CURRENT_MANIFEST = manifest;
+    CURRENT_DISPLAY_NAME =
+      statePacket.displayName || requestedName;
+
+    NAME_INPUT.value = CURRENT_DISPLAY_NAME;
+
+    await drawCurrentPacket();
+
+    if(loadToken !== LOAD_TOKEN){
+      return;
+    }
+
+    setStatus("");
+  }catch(error){
+    if(loadToken !== LOAD_TOKEN){
+      return;
+    }
+
+    console.error(error);
+
+    CURRENT_STATE_PACKET = null;
+    setStatus(
+      "Error: " +
+      (error?.message || String(error))
+    );
+
+    Plotly.purge(PLOT);
+  }
+}
+
+GO_BUTTON.addEventListener(
+  "click",
+  () => loadAndRender(
+    NAME_INPUT.value,
+    {resetPeriod: true}
+  )
+);
+
+NAME_INPUT.addEventListener(
+  "keydown",
+  event => {
+    if(event.key === "Enter"){
+      event.preventDefault();
+
+      loadAndRender(
+        NAME_INPUT.value,
+        {resetPeriod: true}
+      );
+    }
+  }
+);
+
+SEX_SELECT.addEventListener(
+  "change",
+  async () => {
+    updateMetricOptions();
+
+    if(CURRENT_STATE_PACKET){
+      try{
+        await drawCurrentPacket();
+      }catch(error){
+        console.error(error);
+        setStatus(
+          "Error: " +
+          (error?.message || String(error))
+        );
+      }
+    }
+  }
+);
+
+METRIC_SELECT.addEventListener(
+  "change",
+  async () => {
+    if(CURRENT_STATE_PACKET){
+      try{
+        await drawCurrentPacket();
+      }catch(error){
+        console.error(error);
+        setStatus(
+          "Error: " +
+          (error?.message || String(error))
+        );
+      }
+    }
+  }
+);
+
+updateMetricOptions();
+
+window.addEventListener(
+  "message",
+  event => {
+    const data = event.data || {};
+
+    if(data.type !== "SET_INPUTS_AND_RUN"){
+      return;
+    }
+
+    if(typeof data.name === "string"){
+      NAME_INPUT.value = data.name;
+
+      loadAndRender(
+        data.name,
+        {
+          resetPeriod: true,
+          requestedPeriod:
+            data.year !== undefined
+              ? data.year
+              : ALL_PERIOD
+        }
+      );
+    }
+  }
+);
+
+window.addEventListener(
+  "resize",
+  () => {
+    if(!CURRENT_STATE_PACKET){
+      return;
+    }
+
+    clearTimeout(
+      window.__mapResizeTimer
+    );
+
+    window.__mapResizeTimer = setTimeout(
+      async () => {
+        try{
+          await drawCurrentPacket();
+        }catch(error){
+          console.error(error);
+        }
+      },
+      150
+    );
+  }
+);
+
+// Optional standalone testing:
+// map.html?name=Olivia
+// map.html?name=Olivia&year=2025
+const query = new URLSearchParams(
+  window.location.search
+);
+
+const initialName = query.get("name");
+const initialYear = query.get("year");
+
+if(initialName){
+  NAME_INPUT.value = initialName;
+
+  loadAndRender(
+    initialName,
+    {
+      resetPeriod: true,
+      requestedPeriod:
+        initialYear !== null
+          ? initialYear
+          : ALL_PERIOD
+    }
+  );
+}
+
+if(window.parent && window.parent !== window){
+  window.parent.postMessage(
+    {type: "MAP_READY"},
+    "*"
+  );
+}
+</script>
+
+<script>
+  const FRAME_ID = "frameMap";
+
+  function _iframeDocHeight(){
+    const de = document.documentElement;
+    const b  = document.body;
+    return Math.max(
+      de ? de.scrollHeight : 0,
+      de ? de.offsetHeight : 0,
+      b  ? b.scrollHeight  : 0,
+      b  ? b.offsetHeight  : 0
+    ) || 0;
+  }
+
+  function reportHeight(){
+    const h = _iframeDocHeight();
+    window.parent.postMessage({ type: "REPORT_IFRAME_HEIGHT", frameId: FRAME_ID, height: h }, "*");
+  }
+
+  window.addEventListener("message", (e) => {
+    if(e.data && e.data.type === "REQUEST_IFRAME_HEIGHT") reportHeight();
+  });
+
+  window.addEventListener("load", () => {
+    reportHeight();
+    setTimeout(reportHeight, 150);
+    setTimeout(reportHeight, 600);
+    setTimeout(reportHeight, 1200);
+  });
+
+  const mo = new MutationObserver(() => reportHeight());
+  mo.observe(document.documentElement, { childList:true, subtree:true, attributes:true, characterData:true });
+
+function reportHeightSoon(){
+    reportHeight();
+    setTimeout(reportHeight, 120);
+    setTimeout(reportHeight, 300);
+  }
+
+  window.addEventListener("resize", reportHeightSoon);
+  window.addEventListener("orientationchange", () => setTimeout(reportHeightSoon, 180));
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", reportHeightSoon);
+    window.visualViewport.addEventListener("scroll", reportHeightSoon);
+  }
+</script>
+
+
+</body>
+</html>
