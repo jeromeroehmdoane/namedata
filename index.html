@@ -236,10 +236,20 @@
         </div>
 
         <div>
-          <label for="year">Year</label>
-          <select id="year">
-            <option value="All">All</option>
-          </select>
+          <label for="year">
+            Year
+            <span class="muted">(Optional)</span>
+          </label>
+          <input
+            id="year"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="4"
+            placeholder="e.g., 2010"
+            autocomplete="off"
+            spellcheck="false"
+          />
         </div>
 
         <div>
@@ -372,9 +382,11 @@
 
     const nameInput = document.getElementById("name");
     const stateInput = document.getElementById("state");
-    const yearSelect = document.getElementById("year");
+    const yearInput = document.getElementById("year");
     const generateButton = document.getElementById("generate");
     const formStatus = document.getElementById("formStatus");
+
+    let latestAvailableYear = 2025;
 
     let currentPayload = {
       type: "SET_INPUTS_AND_RUN",
@@ -390,11 +402,13 @@
     }
 
     function normalizedInputs(){
+      const enteredYear = yearInput.value.trim();
+
       return {
         type: "SET_INPUTS_AND_RUN",
         name: nameInput.value.trim(),
         state: stateInput.value.trim().toUpperCase(),
-        year: yearSelect.value || "All"
+        year: enteredYear || "All"
       };
     }
 
@@ -408,6 +422,22 @@
         !VALID_STATES.has(payload.state)
       ){
         return "Enter a valid two-letter state abbreviation.";
+      }
+
+      if(payload.year !== "All"){
+        const yearNumber = Number(payload.year);
+
+        if(
+          !/^\d{4}$/.test(payload.year) ||
+          !Number.isInteger(yearNumber) ||
+          yearNumber < 1910 ||
+          yearNumber > latestAvailableYear
+        ){
+          return (
+            `Enter a year from 1910 through ${latestAvailableYear}, ` +
+            "or leave it blank for All."
+          );
+        }
       }
 
       return "";
@@ -547,67 +577,22 @@
       resizeFramesAggressively();
     }
 
-    async function populateYears(){
+    async function loadYearRange(){
       generateButton.disabled = true;
-      setFormStatus("Loading available years…");
 
       try{
         const manifest = await NameData.loadManifest();
 
-        const latestYear = Number(
+        const manifestLatestYear = Number(
           manifest?.yearRanges?.state?.[1]
         );
 
-        const endYear = Number.isFinite(latestYear)
-          ? latestYear
-          : 2025;
-
-        const requestedYear = new URLSearchParams(
-          window.location.search
-        ).get("year");
-
-        yearSelect.replaceChildren();
-
-        const allOption = document.createElement("option");
-        allOption.value = "All";
-        allOption.textContent = "All";
-        yearSelect.appendChild(allOption);
-
-        for(let year = 1910; year <= endYear; year += 1){
-          const option = document.createElement("option");
-          option.value = String(year);
-          option.textContent = String(year);
-          yearSelect.appendChild(option);
+        if(Number.isFinite(manifestLatestYear)){
+          latestAvailableYear = manifestLatestYear;
         }
-
-        if(
-          requestedYear &&
-          (
-            requestedYear.toLowerCase() === "all" ||
-            (
-              Number.isFinite(Number(requestedYear)) &&
-              Number(requestedYear) >= 1910 &&
-              Number(requestedYear) <= endYear
-            )
-          )
-        ){
-          yearSelect.value =
-            requestedYear.toLowerCase() === "all"
-              ? "All"
-              : requestedYear;
-        }else{
-          yearSelect.value = "All";
-        }
-
-        setFormStatus("");
       }catch(error){
         console.error(error);
-        yearSelect.value = "All";
-
-        setFormStatus(
-          "Could not load the year list; the All view remains available.",
-          true
-        );
+        latestAvailableYear = 2025;
       }finally{
         generateButton.disabled = false;
       }
@@ -620,6 +605,7 @@
 
       const queryName = params.get("name");
       const queryState = params.get("state");
+      const queryYear = params.get("year");
 
       if(queryName !== null){
         nameInput.value = queryName;
@@ -627,6 +613,13 @@
 
       if(queryState !== null){
         stateInput.value = queryState.toUpperCase();
+      }
+
+      if(queryYear !== null){
+        yearInput.value =
+          queryYear.toLowerCase() === "all"
+            ? ""
+            : queryYear;
       }
     }
 
@@ -666,7 +659,7 @@
     for(const element of [
       nameInput,
       stateInput,
-      yearSelect
+      yearInput
     ]){
       element.addEventListener("keydown", event => {
         if(event.key === "Enter"){
@@ -730,7 +723,7 @@
     }
 
     applyQueryParameters();
-    await populateYears();
+    await loadYearRange();
 
     currentPayload = normalizedInputs();
 
