@@ -139,7 +139,7 @@
 </div>
 
 <script type="module">
-import NameData from "../assets/js/name-data-loader.js";
+import NameData from "../assets/js/name-data-loader.js?v=20260724b";
 
 const STATUS = document.getElementById("status");
 const PLOT = document.getElementById("plot");
@@ -1083,6 +1083,17 @@ async function loadAndRender(
 
       Plotly.purge(PLOT);
       return;
+    }
+
+    const hasAllTimeRankFields = (statePacket.allTime || []).some(
+      row => Object.prototype.hasOwnProperty.call(row, "all_time_rank_c")
+    );
+
+    if(!hasAllTimeRankFields){
+      throw new Error(
+        "The state packet was decoded with an outdated schema. " +
+        "Reload the page after updating name-data-loader.js."
+      );
     }
 
     CURRENT_STATE_PACKET = statePacket;
