@@ -1,14 +1,750 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>U.S. Baby Name Data</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Name Popularity Dashboard</title>
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:rgba(255,255,255,0.06);
+      --text:rgba(255,255,255,0.92);
+      --muted:rgba(255,255,255,0.68);
+      --border:rgba(255,255,255,0.12);
+      --accent:#60a5fa;
+      --danger:#fca5a5;
+      --shadow:0 18px 60px rgba(0,0,0,0.55);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(96,165,250,0.22), transparent 60%),
+        radial-gradient(900px 500px at 90% 10%, rgba(244,114,182,0.16), transparent 60%),
+        radial-gradient(900px 700px at 60% 110%, rgba(52,211,153,0.12), transparent 60%),
+        var(--bg);
+      color:var(--text);
+    }
+
+    .wrap{
+      max-width:1120px;
+      margin:0 auto;
+      padding:18px 14px 40px;
+    }
+
+    .header{
+      border:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.05));
+      box-shadow:var(--shadow);
+      border-radius:22px;
+      padding:16px;
+      backdrop-filter:blur(10px);
+    }
+
+    h1{
+      margin:0;
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .controls{
+      margin-top:12px;
+      display:grid;
+      grid-template-columns:1.6fr 1fr 1fr auto;
+      gap:10px;
+      align-items:end;
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 6px;
+    }
+
+    input,
+    select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,0.22);
+      color:var(--text);
+      outline:none;
+      font:inherit;
+    }
+
+    input::placeholder{
+      color:rgba(255,255,255,0.42);
+    }
+
+    select option{
+      color:#111;
+      background:#fff;
+    }
+
+    input:focus,
+    select:focus{
+      border-color:rgba(96,165,250,0.75);
+      box-shadow:0 0 0 3px rgba(96,165,250,0.14);
+    }
+
+    button{
+      padding:11px 14px;
+      border-radius:12px;
+      border:1px solid rgba(96,165,250,0.35);
+      background:linear-gradient(180deg, rgba(96,165,250,0.20), rgba(96,165,250,0.10));
+      color:var(--text);
+      cursor:pointer;
+      font-weight:650;
+      white-space:nowrap;
+    }
+
+    button:hover{
+      background:linear-gradient(180deg, rgba(96,165,250,0.26), rgba(96,165,250,0.14));
+    }
+
+    button:disabled{
+      cursor:wait;
+      opacity:0.65;
+    }
+
+    .formStatus{
+      min-height:18px;
+      margin-top:8px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .formStatus.error{
+      color:var(--danger);
+    }
+
+    .grid{
+      margin-top:16px;
+      display:grid;
+      gap:14px;
+    }
+
+    .card{
+      border:1px solid var(--border);
+      background:rgba(255,255,255,0.05);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .cardHeader{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      background:rgba(255,255,255,0.03);
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:baseline;
+    }
+
+    .cardTitle{
+      margin:0;
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .cardBody{
+      padding:0;
+    }
+
+    iframe{
+      width:100%;
+      border:0;
+      display:block;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    .footerBody{
+      padding:14px;
+      color:var(--text);
+      font-size:14px;
+      line-height:1.45;
+    }
+
+    .muted,
+    .footerBody .muted{
+      color:var(--muted);
+    }
+
+    .footerBody a{
+      color:rgba(255,255,255,0.92);
+      text-decoration:underline;
+      text-underline-offset:2px;
+    }
+
+    .footerBody a:hover{
+      color:#fff;
+    }
+
+    @media (max-width:980px){
+      .controls{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+
+    @media (max-width:620px){
+      .controls{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </head>
+
 <body>
-  <main>
-    <h1>U.S. Baby Name Data</h1>
-    <p>The interactive visualizations are being prepared.</p>
-  </main>
+  <div class="wrap">
+    <div class="header">
+      <h1>Name Popularity Dashboard</h1>
+
+      <div class="controls" role="form" aria-label="Name dashboard controls">
+        <div>
+          <label for="name">Name</label>
+          <input
+            id="name"
+            placeholder="e.g., Olivia"
+            autocomplete="off"
+            autocapitalize="words"
+            spellcheck="false"
+          />
+        </div>
+
+        <div>
+          <label for="state">
+            State (2-letter)
+            <span class="muted">(Optional)</span>
+          </label>
+          <input
+            id="state"
+            placeholder="e.g., NE"
+            maxlength="2"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+          />
+        </div>
+
+        <div>
+          <label for="year">Year</label>
+          <select id="year">
+            <option value="All">All</option>
+          </select>
+        </div>
+
+        <div>
+          <label>&nbsp;</label>
+          <button id="generate" type="button">Generate</button>
+        </div>
+      </div>
+
+      <div id="formStatus" class="formStatus" aria-live="polite"></div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <div class="cardHeader">
+          <p class="cardTitle">Summary</p>
+        </div>
+        <div class="cardBody">
+          <iframe
+            id="frameSummary"
+            src="visualizations/textSummary.html"
+            title="Summary"
+            scrolling="no"
+          ></iframe>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardHeader">
+          <p class="cardTitle">National Trend Over Time</p>
+        </div>
+        <div class="cardBody">
+          <iframe
+            id="frameLine"
+            src="visualizations/line.html"
+            title="Line chart"
+            scrolling="no"
+          ></iframe>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardHeader">
+          <p class="cardTitle">State Map Over Time</p>
+        </div>
+        <div class="cardBody">
+          <iframe
+            id="frameMap"
+            src="visualizations/map.html"
+            title="Map"
+            scrolling="no"
+          ></iframe>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardHeader">
+          <p class="cardTitle">About</p>
+        </div>
+
+        <div class="footerBody">
+          <div>
+            <strong>Data source:</strong>
+            <a
+              href="https://www.ssa.gov/oact/babynames/limits.html"
+              target="_blank"
+              rel="noopener"
+            >
+              U.S. Social Security Administration baby names
+            </a>
+            <span class="muted">
+              (Names with fewer than 5 births in a given year or
+              state-year are omitted from the published data.)
+            </span>
+          </div>
+
+          <div style="margin-top:8px;">
+            <strong>Poster:</strong>
+            <span class="muted">(Coming Soon)</span>
+          </div>
+
+          <div>
+            <strong>Paper:</strong>
+            <span class="muted">(Coming Soon)</span>
+          </div>
+
+          <div style="margin-top:8px;">
+            <strong>Questions or cool ideas?:</strong>
+            Email
+            <a href="mailto:pablo.rodriguez@doane.edu">
+              pablo.rodriguez@doane.edu
+            </a>
+            and
+            <a href="mailto:jerome.roehm@doane.edu">
+              jerome.roehm@doane.edu
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import NameData from "./assets/js/name-data-loader.js";
+
+    const FRAME_IDS = [
+      "frameSummary",
+      "frameLine",
+      "frameMap"
+    ];
+
+    const READY_MESSAGE_TO_FRAME = {
+      SUMMARY_READY: "frameSummary",
+      LINE_READY: "frameLine",
+      MAP_READY: "frameMap"
+    };
+
+    const MIN_HEIGHTS = {
+      frameSummary: 140,
+      frameLine: 490,
+      frameMap: 560
+    };
+
+    const VALID_STATES = new Set([
+      "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI",
+      "ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN",
+      "MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH",
+      "OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA",
+      "WV","WI","WY"
+    ]);
+
+    const nameInput = document.getElementById("name");
+    const stateInput = document.getElementById("state");
+    const yearSelect = document.getElementById("year");
+    const generateButton = document.getElementById("generate");
+    const formStatus = document.getElementById("formStatus");
+
+    let currentPayload = {
+      type: "SET_INPUTS_AND_RUN",
+      name: "",
+      state: "",
+      year: "All"
+    };
+
+    function setFormStatus(message, isError = false){
+      formStatus.textContent = message || "";
+      formStatus.className =
+        "formStatus" + (isError ? " error" : "");
+    }
+
+    function normalizedInputs(){
+      return {
+        type: "SET_INPUTS_AND_RUN",
+        name: nameInput.value.trim(),
+        state: stateInput.value.trim().toUpperCase(),
+        year: yearSelect.value || "All"
+      };
+    }
+
+    function validatePayload(payload){
+      if(!payload.name){
+        return "Enter a name.";
+      }
+
+      if(
+        payload.state &&
+        !VALID_STATES.has(payload.state)
+      ){
+        return "Enter a valid two-letter state abbreviation.";
+      }
+
+      return "";
+    }
+
+    function frameById(frameId){
+      return document.getElementById(frameId);
+    }
+
+    function postToFrame(frameId, payload){
+      const frame = frameById(frameId);
+
+      if(!frame?.contentWindow){
+        return;
+      }
+
+      try{
+        frame.contentWindow.postMessage(payload, "*");
+      }catch(error){
+        console.error(error);
+      }
+    }
+
+    function postToAllFrames(payload){
+      for(const frameId of FRAME_IDS){
+        postToFrame(frameId, payload);
+      }
+    }
+
+    function getDocHeight(doc){
+      if(!doc){
+        return 0;
+      }
+
+      const documentElement = doc.documentElement;
+      const body = doc.body;
+
+      return Math.max(
+        documentElement?.scrollHeight || 0,
+        documentElement?.offsetHeight || 0,
+        body?.scrollHeight || 0,
+        body?.offsetHeight || 0
+      );
+    }
+
+    function minimumHeight(frame){
+      return MIN_HEIGHTS[frame?.id] || 120;
+    }
+
+    function setFrameHeight(frame, height){
+      if(!frame){
+        return;
+      }
+
+      const finalHeight = Math.max(
+        minimumHeight(frame),
+        Math.ceil(Number(height) || 0)
+      );
+
+      frame.style.height = `${finalHeight}px`;
+    }
+
+    function resizeFrameOnce(frame){
+      if(!frame){
+        return false;
+      }
+
+      try{
+        const doc =
+          frame.contentDocument ||
+          frame.contentWindow?.document;
+
+        const height = getDocHeight(doc);
+
+        if(height > 0){
+          setFrameHeight(frame, height);
+          return true;
+        }
+      }catch(error){
+        // Child height reports handle cases where direct access fails.
+      }
+
+      return false;
+    }
+
+    function requestChildHeights(){
+      for(const frameId of FRAME_IDS){
+        postToFrame(
+          frameId,
+          {type:"REQUEST_IFRAME_HEIGHT"}
+        );
+      }
+    }
+
+    function resizeFramesAggressively(){
+      const frames = FRAME_IDS
+        .map(frameById)
+        .filter(Boolean);
+
+      const delays = [
+        0,60,150,300,600,900,
+        1300,1800,2400,3200,
+        4200,5500
+      ];
+
+      for(const delay of delays){
+        setTimeout(
+          () => {
+            for(const frame of frames){
+              resizeFrameOnce(frame);
+            }
+          },
+          delay
+        );
+
+        setTimeout(
+          requestChildHeights,
+          delay
+        );
+      }
+    }
+
+    function generate(){
+      const payload = normalizedInputs();
+      const validationError = validatePayload(payload);
+
+      if(validationError){
+        setFormStatus(validationError, true);
+        return;
+      }
+
+      currentPayload = payload;
+      stateInput.value = payload.state;
+      setFormStatus("");
+
+      postToAllFrames(currentPayload);
+      resizeFramesAggressively();
+    }
+
+    async function populateYears(){
+      generateButton.disabled = true;
+      setFormStatus("Loading available years…");
+
+      try{
+        const manifest = await NameData.loadManifest();
+
+        const latestYear = Number(
+          manifest?.yearRanges?.state?.[1]
+        );
+
+        const endYear = Number.isFinite(latestYear)
+          ? latestYear
+          : 2025;
+
+        const requestedYear = new URLSearchParams(
+          window.location.search
+        ).get("year");
+
+        yearSelect.replaceChildren();
+
+        const allOption = document.createElement("option");
+        allOption.value = "All";
+        allOption.textContent = "All";
+        yearSelect.appendChild(allOption);
+
+        for(let year = 1910; year <= endYear; year += 1){
+          const option = document.createElement("option");
+          option.value = String(year);
+          option.textContent = String(year);
+          yearSelect.appendChild(option);
+        }
+
+        if(
+          requestedYear &&
+          (
+            requestedYear.toLowerCase() === "all" ||
+            (
+              Number.isFinite(Number(requestedYear)) &&
+              Number(requestedYear) >= 1910 &&
+              Number(requestedYear) <= endYear
+            )
+          )
+        ){
+          yearSelect.value =
+            requestedYear.toLowerCase() === "all"
+              ? "All"
+              : requestedYear;
+        }else{
+          yearSelect.value = "All";
+        }
+
+        setFormStatus("");
+      }catch(error){
+        console.error(error);
+        yearSelect.value = "All";
+
+        setFormStatus(
+          "Could not load the year list; the All view remains available.",
+          true
+        );
+      }finally{
+        generateButton.disabled = false;
+      }
+    }
+
+    function applyQueryParameters(){
+      const params = new URLSearchParams(
+        window.location.search
+      );
+
+      const queryName = params.get("name");
+      const queryState = params.get("state");
+
+      if(queryName !== null){
+        nameInput.value = queryName;
+      }
+
+      if(queryState !== null){
+        stateInput.value = queryState.toUpperCase();
+      }
+    }
+
+    window.addEventListener("message", event => {
+      const data = event.data || {};
+
+      if(data.type === "REPORT_IFRAME_HEIGHT"){
+        if(
+          typeof data.frameId === "string" &&
+          typeof data.height === "number"
+        ){
+          const frame = frameById(data.frameId);
+
+          if(frame){
+            setFrameHeight(frame, data.height);
+          }
+        }
+
+        return;
+      }
+
+      const readyFrameId =
+        READY_MESSAGE_TO_FRAME[data.type];
+
+      if(readyFrameId){
+        postToFrame(readyFrameId, currentPayload);
+
+        setTimeout(
+          requestChildHeights,
+          50
+        );
+      }
+    });
+
+    generateButton.addEventListener("click", generate);
+
+    for(const element of [
+      nameInput,
+      stateInput,
+      yearSelect
+    ]){
+      element.addEventListener("keydown", event => {
+        if(event.key === "Enter"){
+          event.preventDefault();
+          generate();
+        }
+      });
+    }
+
+    stateInput.addEventListener("input", () => {
+      stateInput.value =
+        stateInput.value.toUpperCase();
+    });
+
+    for(const frameId of FRAME_IDS){
+      const frame = frameById(frameId);
+
+      if(!frame){
+        continue;
+      }
+
+      setFrameHeight(
+        frame,
+        MIN_HEIGHTS[frameId]
+      );
+
+      frame.addEventListener("load", () => {
+        resizeFrameOnce(frame);
+        resizeFramesAggressively();
+      });
+    }
+
+    let resizeTimer = null;
+
+    function onViewportChange(){
+      clearTimeout(resizeTimer);
+
+      resizeTimer = setTimeout(
+        resizeFramesAggressively,
+        150
+      );
+    }
+
+    window.addEventListener("resize", onViewportChange);
+
+    window.addEventListener(
+      "orientationchange",
+      () => setTimeout(onViewportChange, 200)
+    );
+
+    if(window.visualViewport){
+      window.visualViewport.addEventListener(
+        "resize",
+        onViewportChange
+      );
+
+      window.visualViewport.addEventListener(
+        "scroll",
+        onViewportChange
+      );
+    }
+
+    applyQueryParameters();
+    await populateYears();
+
+    currentPayload = normalizedInputs();
+
+    if(currentPayload.name){
+      const validationError =
+        validatePayload(currentPayload);
+
+      if(validationError){
+        setFormStatus(validationError, true);
+      }else{
+        postToAllFrames(currentPayload);
+        resizeFramesAggressively();
+      }
+    }
+  </script>
 </body>
 </html>
