@@ -415,11 +415,9 @@ function allTimeStats(row, sexChoice){
       row?.[`proportion_${suffix}`]
     ),
 
-    // The packet contains all-time frequency and proportion by
-    // state, but not the name's all-time rank among all names
-    // within each state. Do not substitute state-representation
-    // rank, because that is a different statistic.
-    rank: null,
+    rank: rankOrNull(
+      row?.[`all_time_rank_${suffix}`]
+    ),
 
     rankLabel: "Rank"
   };
@@ -458,16 +456,7 @@ function metricValue(stats, metric){
 }
 
 function updateViewStatus(){
-  if(
-    METRIC_SELECT.value === "rank" &&
-    ACTIVE_PERIOD === ALL_PERIOD
-  ){
-    setStatus(
-      "All-time rank among names is not available in the current data packet. Choose a specific year to view rank."
-    );
-  }else{
-    setStatus("");
-  }
+  setStatus("");
 }
 
 function collectRangeValues(
