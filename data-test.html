@@ -359,14 +359,21 @@
 
     function formatProportion(value, digits = 4) {
       const number = Number(value);
-
+    
+      // Table formatters are called with (value, row). If the
+      // second argument is a row object rather than a requested
+      // decimal count, fall back to four decimal places.
+      const safeDigits = Number.isInteger(digits)
+        ? Math.min(20, Math.max(0, digits))
+        : 4;
+    
       return Number.isFinite(number)
         ? number.toLocaleString(
             undefined,
             {
               style: "percent",
-              minimumFractionDigits: digits,
-              maximumFractionDigits: digits,
+              minimumFractionDigits: safeDigits,
+              maximumFractionDigits: safeDigits,
             },
           )
         : "—";
