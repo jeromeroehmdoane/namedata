@@ -110,7 +110,10 @@ class NameDataClient {
 
     if (!this._jsonPromiseCache.has(url)) {
       const request = fetch(url, {
-        cache: force ? "reload" : "force-cache",
+        // Revalidate repository JSON on each page load. The in-memory
+        // promise cache still prevents duplicate requests within the page,
+        // while avoiding stale schema/packet mismatches after a rebuild.
+        cache: force ? "reload" : "no-cache",
         headers: { Accept: "application/json" },
       })
         .then(async (response) => {
