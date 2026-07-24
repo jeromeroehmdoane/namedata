@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Summary</title>
+
+  <style>
+    :root{
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e6e8eb;
+      --panel:#ffffff;
+      --shadow:0 10px 30px rgba(0,0,0,0.08);
+      --r:14px;
+
+      /* Match index background dark blue */
+      --deep:#0b1220;
+
+      /* Meter base gradient (light -> deep) */
+      --light:#f7fafc;
+
+      /* Marker styles */
+      --markerFill:#60a5fa; /* subtle but visible */
+      --markerBorder:#ffffff;
+      --markerHalo:rgba(96,165,250,0.22);
+
+      --barBorder:rgba(17,24,39,0.10);
+
+      --tooltip:#111827;
+      --tooltipText:#ffffff;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      line-height: 1.35;
+      margin: 24px;
+      color:var(--text);
+      background:#fff;
+    }
+
+    /* Hide local controls (keep in DOM for message bridge + internal wiring) */
+    #localControls { display:none; }
+
+    .hint{
+      max-width: 900px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .error { color: #b00020; white-space: pre-wrap; }
+
+    .card {
+      max-width: 900px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      background: var(--panel);
+      margin-top: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+
+    .bold-row td { font-weight: 700; }
+
+    table { border-collapse: collapse; width: 100%; max-width: 900px; margin: 8px 0 16px; background:#fff; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f1f3f5; }
+
+   table{
+  font-size: 14px;
+}
+
+th{
+  font-size: 15px;
+}
+
+td{
+  font-size: 14px;
+}
+
+
+
+    /* ---------- Text blocks (replace gray <pre>) ---------- */
+    .statBlock{
+      border: 1px solid rgba(17,24,39,0.08);
+      background: linear-gradient(180deg, #ffffff, #fbfcfe);
+      border-radius: 12px;
+      padding: 12px 12px 10px;
+      margin-top: 10px;
+    }
+    .statText{
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+
+    /* ---------- Overall summary stack ---------- */
+    .overallStack{ display:grid; gap:12px; margin-top: 8px; }
+
+    /* ---------- Meters ---------- */
+    .meterWrap{ display:grid; gap:6px; margin-top: 10px; }
+    .meterLabels{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      font-size:12px;
+      color: var(--muted);
+    }
+    .meterBar{
+      position: relative;
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid var(--barBorder);
+      overflow: visible;
+      background: linear-gradient(90deg, var(--light), var(--deep));
+    }
+    .meterBar.sex{
+      background: linear-gradient(90deg, #fbcfe8, #ffffff, #93c5fd);
+    }
+
+    /* Marker: dot + tick; visible on light and dark backgrounds */
+    .meterMarker{
+      position:absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--markerFill);
+      border: 2px solid var(--markerBorder);
+      box-shadow: 0 0 0 6px var(--markerHalo);
+      cursor: default;
+      z-index: 2;
+    }
+    .meterMarker::before{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 18px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.65);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.25);
+      z-index: -1;
+    }
+
+    /* Desktop-only hover tooltip */
+    @media (hover:hover) and (pointer:fine){
+      .meterMarker[data-tip]::after{
+        content: attr(data-tip);
+        position:absolute;
+        left:50%;
+        transform: translate(-50%, calc(-100% - 12px));
+        background: var(--tooltip);
+        color: var(--tooltipText);
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+        filter: drop-shadow(0 10px 20px rgba(0,0,0,0.25));
+      }
+      .meterMarker:hover::after{ opacity: 1; }
+    }
+
+    @media (max-width: 520px){
+      body{ margin: 16px; }
+      .meterLabels{ font-size:12px; }
+    }
+  </style>
+
+  </head>
+
+<body>
+  <!-- No "Name Summary" header here; index already labels the section -->
+  <div id="messages" class="hint">Enter a name above.</div>
+
+  <!-- Hidden local controls retained for internal wiring + bridge -->
+  <div id="localControls">
+    <input id="nameInput" />
+    <input id="stateInput" />
+    <input id="yearInput" />
+    <button id="runBtn">Generate</button>
+  </div>
+
+  <div id="output"></div>
+
+<script type="module">
+import NameData from "../assets/js/name-data-loader.js";
+
+const STATE_NAMES = {
+  "AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut",
+  "DE":"Delaware","DC":"District of Columbia","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois",
+  "IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts",
+  "MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada",
+  "NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota",
+  "OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota",
+  "TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia",
+  "WI":"Wisconsin","WY":"Wyoming"
+};
+
+const NAME_INPUT = document.getElementById("nameInput");
+const STATE_INPUT = document.getElementById("stateInput");
+const YEAR_INPUT = document.getElementById("yearInput");
+const RUN_BUTTON = document.getElementById("runBtn");
+const OUTPUT = document.getElementById("output");
+
+let RUN_TOKEN = 0;
+
+function ordinal(value) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return "N/A";
+  if (10 <= (n % 100) && (n % 100) <= 20) return `${n}th`;
+  const suffix = ({1:"st",2:"nd",3:"rd"})[n % 10] || "th";
+  return `${n}${suffix}`;
+}
+
+function finiteNumber(value, fallback = null) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function integerOrNull(value) {
+  const n = finiteNumber(value);
+  return n === null ? null : Math.round(n);
+}
+
+function pct(value, decimals = 1) {
+  const n = finiteNumber(value);
+  return n === null ? "N/A" : `${(100 * n).toFixed(decimals)}%`;
+}
+
+function tablePct(value, decimals = 5) {
+  const n = finiteNumber(value);
+  return n === null ? "N/A" : `${(100 * n).toFixed(decimals)}%`;
+}
+
+function toLowerTrim(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, finiteNumber(value, 0)));
+}
+
+function firstValue(record, fields, fallback = null) {
+  if (!record) return fallback;
+
+  for (const field of fields) {
+    const value = record[field];
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+
+  return fallback;
+}
+
+function recordName(record) {
+  return String(firstValue(record, ["name","display_name","Name"], "")).trim();
+}
+
+function recordYear(record) {
+  return integerOrNull(firstValue(record, ["year","Year"]));
+}
+
+function combinedFrequency(record) {
+  return finiteNumber(
+    firstValue(
+      record,
+      ["frequency_c","frequency","total_frequency_c","total_frequency"]
+    ),
+    0
+  ) || 0;
+}
+
+function combinedProportion(record) {
+  return finiteNumber(
+    firstValue(record, ["proportion_c","overall_percentage","percentage"]),
+    0
+  ) || 0;
+}
+
+function annualRank(record) {
+  return integerOrNull(
+    firstValue(record, ["rank_c","overall_rank","rank"])
+  );
+}
+
+function allTimeRank(record) {
+  return integerOrNull(
+    firstValue(record, ["all_time_rank","all_time_rank_c","rank_c","rank"])
+  );
+}
+
+function clearOutput() {
+  OUTPUT.replaceChildren();
+}
+
+function setHint(text) {
+  const el = document.getElementById("messages");
+  if (!el) return;
+  el.className = "hint";
+  el.textContent = text;
+}
+
+function setError(text) {
+  const el = document.getElementById("messages");
+  if (!el) return;
+  el.className = "hint error";
+  el.textContent = text;
+}
+
+function createCard(title) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const heading = document.createElement("h2");
+  heading.textContent = title;
+  card.appendChild(heading);
+
+  OUTPUT.appendChild(card);
+  return card;
+}
+
+function makeTextBlock(text) {
+  const block = document.createElement("div");
+  block.className = "statBlock";
+
+  const p = document.createElement("p");
+  p.className = "statText";
+  p.textContent = text;
+
+  block.appendChild(p);
+  return block;
+}
+
+function renderTable(container, title, rows, columns, opts = {}) {
+  const wrap = document.createElement("div");
+
+  const heading = document.createElement("div");
+  heading.innerHTML =
+    `<div class="muted" style="margin-top:10px;"><strong>${title}</strong></div>`;
+  wrap.appendChild(heading);
+
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+
+  for (const column of columns) {
+    const th = document.createElement("th");
+    th.textContent = column;
+    trh.appendChild(th);
+  }
+
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+
+    if (
+      typeof opts.boldRowPredicate === "function" &&
+      opts.boldRowPredicate(row)
+    ) {
+      tr.classList.add("bold-row");
+    }
+
+    for (const column of columns) {
+      const td = document.createElement("td");
+      td.textContent = String(row[column] ?? "");
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  container.appendChild(wrap);
+}
+
+function makeMeter({leftLabel, rightLabel, value01, tooltip, variant}) {
+  const wrap = document.createElement("div");
+  wrap.className = "meterWrap";
+
+  const labels = document.createElement("div");
+  labels.className = "meterLabels";
+  labels.innerHTML = `<span>${leftLabel}</span><span>${rightLabel}</span>`;
+
+  const bar = document.createElement("div");
+  bar.className = "meterBar" + (variant ? ` ${variant}` : "");
+
+  const marker = document.createElement("div");
+  marker.className = "meterMarker";
+  marker.style.left = `${(100 * clamp01(value01)).toFixed(2)}%`;
+
+  if (tooltip) marker.setAttribute("data-tip", tooltip);
+
+  bar.appendChild(marker);
+  wrap.append(labels, bar);
+
+  return wrap;
+}
+
+function renderOverallSummary(card, data) {
+  card.replaceChildren();
+
+  const heading = document.createElement("h2");
+  heading.textContent = "Overall Summary (All Time)";
+  card.appendChild(heading);
+
+  const stack = document.createElement("div");
+  stack.className = "overallStack";
+
+  const blocks = [];
+
+  const popularity = document.createElement("div");
+  popularity.className = "statBlock";
+  popularity.appendChild(
+    Object.assign(document.createElement("p"), {
+      className: "statText",
+      textContent:
+        `${data.name} is the ${ordinal(data.rank_all_time)} most popular US name of all time ` +
+        `(${data.rank_pct.toFixed(0)}th percentile) with ` +
+        `${data.total_all_time.toLocaleString()} babies given the name.`
+    })
+  );
+  popularity.appendChild(makeMeter({
+    leftLabel: "Least popular",
+    rightLabel: "Most popular",
+    value01: data.rank_pct / 100,
+    tooltip: `${data.rank_pct.toFixed(0)}th percentile`
+  }));
+  blocks.push(popularity);
+
+  const sex = document.createElement("div");
+  sex.className = "statBlock";
+  sex.appendChild(
+    Object.assign(document.createElement("p"), {
+      className: "statText",
+      textContent:
+        `${data.sex_word} ${data.name}s are ${data.dominant_sex} ` +
+        `(${pct(data.dominant_prop, 1)}).`
+    })
+  );
+  sex.appendChild(makeMeter({
+    leftLabel: "All girls",
+    rightLabel: "All boys",
+    value01: data.prop_male,
+    tooltip: `${pct(data.prop_male, 1)} boys`,
+    variant: "sex"
+  }));
+  blocks.push(sex);
+
+  const meanYear = document.createElement("div");
+  meanYear.className = "statBlock";
+  meanYear.appendChild(
+    Object.assign(document.createElement("p"), {
+      className: "statText",
+      textContent:
+        `The average birth year was ${data.mean_year.toFixed(0)} ` +
+        `(${data.mean_year_pct.toFixed(0)}th percentile – ` +
+        `${data.age_word} than most).`
+    })
+  );
+  meanYear.appendChild(makeMeter({
+    leftLabel: "Older",
+    rightLabel: "Younger",
+    value01: data.mean_year_pct / 100,
+    tooltip: `${data.mean_year_pct.toFixed(0)}th percentile`
+  }));
+  blocks.push(meanYear);
+
+  const trend = document.createElement("div");
+  trend.className = "statBlock";
+  trend.appendChild(
+    Object.assign(document.createElement("p"), {
+      className: "statText",
+      textContent:
+        `Peak frequency came in ${data.peak_year} with ` +
+        `${data.peak_freq.toLocaleString()} births.\n` +
+        `The peak 10 year window was ${data.win_start} to ${data.win_end} ` +
+        `with ${pct(data.win_prop, 1)} of all ${data.name}s born in that time.\n` +
+        `That puts its trendy/timeless percentile as ` +
+        `${data.trend_pct.toFixed(0)}% – ${data.trend_word}.`
+    })
+  );
+  trend.appendChild(makeMeter({
+    leftLabel: "Timeless",
+    rightLabel: "Trendy",
+    value01: data.trend_pct / 100,
+    tooltip: `${data.trend_pct.toFixed(0)}th percentile`
+  }));
+  blocks.push(trend);
+
+  const scrabble = document.createElement("div");
+  scrabble.className = "statBlock";
+  scrabble.appendChild(
+    Object.assign(document.createElement("p"), {
+      className: "statText",
+      textContent:
+        `The Scrabble score for ${data.name} is ${data.scrabble_score}. ` +
+        `(${data.scrabble_pct.toFixed(0)}th percentile)`
+    })
+  );
+  scrabble.appendChild(makeMeter({
+    leftLabel: "Lower",
+    rightLabel: "Higher",
+    value01: data.scrabble_pct / 100,
+    tooltip: `${data.scrabble_pct.toFixed(0)}th percentile`
+  }));
+  blocks.push(scrabble);
+
+  stack.append(...blocks);
+  card.appendChild(stack);
+}
+
+function overallSummaryData(name, summary) {
+  const propMale = finiteNumber(summary.prop_male, 0.5);
+  const dominantSex = propMale >= 0.5 ? "boys" : "girls";
+  const dominantProp = dominantSex === "boys" ? propMale : 1 - propMale;
+
+  let sexWord = "About half of";
+  if (dominantProp >= 0.95) sexWord = "Nearly all";
+  else if (dominantProp >= 0.80) sexWord = "Most";
+  else if (dominantProp >= 0.65) sexWord = "A majority of";
+
+  const meanYearPct = finiteNumber(summary.mean_birth_year_percentile, 50);
+  const trendPct = finiteNumber(summary.trendiness_percentile, 50);
+
+  let trendWord = "very timeless";
+  if (trendPct >= 85) trendWord = "very trendy";
+  else if (trendPct >= 65) trendWord = "moderately trendy";
+  else if (trendPct >= 50) trendWord = "slightly more trendy than timeless";
+  else if (trendPct >= 35) trendWord = "moderately timeless";
+
+  return {
+    name,
+    total_all_time: integerOrNull(summary.total_frequency) ?? 0,
+    rank_all_time: integerOrNull(summary.all_time_rank),
+    rank_pct: finiteNumber(summary.all_time_percentile, 0),
+    prop_male: propMale,
+    dominant_sex: dominantSex,
+    dominant_prop: dominantProp,
+    sex_word: sexWord,
+    mean_year: finiteNumber(summary.birth_year_mean, 0),
+    mean_year_pct: meanYearPct,
+    age_word: meanYearPct < 50 ? "older" : "younger",
+    peak_freq: integerOrNull(summary.peak_frequency) ?? 0,
+    peak_year: integerOrNull(summary.peak_frequency_year) ?? "N/A",
+    win_start: integerOrNull(summary.best10_start) ?? "N/A",
+    win_end: integerOrNull(summary.best10_end) ?? "N/A",
+    win_prop: finiteNumber(summary.best10_prop, 0),
+    trend_pct: trendPct,
+    trend_word: trendWord,
+    scrabble_score: integerOrNull(summary.scrabble_score) ?? 0,
+    scrabble_pct: finiteNumber(summary.scrabble_score_percentile, 0)
+  };
+}
+
+function uniqueRankedRows(rows) {
+  const seen = new Set();
+  const output = [];
+
+  for (const row of rows) {
+    const key = `${toLowerTrim(row.name)}|${row.rank}`;
+
+    if (
+      !row.name ||
+      !Number.isFinite(row.rank) ||
+      seen.has(key)
+    ) continue;
+
+    seen.add(key);
+    output.push(row);
+  }
+
+  return output.sort(
+    (a, b) => a.rank - b.rank || a.name.localeCompare(b.name)
+  );
+}
+
+function insertTarget(topRows, targetRow) {
+  const rows = uniqueRankedRows(
+    topRows.filter(row => Number.isFinite(row.rank) && row.rank <= 5)
+  );
+
+  if (!targetRow || !Number.isFinite(targetRow.rank)) return rows;
+
+  const included = rows.some(
+    row => toLowerTrim(row.name) === toLowerTrim(targetRow.name)
+  );
+
+  if (included) return rows;
+  if (targetRow.rank <= 5) return uniqueRankedRows([...rows, targetRow]);
+
+  return [
+    ...rows,
+    {rank:"...", name:"...", frequency:"...", proportion:"..."},
+    targetRow
+  ];
+}
+
+function mapAllTimeTop(record) {
+  return {
+    name: recordName(record),
+    rank: allTimeRank(record),
+    frequency: combinedFrequency(record)
+  };
+}
+
+function mapAnnualTop(record) {
+  return {
+    name: recordName(record),
+    rank: annualRank(record),
+    frequency: combinedFrequency(record),
+    proportion: combinedProportion(record)
+  };
+}
+
+async function renderNationalAllTime(name, national) {
+  const card = createCard("National Summary (All Time)");
+  const topTable = await NameData.loadGlobalTable("nationalAllTimeTop");
+
+  const topRows = topTable.records
+    .map(mapAllTimeTop)
+    .filter(row => Number.isFinite(row.rank) && row.rank <= 5);
+
+  const target = {
+    name,
+    rank: integerOrNull(national.summary.all_time_rank),
+    frequency: integerOrNull(national.summary.total_frequency) ?? 0
+  };
+
+  const rows = insertTarget(topRows, target).map(row => ({
+    "National Rank": row.rank,
+    "Name": row.name,
+    "Frequency":
+      row.frequency === "..."
+        ? "..."
+        : (finiteNumber(row.frequency, 0) || 0).toLocaleString()
+  }));
+
+  renderTable(
+    card,
+    "National Popularity Table (All Time):",
+    rows,
+    ["National Rank","Name","Frequency"],
+    {
+      boldRowPredicate:
+        row => toLowerTrim(row.Name) === toLowerTrim(name)
+    }
+  );
+}
+
+async function renderNationalYear(name, national, year) {
+  const card = createCard(`National Summary (${year})`);
+  const annual = NameData.findNationalYear(national, year);
+
+  if (!annual) {
+    card.appendChild(makeTextBlock(`No national data found for ${name} in ${year}.`));
+    return;
+  }
+
+  const total = integerOrNull(annual.frequency_c) ?? 0;
+  const male = integerOrNull(annual.frequency_m) ?? 0;
+  const female = integerOrNull(annual.frequency_f) ?? 0;
+  const rank = integerOrNull(annual.rank_c);
+
+  card.appendChild(
+    makeTextBlock(
+      `There were ${total.toLocaleString()} babies born in the US with the name ` +
+      `${name} in ${year} (${male.toLocaleString()} M, ${female.toLocaleString()} F).\n` +
+      `It was the ${ordinal(rank)} most popular name nationwide that year.`
+    )
+  );
+
+  const topTable = await NameData.loadGlobalTable("nationalYearTop");
+
+  const topRows = topTable.records
+    .filter(record => recordYear(record) === year)
+    .map(mapAnnualTop)
+    .filter(row => Number.isFinite(row.rank) && row.rank <= 5);
+
+  const target = {
+    name,
+    rank,
+    frequency: total,
+    proportion: finiteNumber(annual.proportion_c, 0)
+  };
+
+  const rows = insertTarget(topRows, target).map(row => ({
+    "National Rank": row.rank,
+    "Name": row.name,
+    "Frequency":
+      row.frequency === "..."
+        ? "..."
+        : (finiteNumber(row.frequency, 0) || 0).toLocaleString(),
+    "Percentage":
+      row.proportion === "..."
+        ? "..."
+        : tablePct(row.proportion, 5)
+  }));
+
+  renderTable(
+    card,
+    `National Popularity Table (${year}):`,
+    rows,
+    ["National Rank","Name","Frequency","Percentage"],
+    {
+      boldRowPredicate:
+        row => toLowerTrim(row.Name) === toLowerTrim(name)
+    }
+  );
+}
+
+async function renderStateYear(card, name, statePacket, state, year) {
+  if (!statePacket) {
+    card.appendChild(makeTextBlock(`No state-level data are available for ${name}.`));
+    return;
+  }
+
+  const annual = NameData.findStateYear(statePacket, state, year);
+
+  if (!annual) {
+    card.appendChild(
+      makeTextBlock(`No state data found for ${name} in ${state} in ${year}.`)
+    );
+    return;
+  }
+
+  const total = integerOrNull(annual.frequency_c) ?? 0;
+  const male = integerOrNull(annual.frequency_m) ?? 0;
+  const female = integerOrNull(annual.frequency_f) ?? 0;
+  const rank = integerOrNull(annual.rank_c);
+
+  card.appendChild(
+    makeTextBlock(
+      `There were ${total.toLocaleString()} babies born in ${state} with the name ` +
+      `${name} in ${year} (${male.toLocaleString()} M, ${female.toLocaleString()} F).\n` +
+      `It was the ${ordinal(rank)} most popular name in ${state} that year.`
+    )
+  );
+
+  const topTable = await NameData.loadGlobalTable(
+    "stateYearTopPattern",
+    {state}
+  );
+
+  const topRows = topTable.records
+    .filter(record => recordYear(record) === year)
+    .map(mapAnnualTop)
+    .filter(row => Number.isFinite(row.rank) && row.rank <= 5);
+
+  const target = {
+    name,
+    rank,
+    frequency: total,
+    proportion: finiteNumber(annual.proportion_c, 0)
+  };
+
+  const rows = insertTarget(topRows, target).map(row => ({
+    "State Rank": row.rank,
+    "Name": row.name,
+    "Frequency":
+      row.frequency === "..."
+        ? "..."
+        : (finiteNumber(row.frequency, 0) || 0).toLocaleString(),
+    "Percentage":
+      row.proportion === "..."
+        ? "..."
+        : tablePct(row.proportion, 5)
+  }));
+
+  renderTable(
+    card,
+    `${state} Popularity Table (${year}):`,
+    rows,
+    ["State Rank","Name","Frequency","Percentage"],
+    {
+      boldRowPredicate:
+        row => toLowerTrim(row.Name) === toLowerTrim(name)
+    }
+  );
+}
+
+function renderStateRepresentation(card, name, statePacket, selectedState) {
+  if (!statePacket?.allTime?.length) {
+    card.appendChild(
+      makeTextBlock(`No state representation data found for ${name}.`)
+    );
+    return;
+  }
+
+  const ranked = statePacket.allTime
+    .map(row => ({
+      state: String(row.state || ""),
+      frequency: integerOrNull(row.frequency_c) ?? 0,
+      proportion: finiteNumber(row.proportion_c, 0)
+    }))
+    .filter(row => Object.hasOwn(STATE_NAMES, row.state))
+    .sort(
+      (a, b) =>
+        b.proportion - a.proportion ||
+        a.state.localeCompare(b.state)
+    )
+    .map((row, index) => ({
+      ...row,
+      rank: index + 1
+    }));
+
+  if (!ranked.length) {
+    card.appendChild(
+      makeTextBlock(`No state representation data found for ${name}.`)
+    );
+    return;
+  }
+
+  const chosen = new Set([
+    ...ranked.slice(0, 3).map(row => row.state),
+    ...ranked.slice(-3).map(row => row.state)
+  ]);
+
+  if (selectedState && ranked.some(row => row.state === selectedState)) {
+    chosen.add(selectedState);
+  }
+
+  const filtered = ranked.filter(row => chosen.has(row.state));
+  const rows = [];
+  let lastRank = null;
+
+  for (const row of filtered) {
+    if (lastRank !== null && row.rank > lastRank + 1) {
+      rows.push({
+        "Representation Rank":"...",
+        "State":"...",
+        "Frequency":"...",
+        "Percentage":"..."
+      });
+    }
+
+    rows.push({
+      "Representation Rank": row.rank,
+      "State": row.state,
+      "Frequency": row.frequency.toLocaleString(),
+      "Percentage": tablePct(row.proportion, 5)
+    });
+
+    lastRank = row.rank;
+  }
+
+  const top = ranked[0];
+  const bottom = ranked[ranked.length - 1];
+
+  card.appendChild(
+    makeTextBlock(
+      `The state where ${name} is most overrepresented (all time) is ${top.state} ` +
+      `with ${tablePct(top.proportion, 5)} of babies named ${name}.\n` +
+      `It is most underrepresented in ${bottom.state}, where ` +
+      `${tablePct(bottom.proportion, 5)} of babies were named ${name}.`
+    )
+  );
+
+  renderTable(
+    card,
+    `State Over/Underrepresentation for ${name} (All Time):`,
+    rows,
+    ["Representation Rank","State","Frequency","Percentage"],
+    {
+      boldRowPredicate:
+        row =>
+          Boolean(selectedState) &&
+          String(row.State).toUpperCase() === selectedState
+    }
+  );
+}
+
+async function writeSummaryHTML(name, state, year) {
+  const token = ++RUN_TOKEN;
+  clearOutput();
+
+  const requestedName = String(name ?? "").trim();
+  const stateCode = String(state ?? "").trim().toUpperCase();
+  const yearText = String(year ?? "").trim();
+
+  const parsedYear = /^\d{4}$/.test(yearText)
+    ? Number.parseInt(yearText, 10)
+    : null;
+
+  const hasYear = Number.isFinite(parsedYear);
+  const hasState = Object.hasOwn(STATE_NAMES, stateCode);
+
+  if (!requestedName) {
+    setHint("Enter a name above.");
+    return;
+  }
+
+  setHint("Loading…");
+
+  try {
+    const packet = await NameData.getNamePacket(requestedName);
+
+    if (token !== RUN_TOKEN) return;
+
+    if (!packet.national) {
+      setHint("");
+
+      const card = createCard("Overall Summary (All Time)");
+      card.appendChild(
+        makeTextBlock(
+          `No data for "${requestedName}" found. Names with fewer than 5 ` +
+          `occurrences in a year are not included in the dataset.`
+        )
+      );
+      return;
+    }
+
+    const displayName = packet.national.displayName || requestedName;
+    NAME_INPUT.value = displayName;
+    setHint("");
+
+    const overallCard = createCard("Overall Summary (All Time)");
+    renderOverallSummary(
+      overallCard,
+      overallSummaryData(displayName, packet.national.summary)
+    );
+
+    if (hasYear) {
+      await renderNationalYear(displayName, packet.national, parsedYear);
+    } else {
+      await renderNationalAllTime(displayName, packet.national);
+    }
+
+    if (token !== RUN_TOKEN) return;
+
+    const stateFull = hasState ? STATE_NAMES[stateCode] : "State";
+
+    const stateTitle =
+      hasState && hasYear
+        ? `${stateFull} State Summary (${parsedYear})`
+        : hasState
+          ? `${stateFull} State Summary`
+          : hasYear
+            ? `State Summary (${parsedYear})`
+            : "State Summary";
+
+    const stateCard = createCard(stateTitle);
+
+    if (hasState && hasYear) {
+      await renderStateYear(
+        stateCard,
+        displayName,
+        packet.state,
+        stateCode,
+        parsedYear
+      );
+    }
+
+    if (token !== RUN_TOKEN) return;
+
+    renderStateRepresentation(
+      stateCard,
+      displayName,
+      packet.state,
+      hasState ? stateCode : null
+    );
+
+    setHint("");
+  } catch (error) {
+    if (token !== RUN_TOKEN) return;
+
+    console.error(error);
+    setError(`Error:\n${error?.message || String(error)}`);
+  }
+}
+
+RUN_BUTTON.addEventListener("click", () => {
+  writeSummaryHTML(
+    NAME_INPUT.value,
+    STATE_INPUT.value,
+    YEAR_INPUT.value
+  );
+});
+
+const query = new URLSearchParams(window.location.search);
+const initialName = query.get("name");
+const initialState = query.get("state");
+const initialYear = query.get("year");
+
+if (initialName !== null) NAME_INPUT.value = initialName;
+if (initialState !== null) STATE_INPUT.value = initialState;
+if (initialYear !== null) YEAR_INPUT.value = initialYear;
+
+if (initialName) {
+  writeSummaryHTML(
+    initialName,
+    initialState || "",
+    initialYear || ""
+  );
+}
+
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({type:"SUMMARY_READY"}, "*");
+}
+</script>
+
+<script>
+  // Bridge: accept inputs from parent index.html and run.
+  window.addEventListener("message", (event) => {
+    const data = event.data || {};
+
+    if (data.type !== "SET_INPUTS_AND_RUN") return;
+
+    if (data.name !== undefined) {
+      document.getElementById("nameInput").value =
+        String(data.name ?? "");
+    }
+
+    if (data.state !== undefined) {
+      document.getElementById("stateInput").value =
+        String(data.state ?? "");
+    }
+
+    if (data.year !== undefined) {
+      const incomingYear = String(data.year ?? "");
+
+      document.getElementById("yearInput").value =
+        incomingYear.toLowerCase() === "all"
+          ? ""
+          : incomingYear;
+    }
+
+    document.getElementById("runBtn").click();
+  });
+</script>
+
+<script>
+  const FRAME_ID = "frameSummary";
+
+  function _iframeDocHeight(){
+    const de = document.documentElement;
+    const b  = document.body;
+    return Math.max(
+      de ? de.scrollHeight : 0,
+      de ? de.offsetHeight : 0,
+      b  ? b.scrollHeight  : 0,
+      b  ? b.offsetHeight  : 0
+    ) || 0;
+  }
+
+  function reportHeight(){
+    const h = _iframeDocHeight();
+    window.parent.postMessage({ type: "REPORT_IFRAME_HEIGHT", frameId: FRAME_ID, height: h }, "*");
+  }
+
+  window.addEventListener("message", (e) => {
+    const d = e.data || {};
+    if(d.type === "REQUEST_IFRAME_HEIGHT") reportHeightBurst();
+    if(d.type === "SET_INPUTS_AND_RUN") reportHeightBurst();
+  });
+
+  window.addEventListener("load", () => {
+    reportHeight();
+    setTimeout(reportHeight, 150);
+    setTimeout(reportHeight, 600);
+    setTimeout(reportHeight, 1200);
+  });
+
+  // Helps catch dynamic updates (tables being rewritten, Plotly relayouts, etc.)
+  const mo = new MutationObserver(() => reportHeight());
+  mo.observe(document.documentElement, { childList:true, subtree:true, attributes:true, characterData:true });
+
+function reportHeightSoon(){
+    reportHeight();
+    setTimeout(reportHeight, 120);
+    setTimeout(reportHeight, 300);
+  }
+
+  window.addEventListener("resize", reportHeightSoon);
+  window.addEventListener("orientationchange", () => setTimeout(reportHeightSoon, 180));
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", reportHeightSoon);
+    window.visualViewport.addEventListener("scroll", reportHeightSoon);
+  }
+</script>
+
+
+</body>
+</html>
