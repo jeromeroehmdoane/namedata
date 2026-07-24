@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Name Popularity</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:#fff;
+      color:#111;
+    }
+    .wrap{
+      height:100%;
+      max-width:980px;
+      margin:0 auto;
+      padding:0;
+    }
+    .card{
+      height:100%;
+      background:#fff;
+      border:1px solid #e6e6e6;
+      border-radius:14px;
+      padding:12px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.04);
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .cardTitle{
+      margin:0;
+      font-size:16px;
+      font-weight:650;
+      line-height:1.2;
+    }
+
+    .controlsRow{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:nowrap;
+      margin-top:2px;
+    }
+    .ctrl{
+      display:flex;
+      flex-direction:column;
+      min-width:140px;
+      max-width:48%;
+    }
+    .ctrlLabel{
+      font-size:12px;
+      color:#6b7280;
+      margin:0 0 4px;
+      white-space:nowrap;
+    }
+    select{
+      font-size:14px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid #e6e6e6;
+      background:#fff;
+      color:#111;
+      width:100%;
+    }
+    @media (max-width: 420px){
+      .controlsRow{ flex-direction:column; align-items:stretch; }
+      .ctrl{ max-width:100%; min-width:0; }
+    }
+
+    .status{
+      margin:0;
+      font-size:13px;
+      color:#555;
+      min-height:16px;
+    }
+
+    #plot{
+      width:100%;
+      flex:1 1 auto;
+      min-height:240px;
+    }
+
+    @media (orientation: landscape) and (max-height: 520px){
+      .card{ padding:10px; gap:4px; }
+      .cardTitle{ font-size:15px; }
+      .status{ min-height:14px; font-size:12px; }
+      #plot{ min-height:160px; max-height:62vh; }
+      select{ padding:7px 9px; font-size:13px; }
+    }
+
+    .hidden{ display:none; }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2 class="cardTitle" id="cardTitle">Popularity of Name</h2>
+
+    <div class="controlsRow">
+      <div class="ctrl" style="align-items:flex-start;">
+        <div class="ctrlLabel">Y-Axis</div>
+        <select id="metricSelect">
+          <option value="frequency">frequency</option>
+          <option value="percentage">percentage</option>
+          <option value="rank">rank</option>
+        </select>
+      </div>
+
+      <div class="ctrl" style="align-items:flex-end;">
+        <div class="ctrlLabel">Sex</div>
+        <select id="sexSelect">
+          <option value="combined">combined</option>
+          <option value="separate">separate</option>
+          <option value="male">male</option>
+          <option value="female">female</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="hidden">
+      <input id="nameInput" />
+      <button id="goBtn">Show</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div id="plot"></div>
+  </div>
+</div>
+
+<script type="module">
+import NameData from "../assets/js/name-data-loader.js";
+
+const metricSelect = document.getElementById("metricSelect");
+const sexSelect = document.getElementById("sexSelect");
+const nameInput = document.getElementById("nameInput");
+const goBtn = document.getElementById("goBtn");
+const statusEl = document.getElementById("status");
+const plotEl = document.getElementById("plot");
+
+let GD = null;
+let SERIES = null;
+let LOAD_TOKEN = 0;
+let PLOT_TOKEN = 0;
+
+function setTitle(name){
+  document.getElementById("cardTitle").textContent =
+    name ? `Popularity of ${name}` : "Popularity of Name";
+}
+
+function setStatus(message){
+  statusEl.textContent = message || "";
+}
+
+function clearPlot(){
+  PLOT_TOKEN += 1;
+
+  try{
+    Plotly.purge(plotEl);
+  }catch(e){}
+
+  GD = null;
+  SERIES = null;
+}
+
+function finiteNumber(value, fallback = 0){
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function rankOrNull(value){
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+function proportionToPercent(value){
+  return 100 * finiteNumber(value, 0);
+}
+
+function getNationalYearRange(manifest, yearlyRows){
+  const manifestRange = manifest?.yearRanges?.national;
+
+  if(
+    Array.isArray(manifestRange) &&
+    manifestRange.length >= 2 &&
+    Number.isFinite(Number(manifestRange[0])) &&
+    Number.isFinite(Number(manifestRange[1]))
+  ){
+    return [
+      Number(manifestRange[0]),
+      Number(manifestRange[1])
+    ];
+  }
+
+  const observedYears = yearlyRows
+    .map(row => Number(row.year))
+    .filter(Number.isFinite);
+
+  if(observedYears.length === 0) return [1880, 2025];
+
+  return [
+    Math.min(...observedYears),
+    Math.max(...observedYears)
+  ];
+}
+
+function buildSeries(national, manifest){
+  const yearlyRows = Array.isArray(national?.yearly)
+    ? national.yearly
+    : [];
+
+  const [yearMin, yearMax] =
+    getNationalYearRange(manifest, yearlyRows);
+
+  const rowsByYear = new Map(
+    yearlyRows
+      .map(row => [Number(row.year), row])
+      .filter(([year]) => Number.isFinite(year))
+  );
+
+  const c = [];
+  const m = [];
+  const f = [];
+
+  for(let year = yearMin; year <= yearMax; year += 1){
+    const row = rowsByYear.get(year);
+
+    c.push({
+      year,
+      frequency: finiteNumber(row?.frequency_c, 0),
+      percentage: proportionToPercent(row?.proportion_c),
+      rank: rankOrNull(row?.rank_c)
+    });
+
+    m.push({
+      year,
+      frequency: finiteNumber(row?.frequency_m, 0),
+      percentage: proportionToPercent(row?.proportion_m),
+      rank: rankOrNull(row?.rank_m)
+    });
+
+    f.push({
+      year,
+      frequency: finiteNumber(row?.frequency_f, 0),
+      percentage: proportionToPercent(row?.proportion_f),
+      rank: rankOrNull(row?.rank_f)
+    });
+  }
+
+  const hover = {
+    combined:{
+      frequency:"Year: %{x}<br>Frequency: %{y:,.0f}<extra></extra>",
+      percentage:"Year: %{x}<br>Percentage: %{y:.2f}%<extra></extra>",
+      rank:"Year: %{x}<br>Rank: %{y:,.0f}<extra></extra>"
+    },
+    sexSpecific:{
+      frequency:"Year: %{x}<br>%{fullData.name} Frequency: %{y:,.0f}<extra></extra>",
+      percentage:"Year: %{x}<br>%{fullData.name} Percentage: %{y:.2f}%<extra></extra>",
+      rank:"Year: %{x}<br>%{fullData.name} Rank: %{y:,.0f}<extra></extra>"
+    }
+  };
+
+  const yaxisByMetric = {
+    frequency:{
+      title:{text:"Frequency",standoff:14},
+      type:"linear",
+      autorange:true,
+      tickformat:",.0f",
+      rangemode:"tozero"
+    },
+    percentage:{
+      title:{text:"Percentage",standoff:14},
+      type:"linear",
+      autorange:true,
+      tickformat:".2f",
+      ticksuffix:"%",
+      rangemode:"tozero"
+    },
+    rank:{
+      title:{text:"Rank (log scale)",standoff:14},
+      type:"log",
+      autorange:"reversed"
+    }
+  };
+
+  return {
+    c,
+    m,
+    f,
+    hover,
+    yaxisByMetric,
+    displayName: national.displayName,
+    yearMin,
+    yearMax
+  };
+}
+
+async function loadPlot(name){
+  const requestedName = String(name || "").trim();
+  const loadToken = ++LOAD_TOKEN;
+
+  if(!requestedName){
+    clearPlot();
+    setTitle("");
+    setStatus("Enter a name.");
+    return;
+  }
+
+  setTitle(requestedName);
+  setStatus("Loading…");
+
+  try{
+    const [manifest, national] = await Promise.all([
+      NameData.loadManifest(),
+      NameData.getNationalName(requestedName)
+    ]);
+
+    if(loadToken !== LOAD_TOKEN) return;
+
+    if(!national){
+      clearPlot();
+      setStatus(
+        `No data for "${requestedName}" found. ` +
+        "Names with fewer than 5 occurrences in a year are not included in the dataset."
+      );
+      return;
+    }
+
+    setTitle(national.displayName || requestedName);
+    SERIES = buildSeries(national, manifest);
+    setStatus("");
+
+    await rebuildPlotFromState();
+  }catch(error){
+    if(loadToken !== LOAD_TOKEN) return;
+
+    console.error(error);
+    clearPlot();
+    setStatus(
+      `Unable to load data for "${requestedName}". ` +
+      (error?.message || String(error))
+    );
+  }
+}
+
+function yFor(arr, metric){
+  return arr.map(d => d[metric]);
+}
+
+function visibilityForSex(mode){
+  if(mode === "separate") return [false,true,true];
+  if(mode === "male") return [false,true,false];
+  if(mode === "female") return [false,false,true];
+  return [true,false,false];
+}
+
+function finitePositiveValues(values){
+  return values.filter(
+    value => Number.isFinite(value) && value > 0
+  );
+}
+
+function shapesForMetric(metric, minRank){
+  if(
+    metric !== "rank" ||
+    !Number.isFinite(minRank) ||
+    minRank > 5
+  ){
+    return [];
+  }
+
+  return [{
+    type:"line",
+    xref:"paper",
+    x0:0,
+    x1:1,
+    yref:"y",
+    y0:1,
+    y1:1,
+    line:{color:"rgba(0,0,0,0.18)",width:1}
+  }];
+}
+
+function clampRankAxisNotBelow1(gd){
+  const y = gd?.layout?.yaxis;
+
+  if(
+    y?.type === "log" &&
+    Array.isArray(y.range) &&
+    y.range[1] < 0
+  ){
+    Plotly.relayout(gd, {"yaxis.range[1]":0});
+  }
+}
+
+async function rebuildPlotFromState(){
+  if(!SERIES) return;
+
+  const plotToken = ++PLOT_TOKEN;
+  const metric = metricSelect.value;
+  const sexMode = sexSelect.value;
+  const {c,m,f,hover,yaxisByMetric,yearMin,yearMax} = SERIES;
+  const vis = visibilityForSex(sexMode);
+
+  let minRank = NaN;
+
+  if(metric === "rank"){
+    const visibleRanks = [
+      ...(vis[0] ? finitePositiveValues(yFor(c,"rank")) : []),
+      ...(vis[1] ? finitePositiveValues(yFor(m,"rank")) : []),
+      ...(vis[2] ? finitePositiveValues(yFor(f,"rank")) : [])
+    ];
+
+    if(visibleRanks.length){
+      minRank = Math.min(...visibleRanks);
+    }
+  }
+
+  const traces = [
+    {
+      x:c.map(d => d.year),
+      y:yFor(c,metric),
+      mode:"lines",
+      name:"Combined",
+      line:{color:"purple"},
+      visible:vis[0],
+      hovertemplate:hover.combined[metric],
+      connectgaps:false
+    },
+    {
+      x:m.map(d => d.year),
+      y:yFor(m,metric),
+      mode:"lines",
+      name:"Male",
+      line:{color:"blue"},
+      visible:vis[1],
+      hovertemplate:hover.sexSpecific[metric],
+      connectgaps:false
+    },
+    {
+      x:f.map(d => d.year),
+      y:yFor(f,metric),
+      mode:"lines",
+      name:"Female",
+      line:{color:"red"},
+      visible:vis[2],
+      hovertemplate:hover.sexSpecific[metric],
+      connectgaps:false
+    }
+  ];
+
+  const layout = {
+    xaxis:{
+      title:"Year",
+      fixedrange:true,
+      range:[yearMin,yearMax]
+    },
+    yaxis:{
+      ...yaxisByMetric[metric],
+      fixedrange:true
+    },
+    hovermode:"closest",
+    margin:{l:60,r:12,t:10,b:38},
+    showlegend:false,
+    dragmode:false,
+    shapes:shapesForMetric(metric,minRank)
+  };
+
+  const config = {
+    responsive:true,
+    displayModeBar:false
+  };
+
+  const gd = await Plotly.react(
+    plotEl,
+    traces,
+    layout,
+    config
+  );
+
+  if(plotToken !== PLOT_TOKEN) return;
+
+  GD = gd;
+
+  if(metric === "rank"){
+    clampRankAxisNotBelow1(gd);
+  }
+}
+
+metricSelect.addEventListener(
+  "change",
+  rebuildPlotFromState
+);
+
+sexSelect.addEventListener(
+  "change",
+  rebuildPlotFromState
+);
+
+goBtn.addEventListener(
+  "click",
+  () => loadPlot(nameInput.value)
+);
+
+nameInput.addEventListener(
+  "keydown",
+  event => {
+    if(event.key === "Enter"){
+      event.preventDefault();
+      loadPlot(nameInput.value);
+    }
+  }
+);
+
+window.addEventListener("message", event => {
+  if(event.data?.type === "SET_INPUTS_AND_RUN"){
+    const incomingName = String(event.data.name || "");
+    nameInput.value = incomingName;
+    loadPlot(incomingName);
+  }
+});
+
+// Optional standalone testing:
+// line.html?name=Olivia
+const initialName = new URLSearchParams(
+  window.location.search
+).get("name");
+
+if(initialName){
+  nameInput.value = initialName;
+  loadPlot(initialName);
+}
+
+if(window.parent && window.parent !== window){
+  window.parent.postMessage(
+    {type:"LINE_READY"},
+    "*"
+  );
+}
+</script>
+</body>
+</html>
