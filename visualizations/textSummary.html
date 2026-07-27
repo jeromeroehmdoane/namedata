@@ -272,6 +272,14 @@ function recordYear(record) {
   return integerOrNull(firstValue(record, ["year","Year"]));
 }
 
+function recordState(record) {
+  return String(
+    firstValue(record, ["state", "State"], "")
+  )
+    .trim()
+    .toUpperCase();
+}
+
 function combinedFrequency(record) {
   return finiteNumber(
     firstValue(
@@ -686,18 +694,48 @@ async function renderNationalYear(name, national, year) {
     )
   );
 
-  const topTable = await NameData.loadGlobalTable("nationalYearTop");
+  const [topTable, totalsTable] = await Promise.all([
+    NameData.loadGlobalTable("nationalYearTop"),
+    NameData.loadGlobalTable("nationalYearTotals")
+  ]);
+
+  const yearTotalRecord = totalsTable.records.find(
+    record => recordYear(record) === year
+  );
+
+  const yearDenominator = combinedFrequency(
+    yearTotalRecord
+  );
+
+  if (!(yearDenominator > 0)) {
+    throw new Error(
+      `No national birth total found for ${year}.`
+    );
+  }
 
   const topRows = topTable.records
     .filter(record => recordYear(record) === year)
-    .map(mapAnnualTop)
-    .filter(row => Number.isFinite(row.rank) && row.rank <= 5);
+    .map(record => {
+      const row = mapAnnualTop(record);
+
+      return {
+        ...row,
+        proportion:
+          row.frequency / yearDenominator
+      };
+    })
+    .filter(
+      row =>
+        Number.isFinite(row.rank) &&
+        row.rank <= 5
+    );
 
   const target = {
     name,
     rank,
     frequency: total,
-    proportion: finiteNumber(annual.proportion_c, 0)
+    proportion:
+      total / yearDenominator
   };
 
   const rows = insertTarget(topRows, target).map(row => ({
@@ -753,21 +791,58 @@ async function renderStateYear(card, name, statePacket, state, year) {
     )
   );
 
-  const topTable = await NameData.loadGlobalTable(
-    "stateYearTopPattern",
-    {state}
-  );
+  const [topTable, totalsTable] = await Promise.all([
+    NameData.loadGlobalTable(
+      "stateYearTopPattern",
+      {state}
+    ),
+    NameData.loadGlobalTable(
+      "stateYearTotals"
+    )
+  ]);
+
+  const stateYearTotalRecord =
+    totalsTable.records.find(
+      record =>
+        recordState(record) === state &&
+        recordYear(record) === year
+    );
+
+  const stateYearDenominator =
+    combinedFrequency(
+      stateYearTotalRecord
+    );
+
+  if (!(stateYearDenominator > 0)) {
+    throw new Error(
+      `No total birth count found for ${state} in ${year}.`
+    );
+  }
 
   const topRows = topTable.records
     .filter(record => recordYear(record) === year)
-    .map(mapAnnualTop)
-    .filter(row => Number.isFinite(row.rank) && row.rank <= 5);
+    .map(record => {
+      const row = mapAnnualTop(record);
+
+      return {
+        ...row,
+        proportion:
+          row.frequency /
+          stateYearDenominator
+      };
+    })
+    .filter(
+      row =>
+        Number.isFinite(row.rank) &&
+        row.rank <= 5
+    );
 
   const target = {
     name,
     rank,
     frequency: total,
-    proportion: finiteNumber(annual.proportion_c, 0)
+    proportion:
+      total / stateYearDenominator
   };
 
   const rows = insertTarget(topRows, target).map(row => ({
