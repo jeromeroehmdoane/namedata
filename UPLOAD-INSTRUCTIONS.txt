@@ -1,31 +1,28 @@
-STEP 1 — INITIAL EXPLORE GALLERY TEST
+STEP 2 — RESPONSIVE VIEWER PATCH
+================================
 
-Copy the contents of this bundle into the ROOT of the namedata repository.
-The folder structure must remain exactly as shown:
+Upload/replace these three files in the namedata repository:
 
-explore/
-  catalog.js
-  explore.css
-  index.html
-  view.html
+  explore/view.html
+  explore/explore.css
+  explore/catalog.js
 
-visualizations/showcase/
-  cultural-name-waves.html
-  drawn-curve-matcher.html
-  top-name-by-state/
-    female.html
-    male.html
+No visualization HTML files need to be replaced for this patch.
 
-Do not replace the repository's existing root index.html yet.
-Do not remove the current visualizations/line.html, map.html, or textSummary.html.
+What this patch does
+--------------------
+- Fixed-width Plotly exports are rendered at their original design width and
+  proportionally scaled down inside the viewer when the available width is
+  smaller. They are no longer clipped.
+- The Draw a Name Curve application remains fluid rather than being shrunk.
+- The viewer measures same-origin iframe content and expands its height when
+  responsive wrapping makes the visualization taller.
+- The standalone visualization links remain unchanged.
 
-After committing the files, test:
+Suggested commit message:
+  Make visualization viewer responsive
 
-1. https://jeromeroehmdoane.github.io/namedata/explore/
-2. Cultural Name Waves
-3. Top Name by State, including both Female and Male buttons
-4. Draw a Name Curve
-
-Also test the gallery and each visualization at a narrow browser width.
-The next migration step will apply responsive post-processing to the embedded
-visualization files after these routes and controls are confirmed.
+Test at narrow widths:
+  /explore/view.html?viz=cultural-name-waves
+  /explore/view.html?viz=top-name-by-state&variant=female
+  /explore/view.html?viz=draw-name-curve

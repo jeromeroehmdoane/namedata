@@ -12,6 +12,8 @@ export const visualizations = [
       "The figure uses U.S. Social Security Administration baby-name records through 2025. The displayed names are curated examples rather than a complete classification of every name.",
     dataThrough: 2025,
     iframeHeight: 930,
+    embedMode: "scale",
+    embedWidth: 900,
     variants: [
       {
         id: "default",
@@ -33,6 +35,8 @@ export const visualizations = [
       "Each state is colored by its highest-frequency name for the selected sex and year in the U.S. Social Security Administration state files. Ties follow the ranking logic used when the visualization was generated.",
     dataThrough: 2025,
     iframeHeight: 720,
+    embedMode: "scale",
+    embedWidth: 950,
     variants: [
       {
         id: "female",
@@ -59,6 +63,7 @@ export const visualizations = [
       "The matcher compares the shape you draw with precomputed name-popularity trajectories from U.S. Social Security Administration records through 2025. Similarity describes curve shape, not name meaning or demographic identity.",
     dataThrough: 2025,
     iframeHeight: 980,
+    embedMode: "fluid",
     heavy: true,
     variants: [
       {

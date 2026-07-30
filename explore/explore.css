@@ -295,12 +295,30 @@ h1 {
   font-size: 0.84rem;
 }
 
-.visualization-frame {
+.visualization-stage {
+  position: relative;
   width: 100%;
-  min-height: 600px;
+  overflow: hidden;
+  background: #fff;
+  transition: height 120ms ease-out;
+}
+
+.visualization-frame {
   display: block;
   border: 0;
   background: #fff;
+}
+
+.visualization-stage.scale-embed .visualization-frame {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform-origin: top center;
+}
+
+.visualization-stage.fluid-embed .visualization-frame {
+  position: static;
+  width: 100%;
 }
 
 .info-grid {
@@ -371,7 +389,4 @@ h1 {
     min-height: 0;
   }
 
-  .visualization-frame {
-    min-height: 540px;
-  }
 }

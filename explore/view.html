@@ -54,13 +54,15 @@
           <span id="loadingStatus" class="loading-status">Loading visualization…</span>
           <a id="rawLink" class="button" href="#" target="_blank" rel="noopener">Open visualization alone</a>
         </div>
-        <iframe
-          id="visualizationFrame"
-          class="visualization-frame"
-          title="Interactive baby-name visualization"
-          loading="eager"
-          allowfullscreen
-        ></iframe>
+        <div id="visualizationStage" class="visualization-stage">
+          <iframe
+            id="visualizationFrame"
+            class="visualization-frame"
+            title="Interactive baby-name visualization"
+            loading="eager"
+            allowfullscreen
+          ></iframe>
+        </div>
       </section>
 
       <section class="info-grid">
@@ -92,6 +94,13 @@
 
     const viewer = document.getElementById("viewer");
     const errorPanel = document.getElementById("errorPanel");
+    const stage = document.getElementById("visualizationStage");
+    const frame = document.getElementById("visualizationFrame");
+    const status = document.getElementById("loadingStatus");
+
+    let currentEmbed = null;
+    let childResizeObserver = null;
+    let childResizeHandler = null;
 
     if (!item) {
       errorPanel.hidden = false;
@@ -99,6 +108,11 @@
       viewer.hidden = false;
       initializeViewer(item);
     }
+
+    const stageResizeObserver = new ResizeObserver(() => {
+      resizeVisualization();
+    });
+    stageResizeObserver.observe(stage);
 
     function initializeViewer(item) {
       document.title = `${item.title} | U.S. Baby-Name Data`;
@@ -139,22 +153,37 @@
     }
 
     function loadVariant(item, variant, updateUrl) {
-      const frame = document.getElementById("visualizationFrame");
       const rawLink = document.getElementById("rawLink");
-      const status = document.getElementById("loadingStatus");
+      const baseHeight = variant.iframeHeight ?? item.iframeHeight ?? 760;
+      const embedWidth = variant.embedWidth ?? item.embedWidth ?? null;
+      const embedMode = variant.embedMode ?? item.embedMode ?? (embedWidth ? "scale" : "fluid");
+
+      disconnectChildObserver();
+
+      currentEmbed = {
+        mode: embedMode,
+        width: embedWidth,
+        baseHeight,
+        contentHeight: baseHeight,
+        scale: 1
+      };
 
       status.textContent = "Loading visualization…";
-      frame.style.height = `${variant.iframeHeight ?? item.iframeHeight ?? 760}px`;
       frame.title = `${item.title}${item.variants.length > 1 ? ` — ${variant.label}` : ""}`;
-      frame.src = variant.path;
       rawLink.href = variant.path;
 
       document.querySelectorAll(".variant-button").forEach(button => {
         button.classList.toggle("active", button.dataset.variant === variant.id);
       });
 
+      prepareFrameForMode();
+      frame.src = variant.path;
+
       frame.onload = () => {
-        status.textContent = "Visualization loaded";
+        attachChildObserver();
+        measureChildHeight();
+        resizeVisualization();
+        updateLoadedStatus();
       };
 
       if (updateUrl) {
@@ -163,6 +192,120 @@
         next.searchParams.set("variant", variant.id);
         window.history.replaceState({}, "", next);
       }
+    }
+
+    function prepareFrameForMode() {
+      if (!currentEmbed) return;
+
+      stage.classList.toggle("scale-embed", currentEmbed.mode === "scale");
+      stage.classList.toggle("fluid-embed", currentEmbed.mode !== "scale");
+
+      frame.style.transform = "none";
+      frame.style.height = `${currentEmbed.baseHeight}px`;
+
+      if (currentEmbed.mode === "scale") {
+        frame.style.width = `${currentEmbed.width}px`;
+      } else {
+        frame.style.width = "100%";
+        stage.style.height = `${currentEmbed.baseHeight}px`;
+      }
+
+      resizeVisualization();
+    }
+
+    function measureChildHeight() {
+      if (!currentEmbed) return;
+
+      try {
+        const doc = frame.contentDocument;
+        if (!doc) return;
+
+        const measured = Math.max(
+          doc.documentElement?.scrollHeight || 0,
+          doc.body?.scrollHeight || 0,
+          doc.documentElement?.offsetHeight || 0,
+          doc.body?.offsetHeight || 0
+        );
+
+        if (Number.isFinite(measured) && measured > 0) {
+          currentEmbed.contentHeight = Math.max(currentEmbed.baseHeight, measured);
+        }
+      } catch (error) {
+        // The configured visualizations are same-origin. If that ever changes,
+        // retain the catalog height instead of failing the viewer.
+      }
+    }
+
+    function attachChildObserver() {
+      try {
+        const doc = frame.contentDocument;
+        const childWindow = frame.contentWindow;
+        if (!doc || !childWindow) return;
+
+        childResizeObserver = new ResizeObserver(() => {
+          measureChildHeight();
+          resizeVisualization();
+        });
+
+        if (doc.documentElement) childResizeObserver.observe(doc.documentElement);
+        if (doc.body) childResizeObserver.observe(doc.body);
+
+        childResizeHandler = () => {
+          measureChildHeight();
+          resizeVisualization();
+        };
+        childWindow.addEventListener("resize", childResizeHandler, { passive: true });
+      } catch (error) {
+        // Fall back to the catalog height if child measurement is unavailable.
+      }
+    }
+
+    function disconnectChildObserver() {
+      if (childResizeObserver) {
+        childResizeObserver.disconnect();
+        childResizeObserver = null;
+      }
+
+      if (childResizeHandler && frame.contentWindow) {
+        try {
+          frame.contentWindow.removeEventListener("resize", childResizeHandler);
+        } catch (error) {
+          // Ignore a detached previous document.
+        }
+      }
+      childResizeHandler = null;
+    }
+
+    function resizeVisualization() {
+      if (!currentEmbed || !stage.clientWidth) return;
+
+      const sourceHeight = currentEmbed.contentHeight || currentEmbed.baseHeight;
+
+      if (currentEmbed.mode === "scale") {
+        const sourceWidth = currentEmbed.width;
+        const scale = Math.min(1, stage.clientWidth / sourceWidth);
+        currentEmbed.scale = scale;
+
+        frame.style.width = `${sourceWidth}px`;
+        frame.style.height = `${sourceHeight}px`;
+        frame.style.transform = `translateX(-50%) scale(${scale})`;
+        stage.style.height = `${Math.ceil(sourceHeight * scale)}px`;
+      } else {
+        currentEmbed.scale = 1;
+        frame.style.width = "100%";
+        frame.style.height = `${sourceHeight}px`;
+        frame.style.transform = "none";
+        stage.style.height = `${sourceHeight}px`;
+      }
+
+    }
+
+    function updateLoadedStatus() {
+      if (!currentEmbed) return;
+      status.textContent =
+        currentEmbed.mode === "scale" && currentEmbed.scale < 0.995
+          ? "Visualization loaded · scaled to fit"
+          : "Visualization loaded";
     }
   </script>
 </body>
