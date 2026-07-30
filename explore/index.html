@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Interactive visualizations of U.S. baby-name patterns." />
+  <title>Explore Baby-Name Visualizations</title>
+  <link rel="stylesheet" href="./explore.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="site-header">
+      <a class="brand" href="../index.html">U.S. Baby-Name Data</a>
+      <nav class="header-nav" aria-label="Site navigation">
+        <a class="nav-link" href="../index.html">Name dashboard</a>
+        <a class="nav-link" href="./index.html" aria-current="page">Explore visualizations</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">Interactive collection</p>
+      <h1>Explore patterns beyond a single name</h1>
+      <p>
+        These visualizations examine broad trends across years, states, name structures,
+        and cultural examples. Each page includes its own interaction instructions and
+        methodology notes.
+      </p>
+    </section>
+
+    <div id="filters" class="filters" aria-label="Visualization categories"></div>
+    <section id="gallery" class="gallery-grid" aria-live="polite"></section>
+
+    <footer class="footer">
+      U.S. Social Security Administration baby-name data through 2025.
+    </footer>
+  </main>
+
+  <script type="module">
+    import { visualizations } from "./catalog.js";
+
+    const gallery = document.getElementById("gallery");
+    const filters = document.getElementById("filters");
+    const categories = ["All", ...new Set(visualizations.map(item => item.category))];
+
+    function makeFilter(category) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "filter-button";
+      button.textContent = category;
+      button.dataset.category = category;
+      button.classList.toggle("active", category === "All");
+      button.addEventListener("click", () => applyFilter(category));
+      return button;
+    }
+
+    function makeCard(item) {
+      const article = document.createElement("article");
+      article.className = "gallery-card";
+      article.dataset.category = item.category;
+
+      const topLine = document.createElement("div");
+      topLine.className = "card-topline";
+
+      const category = document.createElement("span");
+      category.className = "badge";
+      category.textContent = item.category;
+      topLine.append(category);
+
+      const year = document.createElement("span");
+      year.className = "badge";
+      year.textContent = `Data through ${item.dataThrough}`;
+      topLine.append(year);
+
+      if (item.heavy) {
+        const heavy = document.createElement("span");
+        heavy.className = "badge heavy";
+        heavy.textContent = "Larger interactive";
+        topLine.append(heavy);
+      }
+
+      const title = document.createElement("h2");
+      title.textContent = item.title;
+
+      const description = document.createElement("p");
+      description.textContent = item.description;
+
+      const link = document.createElement("a");
+      link.className = "button card-action";
+      link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
+      link.textContent = item.variants.length > 1 ? "Choose a view" : "Open visualization";
+
+      article.append(topLine, title, description, link);
+      return article;
+    }
+
+    function applyFilter(category) {
+      document.querySelectorAll(".filter-button").forEach(button => {
+        button.classList.toggle("active", button.dataset.category === category);
+      });
+
+      document.querySelectorAll(".gallery-card").forEach(card => {
+        card.hidden = category !== "All" && card.dataset.category !== category;
+      });
+    }
+
+    categories.forEach(category => filters.append(makeFilter(category)));
+    visualizations.forEach(item => gallery.append(makeCard(item)));
+  </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Interactive U.S. baby-name visualization." />
+  <title>Interactive Baby-Name Visualization</title>
+  <link rel="stylesheet" href="./explore.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="site-header">
+      <a class="brand" href="../index.html">U.S. Baby-Name Data</a>
+      <nav class="header-nav" aria-label="Site navigation">
+        <a class="nav-link" href="../index.html">Name dashboard</a>
+        <a class="nav-link" href="./index.html">Explore visualizations</a>
+      </nav>
+    </header>
+
+    <div id="errorPanel" class="error-panel" hidden>
+      <h1>Visualization not found</h1>
+      <p>The requested visualization is not listed in the current catalog.</p>
+      <a class="button" href="./index.html">Return to the gallery</a>
+    </div>
+
+    <div id="viewer" hidden>
+      <section class="hero viewer-header">
+        <div class="breadcrumbs">
+          <a href="./index.html">Explore visualizations</a>
+          <span aria-hidden="true"> / </span>
+          <span id="breadcrumbTitle"></span>
+        </div>
+
+        <div class="viewer-title-row">
+          <div>
+            <p id="category" class="eyebrow"></p>
+            <h1 id="title"></h1>
+            <p id="description" class="viewer-intro"></p>
+            <div class="viewer-meta">
+              <span id="dataYear" class="badge"></span>
+              <span id="largeBadge" class="badge heavy" hidden>Larger interactive</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="variantPanel" class="variant-panel" hidden>
+          <span class="variant-label">View:</span>
+          <div id="variantButtons" class="variant-panel"></div>
+        </div>
+      </section>
+
+      <section class="viewer-card" aria-label="Interactive visualization">
+        <div class="viewer-toolbar">
+          <span id="loadingStatus" class="loading-status">Loading visualization…</span>
+          <a id="rawLink" class="button" href="#" target="_blank" rel="noopener">Open visualization alone</a>
+        </div>
+        <iframe
+          id="visualizationFrame"
+          class="visualization-frame"
+          title="Interactive baby-name visualization"
+          loading="eager"
+          allowfullscreen
+        ></iframe>
+      </section>
+
+      <section class="info-grid">
+        <article class="info-card">
+          <h2>How to interact</h2>
+          <p id="instructions"></p>
+        </article>
+        <article class="info-card">
+          <h2>About the data</h2>
+          <p id="methodology"></p>
+        </article>
+      </section>
+
+      <div id="heavyNotice" class="notice" hidden>
+        This interactive contains a larger embedded dataset and may take longer to open on a mobile connection.
+      </div>
+    </div>
+
+    <footer class="footer">
+      U.S. Social Security Administration baby-name data.
+    </footer>
+  </main>
+
+  <script type="module">
+    import { getVisualization, getVariant } from "./catalog.js";
+
+    const params = new URLSearchParams(window.location.search);
+    const item = getVisualization(params.get("viz"));
+
+    const viewer = document.getElementById("viewer");
+    const errorPanel = document.getElementById("errorPanel");
+
+    if (!item) {
+      errorPanel.hidden = false;
+    } else {
+      viewer.hidden = false;
+      initializeViewer(item);
+    }
+
+    function initializeViewer(item) {
+      document.title = `${item.title} | U.S. Baby-Name Data`;
+      document.getElementById("breadcrumbTitle").textContent = item.title;
+      document.getElementById("category").textContent = item.category;
+      document.getElementById("title").textContent = item.title;
+      document.getElementById("description").textContent = item.description;
+      document.getElementById("dataYear").textContent = `Data through ${item.dataThrough}`;
+      document.getElementById("instructions").textContent = item.instructions;
+      document.getElementById("methodology").textContent = item.methodology;
+      document.getElementById("largeBadge").hidden = !item.heavy;
+      document.getElementById("heavyNotice").hidden = !item.heavy;
+
+      const requestedVariant = params.get("variant");
+      const selected = getVariant(item, requestedVariant);
+
+      buildVariantButtons(item, selected);
+      loadVariant(item, selected, false);
+    }
+
+    function buildVariantButtons(item, selected) {
+      if (item.variants.length <= 1) return;
+
+      const panel = document.getElementById("variantPanel");
+      const container = document.getElementById("variantButtons");
+      panel.hidden = false;
+
+      item.variants.forEach(variant => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "variant-button";
+        button.textContent = variant.label;
+        button.dataset.variant = variant.id;
+        button.classList.toggle("active", variant.id === selected.id);
+        button.addEventListener("click", () => loadVariant(item, variant, true));
+        container.append(button);
+      });
+    }
+
+    function loadVariant(item, variant, updateUrl) {
+      const frame = document.getElementById("visualizationFrame");
+      const rawLink = document.getElementById("rawLink");
+      const status = document.getElementById("loadingStatus");
+
+      status.textContent = "Loading visualization…";
+      frame.style.height = `${variant.iframeHeight ?? item.iframeHeight ?? 760}px`;
+      frame.title = `${item.title}${item.variants.length > 1 ? ` — ${variant.label}` : ""}`;
+      frame.src = variant.path;
+      rawLink.href = variant.path;
+
+      document.querySelectorAll(".variant-button").forEach(button => {
+        button.classList.toggle("active", button.dataset.variant === variant.id);
+      });
+
+      frame.onload = () => {
+        status.textContent = "Visualization loaded";
+      };
+
+      if (updateUrl) {
+        const next = new URL(window.location.href);
+        next.searchParams.set("viz", item.id);
+        next.searchParams.set("variant", variant.id);
+        window.history.replaceState({}, "", next);
+      }
+    }
+  </script>
+</body>
+</html>
