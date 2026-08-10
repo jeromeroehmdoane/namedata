@@ -602,18 +602,45 @@
     // Plot
     // ------------------------------------------------------------
 
+    function summaryBoxAnchor(curves){
+      // Keep the box in the upper corner opposite the main fixed peaks.
+      // We use the National and unshifted State peaks so the box does not
+      // jump from side to side while the shift slider is moved.
+      const peakYears = [
+        peakPoint(curves.years, curves.nationalSmooth)?.year,
+        peakPoint(curves.years, curves.stateSmooth)?.year
+      ].filter(Number.isFinite);
+
+      if(!peakYears.length){
+        return {x:0.985, xanchor:"right"};
+      }
+
+      const meanPeakYear =
+        peakYears.reduce((sum, year) => sum + year, 0) / peakYears.length;
+      const midpoint = (curves.yearMin + curves.yearMax) / 2;
+
+      // Peaks mostly on the left -> put the summary on the right.
+      // Peaks mostly on the right -> put the summary on the left.
+      return meanPeakYear <= midpoint
+        ? {x:0.985, xanchor:"right"}
+        : {x:0.015, xanchor:"left"};
+    }
+
     function summaryAnnotation(
       stateCode,
       currentShift,
       currentCorr,
-      analysis
+      analysis,
+      curves
     ){
+      const anchor = summaryBoxAnchor(curves);
+
       return {
-        x:0.015,
+        x:anchor.x,
         y:0.985,
         xref:"paper",
         yref:"paper",
-        xanchor:"left",
+        xanchor:anchor.xanchor,
         yanchor:"top",
         align:"left",
         showarrow:false,
@@ -721,7 +748,8 @@
             stateCode,
             shift,
             currentCorr,
-            analysis
+            analysis,
+            curves
           ),
           peakAnnotation(
             peakPoint(curves.years, curves.nationalSmooth),
