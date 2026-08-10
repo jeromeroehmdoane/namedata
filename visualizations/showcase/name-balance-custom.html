@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1150, initial-scale=1" />
+  <title>Custom Name Balance by State</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #1f1f1f;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    body { min-width: 1150px; }
+    .app {
+      width: 1150px;
+      margin: 0 auto;
+      padding: 12px 0 4px;
+    }
+    .controls {
+      margin: 0 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+      padding: 11px 12px;
+      border: 1px solid #d8d8d8;
+      border-radius: 11px;
+      background: #f7f7f9;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    input, button {
+      font: inherit;
+      min-height: 38px;
+      border-radius: 8px;
+    }
+    input {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      background: #fff;
+    }
+    button {
+      padding: 7px 14px;
+      border: 1px solid #8b7caf;
+      background: #f2eff8;
+      color: #30244c;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:hover { background: #e8e2f3; }
+    button:disabled { opacity: .55; cursor: default; }
+    .hint {
+      margin: 0 18px;
+      padding: 7px 2px 0;
+      font-size: 12px;
+      color: #666;
+    }
+    .status {
+      margin: 0 18px;
+      min-height: 23px;
+      padding: 5px 2px 0;
+      font-size: 12px;
+      color: #666;
+    }
+    .status.error { color: #a61b1b; }
+    #plot {
+      width: 1150px;
+      height: 860px;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="controls">
+      <div>
+        <label for="name1">Name 1</label>
+        <input id="name1" autocomplete="off" spellcheck="false" placeholder="e.g., Casey" />
+      </div>
+      <div>
+        <label for="name2">Name 2 (optional)</label>
+        <input id="name2" autocomplete="off" spellcheck="false" placeholder="e.g., Taylor" />
+      </div>
+      <div>
+        <label for="name3">Name 3 (optional)</label>
+        <input id="name3" autocomplete="off" spellcheck="false" placeholder="e.g., Jordan" />
+      </div>
+      <button id="run" type="button">Compare Names</button>
+    </div>
+    <div class="hint">
+      Enter one name to compare male vs. female usage. Enter two or three names to compare their combined usage.
+    </div>
+    <div id="status" class="status" aria-live="polite">Enter 1–3 names.</div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const PLOT = document.getElementById("plot");
+    const RUN = document.getElementById("run");
+    const STATUS = document.getElementById("status");
+    const INPUTS = [
+      document.getElementById("name1"),
+      document.getElementById("name2"),
+      document.getElementById("name3")
+    ];
+
+    const COLORS = {
+      male: "#2f6fb3",
+      female: "#d85c9a",
+      purple: "#4b2e83",
+      orange: "#d9902f",
+      yellow: "#f2d64b",
+      cyan: "#39bcd3",
+      pink: "#d85c9a",
+      neutral: "#f2f2f2"
+    };
+
+    const STATE_CENTROIDS = {
+      AL:[32.806671,-86.791130], AK:[61.370716,-152.404419],
+      AZ:[33.729759,-111.431221], AR:[34.969704,-92.373123],
+      CA:[36.116203,-119.681564], CO:[39.059811,-105.311104],
+      CT:[41.597782,-72.755371], DE:[39.318523,-75.507141],
+      DC:[38.9072,-77.0369], FL:[27.766279,-81.686783],
+      GA:[33.040619,-83.643074], HI:[21.094318,-157.498337],
+      ID:[44.240459,-114.478828], IL:[40.349457,-88.986137],
+      IN:[39.849426,-86.259224], IA:[42.011539,-93.210526],
+      KS:[38.526600,-96.726486], KY:[37.668140,-84.670067],
+      LA:[31.169546,-91.867805], ME:[44.693947,-69.381927],
+      MD:[39.063946,-76.802101], MA:[42.230171,-71.530106],
+      MI:[43.326618,-84.536095], MN:[45.694454,-93.900192],
+      MS:[32.741646,-89.678696], MO:[38.456085,-92.288368],
+      MT:[46.921925,-110.454353], NE:[41.125370,-98.268082],
+      NV:[38.313515,-117.055374], NH:[43.452492,-71.563896],
+      NJ:[40.298904,-74.521011], NM:[34.840515,-106.248482],
+      NY:[42.165726,-74.948051], NC:[35.630066,-79.806419],
+      ND:[47.528912,-99.784012], OH:[40.388783,-82.764915],
+      OK:[35.565342,-96.928917], OR:[44.572021,-122.070938],
+      PA:[40.590752,-77.209755], RI:[41.680893,-71.511780],
+      SC:[33.856892,-80.945007], SD:[44.299782,-99.438828],
+      TN:[35.747845,-86.692345], TX:[31.054487,-97.563461],
+      UT:[40.150032,-111.862434], VT:[44.045876,-72.710686],
+      VA:[37.769337,-78.169968], WA:[47.400902,-121.490494],
+      WV:[38.491226,-80.954453], WI:[44.268543,-89.616508],
+      WY:[42.755966,-107.302490]
+    };
+
+    const STATES = Object.keys(STATE_CENTROIDS).sort();
+
+    let MANIFEST = null;
+    let PERIODS = null;
+    let STATE_PERIOD_TOTALS = null;
+    let LOAD_TOKEN = 0;
+
+    function setStatus(message, error=false) {
+      STATUS.textContent = message || "";
+      STATUS.classList.toggle("error", Boolean(error));
+    }
+
+    function cleanName(value) {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    }
+
+    function finite(value, fallback=0) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    function displayPeriod(period) {
+      return String(period || "").replace("Millenials", "Millennials");
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+      const pointerUrl = new URL("latest.json", dataBase);
+      const response = await fetch(pointerUrl, {
+        cache: "no-cache",
+        headers: {Accept: "application/json"}
+      });
+
+      if (!response.ok) {
+        throw new Error(`Could not load data/latest.json (HTTP ${response.status}).`);
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+      if (!version) throw new Error("data/latest.json does not contain dataVersion.");
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({dataRoot});
+
+      const [manifest, periodTable, statePeriodTable] = await Promise.all([
+        NameData.loadManifest(),
+        NameData.loadGlobalTable("generationPeriods"),
+        NameData.loadGlobalTable("statePeriodTotals")
+      ]);
+
+      MANIFEST = manifest;
+      PERIODS = periodTable.records
+        .slice()
+        .sort((a,b) => finite(a.period_order) - finite(b.period_order))
+        .map(row => ({
+          period: String(row.period),
+          label: displayPeriod(row.period),
+          key: String(row.period_key),
+          start: finite(row.period_start),
+          end: finite(row.period_end),
+          order: finite(row.period_order)
+        }));
+
+      STATE_PERIOD_TOTALS = statePeriodTable.records;
+    }
+
+    function requestedNames() {
+      const names = INPUTS.map(input => cleanName(input.value)).filter(Boolean);
+
+      if (!names.length) {
+        throw new Error("Enter at least one name.");
+      }
+
+      const keys = names.map(name => name.toLowerCase());
+      if (new Set(keys).size !== keys.length) {
+        throw new Error("Enter each name only once.");
+      }
+
+      return names;
+    }
+
+    function buildChoices(names, packets) {
+      if (names.length === 1) {
+        const displayName = packets[0].state?.displayName || names[0];
+        return {
+          mode: "sex",
+          labels: [`${displayName} (M)`, `${displayName} (F)`],
+          shortLabels: ["Male", "Female"],
+          colors: [COLORS.male, COLORS.female],
+          getters: [
+            row => finite(row?.frequency_m),
+            row => finite(row?.frequency_f)
+          ]
+        };
+      }
+
+      const labels = packets.map((packet, i) =>
+        packet.state?.displayName || names[i]
+      );
+
+      return {
+        mode: names.length === 2 ? "binary-name" : "ternary-name",
+        labels,
+        shortLabels: labels,
+        colors: names.length === 2
+          ? [COLORS.purple, COLORS.orange]
+          : [COLORS.yellow, COLORS.cyan, COLORS.pink],
+        getters: packets.map(() => row => finite(row?.frequency_c))
+      };
+    }
+
+    function periodForYear(year) {
+      return PERIODS.find(
+        p => p.order !== 0 && year >= p.start && year <= p.end
+      ) || null;
+    }
+
+    function makeStateRowMaps(packets) {
+      return packets.map(packet => {
+        const map = new Map();
+        for (const row of packet.state?.yearly || []) {
+          const state = String(row.state || "").toUpperCase();
+          const year = Number(row.year);
+          if (!STATES.includes(state) || !Number.isFinite(year)) continue;
+          map.set(`${state}|${year}`, row);
+        }
+        return map;
+      });
+    }
+
+    function denominatorLookup() {
+      const out = new Map();
+      for (const row of STATE_PERIOD_TOTALS || []) {
+        const state = String(row.state || "").toUpperCase();
+        const key = String(row.period_key || "");
+        out.set(`${state}|${key}`, finite(row.frequency_c));
+      }
+      return out;
+    }
+
+    function buildBalance(names, packets, choiceSpec) {
+      const stateMin = finite(MANIFEST?.yearRanges?.state?.[0], 1910);
+      const stateMax = finite(MANIFEST?.yearRanges?.state?.[1], 2025);
+      const rowMaps = makeStateRowMaps(packets);
+      const denomByStatePeriod = denominatorLookup();
+
+      const periods = PERIODS.map(p => ({...p}));
+      const rowsByPeriod = new Map();
+
+      for (const period of periods) {
+        const stateRows = [];
+
+        for (const state of STATES) {
+          const counts = new Array(choiceSpec.labels.length).fill(0);
+
+          for (let year = period.start; year <= period.end; year += 1) {
+            packets.forEach((packet, packetIndex) => {
+              const row = rowMaps[packetIndex].get(`${state}|${year}`);
+
+              if (choiceSpec.mode === "sex") {
+                // One packet supplies both male/female choices.
+                if (packetIndex === 0) {
+                  counts[0] += finite(row?.frequency_m);
+                  counts[1] += finite(row?.frequency_f);
+                }
+              } else {
+                counts[packetIndex] += finite(row?.frequency_c);
+              }
+            });
+          }
+
+          const selectedTotal = counts.reduce((a,b) => a+b, 0);
+          const props = counts.map(value =>
+            selectedTotal > 0 ? value / selectedTotal : null
+          );
+
+          const denom = finite(
+            denomByStatePeriod.get(`${state}|${period.key}`),
+            0
+          );
+
+          stateRows.push({
+            state,
+            counts,
+            props,
+            selectedTotal,
+            denom,
+            selectedPct: denom > 0 ? selectedTotal / denom : 0
+          });
+        }
+
+        rowsByPeriod.set(period.key, stateRows);
+      }
+
+      // Aggregate the same state-series data across states for the bottom line plot.
+      const years = [];
+      for (let year = stateMin; year <= stateMax; year += 1) years.push(year);
+
+      const lineSeries = choiceSpec.labels.map(() =>
+        new Array(years.length).fill(0)
+      );
+
+      years.forEach((year, yearIndex) => {
+        STATES.forEach(state => {
+          packets.forEach((packet, packetIndex) => {
+            const row = rowMaps[packetIndex].get(`${state}|${year}`);
+
+            if (choiceSpec.mode === "sex") {
+              if (packetIndex === 0) {
+                lineSeries[0][yearIndex] += finite(row?.frequency_m);
+                lineSeries[1][yearIndex] += finite(row?.frequency_f);
+              }
+            } else {
+              lineSeries[packetIndex][yearIndex] += finite(row?.frequency_c);
+            }
+          });
+        });
+      });
+
+      return {
+        stateMin,
+        stateMax,
+        periods,
+        rowsByPeriod,
+        years,
+        lineSeries
+      };
+    }
+
+    function quantile(values, q) {
+      const a = values.filter(Number.isFinite).sort((x,y) => x-y);
+      if (!a.length) return null;
+      const pos = (a.length - 1) * q;
+      const base = Math.floor(pos);
+      const rest = pos - base;
+      return a[base + 1] !== undefined
+        ? a[base] + rest * (a[base + 1] - a[base])
+        : a[base];
+    }
+
+    function binaryLimits(balance) {
+      const vals = [];
+      for (const rows of balance.rowsByPeriod.values()) {
+        rows.forEach(row => {
+          if (Number.isFinite(row.props[0])) vals.push(row.props[0]);
+        });
+      }
+      if (!vals.length) return [0,1];
+
+      const dev = vals.map(v => Math.abs(v - 0.5));
+      let d = quantile(dev, 0.98);
+      d = Math.max(Number.isFinite(d) ? d : 0.5, 0.10);
+      d = Math.min(d, 0.5);
+      return [0.5 - d, 0.5 + d];
+    }
+
+    function sizeScales(balance) {
+      const all = balance.rowsByPeriod.get("all") || [];
+      const other = [];
+      balance.periods
+        .filter(p => p.key !== "all")
+        .forEach(p => other.push(...(balance.rowsByPeriod.get(p.key) || [])));
+
+      const allVals = all.map(row => row.selectedPct);
+      const periodVals = other.map(row => row.selectedPct);
+
+      let allMin = allVals.length ? Math.min(...allVals) : 0;
+      let allMax = allVals.length ? Math.max(...allVals) : 1;
+      if (!(allMax > allMin)) allMax = allMin + 1e-12;
+
+      let periodMax = periodVals.length ? Math.max(...periodVals) : 1;
+      if (!(periodMax > 0)) periodMax = 1e-12;
+
+      return {allMin, allMax, periodMax};
+    }
+
+    function markerSizes(rows, periodKey, scales, minSize=4.5, maxSize=18) {
+      return rows.map(row => {
+        let scaled;
+        if (periodKey === "all") {
+          const clipped = Math.min(
+            scales.allMax,
+            Math.max(scales.allMin, row.selectedPct)
+          );
+          scaled = (clipped - scales.allMin) / (scales.allMax - scales.allMin);
+        } else {
+          const clipped = Math.min(scales.periodMax, Math.max(0, row.selectedPct));
+          scaled = clipped / scales.periodMax;
+        }
+        return minSize + scaled * (maxSize - minSize);
+      });
+    }
+
+    function hexToRgb(hex) {
+      const h = hex.replace("#","");
+      return [
+        parseInt(h.slice(0,2),16) / 255,
+        parseInt(h.slice(2,4),16) / 255,
+        parseInt(h.slice(4,6),16) / 255
+      ];
+    }
+
+    function rgbToHex(rgb) {
+      const vals = rgb.map(v =>
+        Math.max(0,Math.min(255,Math.round(v*255)))
+      );
+      return "#" + vals.map(v => v.toString(16).padStart(2,"0")).join("");
+    }
+
+    function ternaryColor(props, colors) {
+      if (!props.every(Number.isFinite)) return "#eeeeee";
+      const rgbs = colors.map(hexToRgb);
+      const rgb = [0,1,2].map(channel =>
+        props.reduce((sum,p,i) => sum + p*rgbs[i][channel], 0)
+      );
+      return rgbToHex(rgb);
+    }
+
+    function ternaryCoords(props) {
+      const [p1,p2,p3] = props;
+      return [p2 + 0.5*p3, Math.sqrt(3)/2*p3];
+    }
+
+    function binaryHover(row, periodLabel, labels) {
+      if (!(row.selectedTotal > 0) || !Number.isFinite(row.props[0])) {
+        return (
+          `<b>${row.state}</b><br>` +
+          `Period: ${periodLabel}<br>` +
+          `No selected-name births<br>` +
+          `Selected-name birth percentage: ${(100*row.selectedPct).toFixed(3)}%` +
+          `<extra></extra>`
+        );
+      }
+
+      return (
+        `<b>${row.state}</b><br>` +
+        `Period: ${periodLabel}<br>` +
+        `${labels[0]}: ${Math.round(row.counts[0]).toLocaleString()} (${(100*row.props[0]).toFixed(1)}%)<br>` +
+        `${labels[1]}: ${Math.round(row.counts[1]).toLocaleString()} (${(100*row.props[1]).toFixed(1)}%)<br>` +
+        `Selected total: ${Math.round(row.selectedTotal).toLocaleString()}<br>` +
+        `Denominator births: ${Math.round(row.denom).toLocaleString()}<br>` +
+        `Selected-name birth percentage: ${(100*row.selectedPct).toFixed(3)}%` +
+        `<extra></extra>`
+      );
+    }
+
+    function ternaryHover(row, periodLabel, labels) {
+      if (!(row.selectedTotal > 0) || !Number.isFinite(row.props[0])) {
+        return (
+          `<b>${row.state}</b><br>` +
+          `Period: ${periodLabel}<br>` +
+          `No selected-name births<br>` +
+          `Selected-name birth percentage: ${(100*row.selectedPct).toFixed(3)}%` +
+          `<extra></extra>`
+        );
+      }
+
+      return (
+        `<b>${row.state}</b><br>` +
+        `Period: ${periodLabel}<br>` +
+        `${labels[0]}: ${Math.round(row.counts[0]).toLocaleString()} (${(100*row.props[0]).toFixed(1)}%)<br>` +
+        `${labels[1]}: ${Math.round(row.counts[1]).toLocaleString()} (${(100*row.props[1]).toFixed(1)}%)<br>` +
+        `${labels[2]}: ${Math.round(row.counts[2]).toLocaleString()} (${(100*row.props[2]).toFixed(1)}%)<br>` +
+        `Selected total: ${Math.round(row.selectedTotal).toLocaleString()}<br>` +
+        `Denominator births: ${Math.round(row.denom).toLocaleString()}<br>` +
+        `Selected-name birth percentage: ${(100*row.selectedPct).toFixed(3)}%` +
+        `<extra></extra>`
+      );
+    }
+
+    function nationalAverage(rows, periodLabel, labels) {
+      const counts = labels.map((_,i) =>
+        rows.reduce((sum,row) => sum + row.counts[i], 0)
+      );
+      const total = counts.reduce((a,b) => a+b, 0);
+      const props = counts.map(v => total > 0 ? v/total : null);
+      const denom = rows.reduce((sum,row) => sum + row.denom, 0);
+      const selectedPct = denom > 0 ? total/denom : 0;
+
+      let hover = `<b>National average</b><br>Period: ${periodLabel}<br>`;
+      if (!(total > 0) || !props.every(Number.isFinite)) {
+        hover += "No selected-name births<br>";
+      } else {
+        labels.forEach((label,i) => {
+          hover += `${label}: ${Math.round(counts[i]).toLocaleString()} (${(100*props[i]).toFixed(1)}%)<br>`;
+        });
+        hover += `Selected total: ${Math.round(total).toLocaleString()}<br>`;
+        hover += `Denominator births: ${Math.round(denom).toLocaleString()}<br>`;
+      }
+      hover += `Selected-name birth percentage: ${(100*selectedPct).toFixed(3)}%<extra></extra>`;
+
+      return {counts,total,props,denom,selectedPct,hover};
+    }
+
+    function binaryBackgroundTrace(colors) {
+      const y = [];
+      const z = [];
+      const n = 301;
+      for (let i=0; i<n; i+=1) {
+        const v = i/(n-1);
+        y.push(v);
+        z.push([v,v]);
+      }
+      return {
+        type:"heatmap",
+        x:[-0.135,0.135],
+        y,
+        z,
+        colorscale:[
+          [0.00, colors[1]],
+          [0.50, COLORS.neutral],
+          [1.00, colors[0]]
+        ],
+        zmin:0,
+        zmax:1,
+        showscale:false,
+        hoverinfo:"skip",
+        xaxis:"x",
+        yaxis:"y"
+      };
+    }
+
+    function ternaryBackgroundTrace(colors) {
+      const x=[], y=[], color=[];
+      const n=64;
+      for (let i=0;i<=n;i+=1) {
+        for (let j=0;j<=n-i;j+=1) {
+          const p1=i/n, p2=j/n, p3=1-p1-p2;
+          const xy=ternaryCoords([p1,p2,p3]);
+          x.push(xy[0]);
+          y.push(xy[1]);
+          color.push(ternaryColor([p1,p2,p3],colors));
+        }
+      }
+      return {
+        type:"scatter",
+        x,y,
+        mode:"markers",
+        marker:{size:8.5,color,symbol:"square",line:{width:0}},
+        hoverinfo:"skip",
+        showlegend:false,
+        xaxis:"x",
+        yaxis:"y"
+      };
+    }
+
+    function makePeriodTraces(period, balance, spec, scales, binaryRange) {
+      const rows = balance.rowsByPeriod.get(period.key);
+      const avg = nationalAverage(rows, period.label, spec.labels);
+      const sizes = markerSizes(rows, period.key, scales);
+
+      if (spec.mode === "sex" || spec.mode === "binary-name") {
+        const [vmin,vmax] = binaryRange;
+        const z = rows.map(row =>
+          Number.isFinite(row.props[0]) ? row.props[0] : 0.5
+        );
+        const hasData = rows.map(row =>
+          row.selectedTotal > 0 && Number.isFinite(row.props[0])
+        );
+
+        const stateIndex = new Map(STATES.map((state,i)=>[state,i]));
+        const keyX = rows.map(row =>
+          -0.120 + 0.240 * stateIndex.get(row.state) / Math.max(STATES.length-1,1)
+        );
+        const keyY = rows.map((row,i) => hasData[i] ? row.props[0] : 0.5);
+
+        const map = {
+          type:"choropleth",
+          locations:rows.map(r=>r.state),
+          z,
+          locationmode:"USA-states",
+          zmin:vmin,
+          zmax:vmax,
+          colorscale:[
+            [0.00,spec.colors[1]],
+            [0.50,COLORS.neutral],
+            [1.00,spec.colors[0]]
+          ],
+          marker:{line:{color:"white",width:0.7}},
+          showscale:false,
+          hovertemplate:rows.map(row=>binaryHover(row,period.label,spec.labels)),
+          geo:"geo"
+        };
+
+        const key = {
+          type:"scatter",
+          x:keyX,
+          y:keyY,
+          mode:"markers",
+          marker:{
+            size:sizes,
+            color:z,
+            opacity:hasData.map(v=>v?1:0.18),
+            cmin:vmin,
+            cmax:vmax,
+            colorscale:[
+              [0.00,spec.colors[1]],
+              [0.50,COLORS.neutral],
+              [1.00,spec.colors[0]]
+            ],
+            line:{color:"rgba(30,30,30,0.70)",width:0.8}
+          },
+          customdata:rows.map(row=>[row.state]),
+          hovertemplate:rows.map(row=>binaryHover(row,period.label,spec.labels)),
+          showlegend:false,
+          xaxis:"x",
+          yaxis:"y"
+        };
+
+        const avgTrace = {
+          type:"scatter",
+          x:[0],
+          y:[avg.total>0 ? avg.props[0] : null],
+          mode:"markers",
+          marker:{size:12,color:"black",symbol:"x-thin",line:{color:"black",width:1}},
+          hovertemplate:avg.hover,
+          showlegend:false,
+          xaxis:"x",
+          yaxis:"y"
+        };
+
+        return {map,key,avg:avgTrace};
+      }
+
+      const mapColors = [];
+      const keyX = [];
+      const keyY = [];
+
+      rows.forEach(row => {
+        const props = row.props.every(Number.isFinite)
+          ? row.props
+          : [1/3,1/3,1/3];
+        mapColors.push(
+          row.props.every(Number.isFinite)
+            ? ternaryColor(row.props,spec.colors)
+            : "#eeeeee"
+        );
+        const [x,y] = ternaryCoords(props);
+        keyX.push(x);
+        keyY.push(y);
+      });
+
+      const z = rows.map((_,i)=>i);
+      const colorscale = mapColors.length <= 1
+        ? [[0,mapColors[0]||"#eeeeee"],[1,mapColors[0]||"#eeeeee"]]
+        : mapColors.map((color,i)=>[i/(mapColors.length-1),color]);
+
+      const map = {
+        type:"choropleth",
+        locations:rows.map(r=>r.state),
+        z,
+        locationmode:"USA-states",
+        zmin:0,
+        zmax:Math.max(rows.length-1,1),
+        colorscale,
+        marker:{line:{color:"white",width:0.7}},
+        showscale:false,
+        hovertemplate:rows.map(row=>ternaryHover(row,period.label,spec.labels)),
+        geo:"geo"
+      };
+
+      const key = {
+        type:"scatter",
+        x:keyX,
+        y:keyY,
+        mode:"markers",
+        marker:{
+          size:sizes,
+          color:mapColors,
+          line:{color:"rgba(30,30,30,0.80)",width:0.9}
+        },
+        customdata:rows.map(row=>[row.state]),
+        hovertemplate:rows.map(row=>ternaryHover(row,period.label,spec.labels)),
+        showlegend:false,
+        xaxis:"x",
+        yaxis:"y"
+      };
+
+      let avgX=null, avgY=null;
+      if (avg.total>0 && avg.props.every(Number.isFinite)) {
+        [avgX,avgY]=ternaryCoords(avg.props);
+      }
+
+      const avgTrace = {
+        type:"scatter",
+        x:[avgX],
+        y:[avgY],
+        mode:"markers",
+        marker:{size:12,color:"black",symbol:"x-thin",line:{color:"black",width:1}},
+        hovertemplate:avg.hover,
+        showlegend:false,
+        xaxis:"x",
+        yaxis:"y"
+      };
+
+      return {map,key,avg:avgTrace};
+    }
+
+    function lineTraces(balance, spec) {
+      const traces=[];
+      const annotations=[];
+      const midpoint=(balance.stateMin+balance.stateMax)/2;
+
+      spec.labels.forEach((label,i) => {
+        const y=balance.lineSeries[i];
+        traces.push({
+          type:"scatter",
+          x:balance.years,
+          y,
+          mode:"lines",
+          line:{color:spec.colors[i],width:2.5},
+          hovertemplate:`<b>${label}</b><br>Year: %{x}<br>Frequency: %{y:,}<extra></extra>`,
+          showlegend:false,
+          xaxis:"x2",
+          yaxis:"y2"
+        });
+
+        let peakIndex=-1, peakValue=-Infinity;
+        y.forEach((value,index)=>{
+          if (Number.isFinite(value) && value>peakValue) {
+            peakValue=value; peakIndex=index;
+          }
+        });
+
+        if (peakIndex>=0 && peakValue>0) {
+          const peakYear=balance.years[peakIndex];
+          annotations.push({
+            text:`<b>${label}</b>`,
+            x:peakYear,
+            y:peakValue,
+            xref:"x2",
+            yref:"y2",
+            showarrow:false,
+            xanchor:peakYear<midpoint?"left":"right",
+            yanchor:"bottom",
+            font:{size:12,color:spec.colors[i]}
+          });
+        }
+      });
+
+      return {traces,annotations};
+    }
+
+    function highlightTrace(period, yMax) {
+      if (period.key==="all") {
+        return {
+          type:"scatter",x:[],y:[],mode:"lines",fill:"toself",
+          fillcolor:"rgba(150,150,150,0.18)",line:{width:0},
+          hoverinfo:"skip",showlegend:false,xaxis:"x2",yaxis:"y2"
+        };
+      }
+      return {
+        type:"scatter",
+        x:[period.start,period.end,period.end,period.start],
+        y:[0,0,yMax*1.08,yMax*1.08],
+        mode:"lines",
+        fill:"toself",
+        fillcolor:"rgba(150,150,150,0.18)",
+        line:{width:0},
+        hoverinfo:"skip",
+        showlegend:false,
+        xaxis:"x2",
+        yaxis:"y2"
+      };
+    }
+
+    function titleFor(spec) {
+      if (spec.mode==="sex") {
+        return `Name balance by state: ${spec.labels[0]} vs. ${spec.labels[1]}`;
+      }
+      return "Name balance by state: " + spec.labels.join(" vs. ");
+    }
+
+    async function render(names, packets) {
+      const spec=buildChoices(names,packets);
+      const balance=buildBalance(names,packets,spec);
+      const scales=sizeScales(balance);
+      const binaryRange=(spec.mode==="ternary-name") ? null : binaryLimits(balance);
+      const initial=balance.periods[0];
+      const initialTraces=makePeriodTraces(initial,balance,spec,scales,binaryRange);
+      const line=lineTraces(balance,spec);
+
+      let yMax=1;
+      balance.lineSeries.forEach(series=>{
+        series.forEach(v=>{ if(Number.isFinite(v)) yMax=Math.max(yMax,v); });
+      });
+
+      const data=[
+        initialTraces.map,
+        spec.mode==="ternary-name"
+          ? ternaryBackgroundTrace(spec.colors)
+          : binaryBackgroundTrace(spec.colors),
+        initialTraces.key,
+        initialTraces.avg,
+        {
+          type:"choropleth",locations:[],z:[],locationmode:"USA-states",
+          zmin:0,zmax:1,
+          colorscale:[[0,"rgba(255,255,255,0)"],[1,"rgba(255,255,255,0)"]],
+          marker:{line:{color:"black",width:4}},
+          showscale:false,hoverinfo:"skip",geo:"geo"
+        },
+        {
+          type:"scattergeo",lon:[],lat:[],text:[],mode:"text",
+          textfont:{size:15,color:"black",family:"Arial Black"},
+          textposition:"middle center",hoverinfo:"skip",showlegend:false,geo:"geo"
+        },
+        {
+          type:"scatter",x:[],y:[],mode:"markers",
+          marker:{size:[],color:"black",line:{color:"white",width:1}},
+          hoverinfo:"skip",showlegend:false,xaxis:"x",yaxis:"y"
+        },
+        highlightTrace(initial,yMax),
+        ...line.traces
+      ];
+
+      const MAP_INDEX=0;
+      const KEY_INDEX=2;
+      const AVG_INDEX=3;
+      const BORDER_INDEX=4;
+      const TEXT_INDEX=5;
+      const KEY_HIGHLIGHT_INDEX=6;
+      const LINE_HIGHLIGHT_INDEX=7;
+
+      const boundaryTicks=[
+        balance.stateMin,1928,1946,1965,1981,1997,2013,balance.stateMax
+      ].filter((v,i,a)=>
+        v>=balance.stateMin && v<=balance.stateMax && a.indexOf(v)===i
+      );
+
+      const annotations=[...line.annotations];
+
+      if (spec.mode!=="ternary-name") {
+        annotations.push(
+          {
+            text:`<b>${spec.labels[0]}</b>`,x:0.855,y:0.995,
+            xref:"paper",yref:"paper",showarrow:false,yanchor:"bottom",
+            font:{size:15}
+          },
+          {
+            text:`<b>${spec.labels[1]}</b>`,x:0.855,y:0.380,
+            xref:"paper",yref:"paper",showarrow:false,yanchor:"top",
+            font:{size:15}
+          }
+        );
+      } else {
+        const topY=Math.sqrt(3)/2;
+        annotations.push(
+          {text:`<b>${spec.labels[0]}</b>`,x:0.005,y:-0.020,xref:"x",yref:"y",showarrow:false,xanchor:"left",yanchor:"top",font:{size:13}},
+          {text:`<b>${spec.labels[1]}</b>`,x:0.995,y:-0.020,xref:"x",yref:"y",showarrow:false,xanchor:"right",yanchor:"top",font:{size:13}},
+          {text:`<b>${spec.labels[2]}</b>`,x:0.500,y:topY+0.018,xref:"x",yref:"y",showarrow:false,xanchor:"center",yanchor:"bottom",font:{size:13}}
+        );
+      }
+
+      const shapes=[
+        {
+          type:"line",xref:"x2",yref:"y2",
+          x0:balance.stateMin,x1:balance.stateMax,y0:0,y1:0,
+          line:{color:"rgba(110,110,110,0.45)",width:1},
+          layer:"below"
+        }
+      ];
+
+      if (spec.mode!=="ternary-name") {
+        shapes.push(
+          {type:"rect",xref:"x",yref:"y",x0:-0.135,x1:0.135,y0:-0.03,y1:1.03,line:{color:"rgba(80,80,80,0.55)",width:1},fillcolor:"rgba(0,0,0,0)",layer:"above"},
+          {type:"line",xref:"x",yref:"y",x0:-0.135,x1:0.135,y0:0.5,y1:0.5,line:{color:"rgba(80,80,80,0.75)",width:1,dash:"dot"},layer:"above"}
+        );
+      }
+
+      const title=titleFor(spec);
+      const sliderSteps=balance.periods.map(period=>({
+        method:"animate",
+        label:period.label,
+        args:[
+          [period.key],
+          {
+            mode:"immediate",
+            frame:{duration:350,redraw:false},
+            transition:{duration:350,easing:"cubic-in-out"}
+          }
+        ]
+      }));
+
+      const layout={
+        width:1150,height:860,
+        margin:{l:30,r:30,t:80,b:70},
+        plot_bgcolor:"white",paper_bgcolor:"white",
+        title:{text:`${title}<br><sup>${initial.label}</sup>`},
+        geo:{
+          scope:"usa",projection:{type:"albers usa"},
+          domain:{x:[0.00,0.70],y:[0.39,1.00]},
+          showlakes:false,bgcolor:"rgba(0,0,0,0)"
+        },
+        xaxis:{
+          domain:[0.705,0.995],showgrid:false,zeroline:false,
+          showticklabels:false,fixedrange:true
+        },
+        yaxis:{
+          domain:[0.39,1.00],showgrid:false,zeroline:false,
+          showticklabels:false,fixedrange:true
+        },
+        xaxis2:{
+          domain:[0.05,0.975],anchor:"y2",
+          range:[1910,balance.stateMax],
+          showgrid:false,zeroline:false,showticklabels:true,
+          tickmode:"array",tickvals:boundaryTicks,
+          ticktext:boundaryTicks.map(String),
+          tickangle:0,ticks:"outside",tickfont:{size:12},
+          fixedrange:false
+        },
+        yaxis2:{
+          domain:[0.165,0.325],anchor:"x2",
+          range:[0,yMax*1.08],title:{text:"National frequency"},
+          showgrid:true,zeroline:false,fixedrange:false
+        },
+        annotations,shapes,
+        sliders:[{
+          active:0,
+          currentvalue:{prefix:"Period: "},
+          pad:{t:4},x:0.025,y:0.120,len:0.95,
+          steps:sliderSteps,ticklen:4,font:{size:12}
+        }],
+        updatemenus:[]
+      };
+
+      if (spec.mode!=="ternary-name") {
+        layout.xaxis.range=[-0.18,0.18];
+        layout.yaxis.range=[-0.06,1.06];
+      } else {
+        layout.xaxis.range=[-0.035,1.035];
+        layout.yaxis.range=[-0.050,Math.sqrt(3)/2+0.050];
+        layout.yaxis.scaleanchor="x";
+        layout.yaxis.scaleratio=1;
+      }
+
+      const frames=balance.periods.map(period=>{
+        const tr=makePeriodTraces(period,balance,spec,scales,binaryRange);
+        return {
+          name:period.key,
+          data:[
+            tr.map,
+            tr.key,
+            tr.avg,
+            highlightTrace(period,yMax)
+          ],
+          traces:[MAP_INDEX,KEY_INDEX,AVG_INDEX,LINE_HIGHLIGHT_INDEX],
+          layout:{
+            title:{text:`${title}<br><sup>${period.label}</sup>`}
+          }
+        };
+      });
+
+      const config={
+        scrollZoom:false,
+        displayModeBar:true,
+        displaylogo:false,
+        doubleClick:false,
+        responsive:false,
+        toImageButtonOptions:{
+          format:"png",filename:"custom_name_balance_map",scale:3
+        }
+      };
+
+      Plotly.purge(PLOT);
+      await Plotly.newPlot(PLOT,data,layout,config);
+      await Plotly.addFrames(PLOT,frames);
+
+      function findKeyPoint(state) {
+        const tr=PLOT.data[KEY_INDEX];
+        if(!tr || !tr.customdata) return null;
+        for(let i=0;i<tr.customdata.length;i+=1) {
+          if(tr.customdata[i]?.[0]===state) {
+            const raw=Array.isArray(tr.marker?.size)
+              ? tr.marker.size[i]
+              : tr.marker?.size;
+            return {x:tr.x[i],y:tr.y[i],size:Math.max(6,finite(raw,11))};
+          }
+        }
+        return null;
+      }
+
+      function highlightState(state) {
+        if(!state) return;
+        Plotly.restyle(PLOT,{locations:[[state]],z:[[1]]},[BORDER_INDEX]);
+
+        const centroid=STATE_CENTROIDS[state];
+        if(centroid) {
+          Plotly.restyle(
+            PLOT,
+            {lat:[[centroid[0]]],lon:[[centroid[1]]],text:[[state]]},
+            [TEXT_INDEX]
+          );
+        }
+
+        const kp=findKeyPoint(state);
+        if(kp && Number.isFinite(kp.x) && Number.isFinite(kp.y)) {
+          Plotly.restyle(
+            PLOT,
+            {x:[[kp.x]],y:[[kp.y]],"marker.size":[[kp.size]]},
+            [KEY_HIGHLIGHT_INDEX]
+          );
+        }
+      }
+
+      function clearHighlight() {
+        Plotly.restyle(PLOT,{locations:[[]],z:[[]]},[BORDER_INDEX]);
+        Plotly.restyle(PLOT,{lat:[[]],lon:[[]],text:[[]]},[TEXT_INDEX]);
+        Plotly.restyle(PLOT,{x:[[]],y:[[]],"marker.size":[[]]},[KEY_HIGHLIGHT_INDEX]);
+      }
+
+      PLOT.on("plotly_hover",eventData=>{
+        const pt=eventData?.points?.[0];
+        if(!pt) return;
+        if(pt.curveNumber===MAP_INDEX) highlightState(pt.location);
+        if(pt.curveNumber===KEY_INDEX && pt.customdata?.[0]) {
+          highlightState(pt.customdata[0]);
+        }
+      });
+
+      PLOT.on("plotly_unhover",clearHighlight);
+      PLOT.on("plotly_animated",clearHighlight);
+    }
+
+    async function run() {
+      const token=++LOAD_TOKEN;
+      RUN.disabled=true;
+
+      try {
+        if(!MANIFEST) {
+          setStatus("Loading current data version…");
+          await configureLatestData();
+        }
+
+        const names=requestedNames();
+        setStatus(`Loading ${names.length === 1 ? "name" : "names"}…`);
+
+        const packets=await Promise.all(
+          names.map(name=>NameData.getNamePacket(name))
+        );
+
+        if(token!==LOAD_TOKEN) return;
+
+        packets.forEach((packet,i)=>{
+          if(!packet.state) {
+            throw new Error(
+              `No state-level data found for "${names[i]}". ` +
+              "State-year counts below five are suppressed by SSA."
+            );
+          }
+          INPUTS[i].value=packet.state.displayName || names[i];
+        });
+
+        await render(names,packets);
+        if(token!==LOAD_TOKEN) return;
+
+        const maxYear=finite(MANIFEST?.yearRanges?.state?.[1],2025);
+        setStatus(`State data: 1910–${maxYear}.`);
+      } catch(error) {
+        if(token!==LOAD_TOKEN) return;
+        console.error(error);
+        Plotly.purge(PLOT);
+        setStatus(error?.message || String(error),true);
+      } finally {
+        if(token===LOAD_TOKEN) RUN.disabled=false;
+      }
+    }
+
+    RUN.addEventListener("click",run);
+    INPUTS.forEach(input=>{
+      input.addEventListener("keydown",event=>{
+        if(event.key==="Enter") {
+          event.preventDefault();
+          run();
+        }
+      });
+    });
+
+    try {
+      await configureLatestData();
+      setStatus("Enter 1–3 names.");
+    } catch(error) {
+      console.error(error);
+      setStatus(
+        "Unable to initialize the current data version. " +
+        (error?.message || String(error)),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
