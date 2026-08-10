@@ -209,11 +209,11 @@ export const visualizations = [
     shortTitle: "Leading and lagging states",
     category: "States and geography",
     description:
-      "Explore whether state-level naming trends tend to appear earlier or later than the corresponding national patterns.",
+      "Explore whether naming trends tend to appear earlier or later in individual states than they do nationally, then test the pattern for a name and state of your choice.",
     instructions:
-      "Choose the overview map or the Kayden-in-Utah example above. In the example, move the shift slider to compare the state series with the national series.",
+      "Choose National overview for the state-level summary, or Custom name + state to compare one state with the national trend. The custom tool starts with Kayden in Utah; enter any name and state, then move the shift slider to see how alignment changes. For another interesting example, try Deloris in South Carolina.",
     methodology:
-      "Positive shifts indicate that a state's naming patterns tend to occur earlier than the national pattern; negative shifts indicate later patterns. The overview combines name-level shifts using the weighting defined when the visualization was generated.",
+      "Positive shifts indicate that a state's naming pattern appears earlier than the national pattern; negative shifts indicate later patterns. The overview combines many name-level shifts using the weighting defined when it was generated. The custom tool uses the selected name's packet data, 5-year centered smoothing, and the strongest correlation across shifts from -20 to +20 years.",
     dataThrough: 2025,
     variants: [
       {
@@ -225,12 +225,11 @@ export const visualizations = [
         embedWidth: 1000
       },
       {
-        id: "kayden-utah",
-        label: "Kayden in Utah example",
-        path: "../visualizations/showcase/state-name-shift-demo.html",
-        iframeHeight: 755,
-        embedMode: "scale",
-        embedWidth: 1050
+        id: "custom",
+        label: "Custom name + state",
+        path: "../visualizations/showcase/leading-lagging-explorer.html",
+        iframeHeight: 735,
+        embedMode: "fluid"
       }
     ]
   },
