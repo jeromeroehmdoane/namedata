@@ -148,11 +148,11 @@ export const visualizations = [
     shortTitle: "Name balance by state",
     category: "States and geography",
     description:
-      "Compare closely related names—or male and female usage of the same name—across states and generations.",
+      "Compare closely related names—or male and female usage of the same name—across states and generations. Preset examples are included, or build your own comparison with up to three names.",
     instructions:
-      "Choose an example above the visualization, then use the generation control inside the map. Hover over a state for the local balance and frequency information.",
+      "Choose a preset or Custom names above the visualization. In the custom tool, one entered name automatically compares male vs. female usage; two or three entered names compare combined usage. Use the generation control inside the map and hover over a state for local balance and frequency information.",
     methodology:
-      "Each example compares the relative recorded frequencies of the displayed names within each state. Low counts are subject to the Social Security Administration's suppression of state-year values below five.",
+      "The maps compare recorded birth counts among the displayed choices within each state and period. The custom tool loads only the requested names from the compact state packets. Missing state-name-year observations are treated as zero, consistent with the preset visualizations; SSA suppresses state-year counts below five.",
     dataThrough: 2025,
     iframeHeight: 940,
     embedMode: "scale",
@@ -177,6 +177,14 @@ export const visualizations = [
         id: "summer-autumn",
         label: "Summer vs. Autumn",
         path: "../visualizations/showcase/name-balance-summer-autumn.html"
+      },
+      {
+        id: "custom",
+        label: "Custom names",
+        path: "../visualizations/showcase/name-balance-custom.html",
+        iframeHeight: 980,
+        embedMode: "scale",
+        embedWidth: 1150
       }
     ]
   },
