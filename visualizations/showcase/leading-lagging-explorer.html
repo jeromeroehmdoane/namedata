@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>State Lead/Lag Name Explorer</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    :root{
+      --text:#1f1f1f;
+      --muted:#666;
+      --border:#d8d8d8;
+      --panel:#f7f7f9;
+      --state:#2C7FB8;
+      --shifted:#5E3C99;
+      --national:#1b7837;
+      --error:#a61b1b;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      padding:0;
+      background:#fff;
+      color:var(--text);
+      font-family:Arial,Helvetica,sans-serif;
+    }
+
+    .wrap{
+      width:min(1100px,100%);
+      margin:0 auto;
+      padding:14px 16px 8px;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns:minmax(180px,1.4fr) minmax(190px,1fr) auto;
+      gap:10px;
+      align-items:end;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--panel);
+    }
+
+    label{
+      display:block;
+      margin-bottom:5px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    input,select,button{
+      font:inherit;
+    }
+
+    input,select{
+      width:100%;
+      min-height:40px;
+      padding:8px 10px;
+      border:1px solid #aaa;
+      border-radius:8px;
+      background:#fff;
+      color:var(--text);
+    }
+
+    button{
+      min-height:40px;
+      padding:8px 14px;
+      border:1px solid #8b7caf;
+      border-radius:8px;
+      background:#f2eff8;
+      color:#30244c;
+      font-weight:700;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    button:hover{background:#e8e2f3}
+    button:disabled{opacity:.55;cursor:default}
+
+    .status{
+      min-height:24px;
+      padding:7px 2px 2px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .status.error{color:var(--error)}
+
+    .plotWrap{
+      width:100%;
+      min-width:0;
+    }
+
+    #plot{
+      width:100%;
+      height:675px;
+    }
+
+    @media (max-width:700px){
+      .wrap{padding:10px 8px 6px}
+
+      .controls{
+        grid-template-columns:1fr 1fr;
+      }
+
+      .controls .run{
+        grid-column:1 / -1;
+      }
+
+      .controls .run button{
+        width:100%;
+      }
+
+      #plot{
+        height:610px;
+      }
+    }
+
+    @media (max-width:480px){
+      .controls{
+        grid-template-columns:1fr;
+      }
+
+      .controls .run{
+        grid-column:auto;
+      }
+
+      #plot{
+        height:590px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="controls">
+      <div>
+        <label for="nameInput">Name</label>
+        <input
+          id="nameInput"
+          type="text"
+          placeholder="e.g., Kayden"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div>
+        <label for="stateSelect">State</label>
+        <select id="stateSelect"></select>
+      </div>
+
+      <div class="run">
+        <button id="runButton" type="button">Compare State vs. National</button>
+      </div>
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <div class="plotWrap">
+      <div id="plot"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    // ------------------------------------------------------------
+    // Configuration
+    // ------------------------------------------------------------
+
+    const MIN_SHIFT = -20;
+    const MAX_SHIFT = 20;
+    const SMOOTHING_WINDOW = 5;
+    const MIN_OVERLAP = 20;
+
+    const STATE_COLOR = "#2C7FB8";
+    const SHIFTED_COLOR = "#5E3C99";
+    const NATIONAL_COLOR = "#1b7837";
+
+    const STATE_NAMES = {
+      AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas",
+      CA:"California", CO:"Colorado", CT:"Connecticut", DE:"Delaware",
+      DC:"District of Columbia", FL:"Florida", GA:"Georgia", HI:"Hawaii",
+      ID:"Idaho", IL:"Illinois", IN:"Indiana", IA:"Iowa", KS:"Kansas",
+      KY:"Kentucky", LA:"Louisiana", ME:"Maine", MD:"Maryland",
+      MA:"Massachusetts", MI:"Michigan", MN:"Minnesota", MS:"Mississippi",
+      MO:"Missouri", MT:"Montana", NE:"Nebraska", NV:"Nevada",
+      NH:"New Hampshire", NJ:"New Jersey", NM:"New Mexico", NY:"New York",
+      NC:"North Carolina", ND:"North Dakota", OH:"Ohio", OK:"Oklahoma",
+      OR:"Oregon", PA:"Pennsylvania", RI:"Rhode Island",
+      SC:"South Carolina", SD:"South Dakota", TN:"Tennessee", TX:"Texas",
+      UT:"Utah", VT:"Vermont", VA:"Virginia", WA:"Washington",
+      WV:"West Virginia", WI:"Wisconsin", WY:"Wyoming"
+    };
+
+    const nameInput = document.getElementById("nameInput");
+    const stateSelect = document.getElementById("stateSelect");
+    const runButton = document.getElementById("runButton");
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    let ACTIVE_DATA_VERSION = null;
+    let ACTIVE_MANIFEST = null;
+    let LOAD_TOKEN = 0;
+
+    // ------------------------------------------------------------
+    // Latest-data pointer
+    // ------------------------------------------------------------
+
+    async function configureLatestData(){
+      const dataBase = new URL("../../data/", window.location.href);
+      const pointerUrl = new URL("latest.json", dataBase);
+
+      const response = await fetch(pointerUrl, {
+        cache:"no-cache",
+        headers:{Accept:"application/json"}
+      });
+
+      if(!response.ok){
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if(!version){
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const relativeRoot = String(
+        pointer.dataRoot ?? `${version}/`
+      ).trim();
+
+      const dataRoot = new URL(relativeRoot, dataBase);
+
+      NameData.configure({dataRoot});
+
+      const manifest = await NameData.loadManifest();
+
+      ACTIVE_DATA_VERSION = version;
+      ACTIVE_MANIFEST = manifest;
+
+      return manifest;
+    }
+
+    // ------------------------------------------------------------
+    // UI helpers
+    // ------------------------------------------------------------
+
+    function setStatus(message, isError=false){
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function populateStates(){
+      const codes = Object.keys(STATE_NAMES);
+
+      stateSelect.innerHTML = codes
+        .map(code => (
+          `<option value="${code}">${STATE_NAMES[code]} (${code})</option>`
+        ))
+        .join("");
+
+      stateSelect.value = "UT";
+    }
+
+    function normalizeName(name){
+      const cleaned = String(name ?? "").trim();
+      if(!cleaned) return "";
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
+    }
+
+    function finiteNumber(value, fallback=0){
+      const number = Number(value);
+      return Number.isFinite(number) ? number : fallback;
+    }
+
+    function formatCorr(value){
+      return Number.isFinite(value) ? value.toFixed(4) : "NA";
+    }
+
+    function formatSignedShift(value){
+      if(!Number.isFinite(value)) return "NA";
+      return value >= 0 ? `+${value}` : String(value);
+    }
+
+    function interpretation(state, shift){
+      if(shift > 0) return `${state} appears to lead by ${shift} years`;
+      if(shift < 0) return `${state} appears to lag by ${Math.abs(shift)} years`;
+      return `${state} appears unshifted`;
+    }
+
+    function stateYearRange(manifest, national, statePacket){
+      const manifestRange = manifest?.yearRanges?.state;
+
+      if(
+        Array.isArray(manifestRange) &&
+        manifestRange.length >= 2 &&
+        Number.isFinite(Number(manifestRange[0])) &&
+        Number.isFinite(Number(manifestRange[1]))
+      ){
+        return [
+          Number(manifestRange[0]),
+          Number(manifestRange[1])
+        ];
+      }
+
+      const natYears = (national?.yearly || [])
+        .map(row => Number(row.year))
+        .filter(Number.isFinite);
+
+      const stateYears = (statePacket?.yearly || [])
+        .map(row => Number(row.year))
+        .filter(Number.isFinite);
+
+      if(!natYears.length || !stateYears.length){
+        return [1910, 2025];
+      }
+
+      return [
+        Math.max(Math.min(...natYears), Math.min(...stateYears)),
+        Math.min(Math.max(...natYears), Math.max(...stateYears))
+      ];
+    }
+
+    // ------------------------------------------------------------
+    // Numeric helpers
+    // ------------------------------------------------------------
+
+    function centeredRollingMean(values, windowSize){
+      const n = values.length;
+      const out = new Array(n).fill(null);
+
+      if(windowSize <= 1){
+        return values.map(value =>
+          Number.isFinite(value) ? value : null
+        );
+      }
+
+      const halfLeft = Math.floor((windowSize - 1) / 2);
+      const halfRight = windowSize - 1 - halfLeft;
+
+      for(let i = 0; i < n; i += 1){
+        let sum = 0;
+        let count = 0;
+
+        const start = Math.max(0, i - halfLeft);
+        const end = Math.min(n - 1, i + halfRight);
+
+        for(let j = start; j <= end; j += 1){
+          const value = values[j];
+          if(Number.isFinite(value)){
+            sum += value;
+            count += 1;
+          }
+        }
+
+        out[i] = count ? sum / count : null;
+      }
+
+      return out;
+    }
+
+    function shiftArray(values, shift){
+      const n = values.length;
+      const out = new Array(n).fill(null);
+
+      if(shift === 0){
+        return values.slice();
+      }
+
+      if(shift > 0){
+        for(let i = 0; i < n - shift; i += 1){
+          out[i + shift] = values[i];
+        }
+      }else{
+        const amount = -shift;
+        for(let i = amount; i < n; i += 1){
+          out[i - amount] = values[i];
+        }
+      }
+
+      return out;
+    }
+
+    function pearsonCorrelation(x, y, minOverlap=MIN_OVERLAP){
+      const pairs = [];
+
+      for(let i = 0; i < Math.min(x.length, y.length); i += 1){
+        if(Number.isFinite(x[i]) && Number.isFinite(y[i])){
+          pairs.push([x[i], y[i]]);
+        }
+      }
+
+      if(pairs.length < minOverlap){
+        return null;
+      }
+
+      const meanX = pairs.reduce((sum,p) => sum + p[0], 0) / pairs.length;
+      const meanY = pairs.reduce((sum,p) => sum + p[1], 0) / pairs.length;
+
+      let sxx = 0;
+      let syy = 0;
+      let sxy = 0;
+
+      for(const [xi, yi] of pairs){
+        const dx = xi - meanX;
+        const dy = yi - meanY;
+
+        sxx += dx * dx;
+        syy += dy * dy;
+        sxy += dx * dy;
+      }
+
+      if(!(sxx > 0) || !(syy > 0)){
+        return null;
+      }
+
+      return sxy / Math.sqrt(sxx * syy);
+    }
+
+    function peakPoint(years, values){
+      let bestIndex = -1;
+      let bestValue = -Infinity;
+
+      values.forEach((value, index) => {
+        if(Number.isFinite(value) && value > bestValue){
+          bestValue = value;
+          bestIndex = index;
+        }
+      });
+
+      if(bestIndex < 0){
+        return null;
+      }
+
+      return {
+        year: years[bestIndex],
+        value: values[bestIndex]
+      };
+    }
+
+    // ------------------------------------------------------------
+    // Packet -> comparison curves
+    // ------------------------------------------------------------
+
+    function buildCurves(packet, stateCode, manifest){
+      const national = packet.national;
+      const statePacket = packet.state;
+
+      if(!national){
+        throw new Error(`No national data found for "${packet.query}".`);
+      }
+
+      if(!statePacket){
+        throw new Error(
+          `No state-level data found for "${national.displayName || packet.query}".`
+        );
+      }
+
+      const [yearMin, yearMax] =
+        stateYearRange(manifest, national, statePacket);
+
+      if(!(yearMax >= yearMin)){
+        throw new Error("No overlapping national/state year range was found.");
+      }
+
+      const years = [];
+      for(let year = yearMin; year <= yearMax; year += 1){
+        years.push(year);
+      }
+
+      const nationalByYear = new Map(
+        (national.yearly || [])
+          .map(row => [Number(row.year), row])
+          .filter(([year]) => Number.isFinite(year))
+      );
+
+      const stateByYear = new Map(
+        (statePacket.yearly || [])
+          .filter(row => String(row.state || "").toUpperCase() === stateCode)
+          .map(row => [Number(row.year), row])
+          .filter(([year]) => Number.isFinite(year))
+      );
+
+      const stateObservedFrequency = years.reduce(
+        (sum, year) => sum + finiteNumber(
+          stateByYear.get(year)?.frequency_c,
+          0
+        ),
+        0
+      );
+
+      if(stateObservedFrequency <= 0){
+        throw new Error(
+          `${national.displayName || packet.query} has no reported births in ` +
+          `${STATE_NAMES[stateCode] || stateCode} over the available state-data years.`
+        );
+      }
+
+      const nationalPercent = years.map(
+        year => finiteNumber(
+          nationalByYear.get(year)?.proportion_c,
+          0
+        )
+      );
+
+      const statePercent = years.map(
+        year => finiteNumber(
+          stateByYear.get(year)?.proportion_c,
+          0
+        )
+      );
+
+      const nationalSmooth =
+        centeredRollingMean(nationalPercent, SMOOTHING_WINDOW);
+
+      const stateSmooth =
+        centeredRollingMean(statePercent, SMOOTHING_WINDOW);
+
+      return {
+        years,
+        yearMin,
+        yearMax,
+        nationalPercent,
+        statePercent,
+        nationalSmooth,
+        stateSmooth,
+        displayName:national.displayName || packet.query
+      };
+    }
+
+    function analyzeShifts(curves){
+      const correlations = new Map();
+      const shifted = new Map();
+
+      for(let shift = MIN_SHIFT; shift <= MAX_SHIFT; shift += 1){
+        const shiftedCurve = shiftArray(curves.stateSmooth, shift);
+        shifted.set(shift, shiftedCurve);
+
+        correlations.set(
+          shift,
+          pearsonCorrelation(
+            shiftedCurve,
+            curves.nationalSmooth,
+            MIN_OVERLAP
+          )
+        );
+      }
+
+      const valid = [...correlations.entries()]
+        .filter(([,corr]) => Number.isFinite(corr));
+
+      if(!valid.length){
+        throw new Error(
+          "No valid lead/lag correlation could be calculated for this state/name pair."
+        );
+      }
+
+      valid.sort((a,b) => {
+        const corrDifference = b[1] - a[1];
+        if(Math.abs(corrDifference) > 1e-14){
+          return corrDifference;
+        }
+
+        const absDifference = Math.abs(a[0]) - Math.abs(b[0]);
+        if(absDifference !== 0){
+          return absDifference;
+        }
+
+        return a[0] - b[0];
+      });
+
+      const [bestShift, bestCorr] = valid[0];
+      const corrAtZero = correlations.get(0);
+      const improvement = (
+        Number.isFinite(corrAtZero)
+          ? bestCorr - corrAtZero
+          : null
+      );
+
+      return {
+        correlations,
+        shifted,
+        bestShift,
+        bestCorr,
+        corrAtZero,
+        improvement
+      };
+    }
+
+    // ------------------------------------------------------------
+    // Plot
+    // ------------------------------------------------------------
+
+    function summaryAnnotation(
+      stateCode,
+      currentShift,
+      currentCorr,
+      analysis
+    ){
+      return {
+        x:0.015,
+        y:0.985,
+        xref:"paper",
+        yref:"paper",
+        xanchor:"left",
+        yanchor:"top",
+        align:"left",
+        showarrow:false,
+        bgcolor:"rgba(255,255,255,0.88)",
+        bordercolor:"rgba(80,80,80,0.55)",
+        borderwidth:1,
+        borderpad:6,
+        font:{size:12,color:"#1f1f1f"},
+        text:
+          `<b>Current shift:</b> ${formatSignedShift(currentShift)}<br>` +
+          `<b>Current correlation:</b> ${formatCorr(currentCorr)}<br>` +
+          `<b>Best shift:</b> ${formatSignedShift(analysis.bestShift)}<br>` +
+          `<b>Best correlation:</b> ${formatCorr(analysis.bestCorr)}<br>` +
+          `<b>Best improvement:</b> ${formatCorr(analysis.improvement)}<br>` +
+          `<b>Correlation without shift:</b> ${formatCorr(analysis.corrAtZero)}`
+      };
+    }
+
+    function peakAnnotation(point, text, yref, color, yshift){
+      if(!point) return null;
+
+      return {
+        x:point.year,
+        y:point.value,
+        xref:"x",
+        yref,
+        text:`<b>${text}</b>`,
+        showarrow:false,
+        font:{size:13,color},
+        bgcolor:"rgba(255,255,255,0.75)",
+        bordercolor:color,
+        borderwidth:1,
+        borderpad:3,
+        yshift
+      };
+    }
+
+    async function drawComparison(
+      curves,
+      analysis,
+      stateCode
+    ){
+      const stateLabel = STATE_NAMES[stateCode] || stateCode;
+      const stateAxisMax = Math.max(
+        ...curves.stateSmooth.filter(Number.isFinite),
+        0
+      );
+      const nationalAxisMax = Math.max(
+        ...curves.nationalSmooth.filter(Number.isFinite),
+        0
+      );
+
+      const shifts = [];
+      for(let shift = MIN_SHIFT; shift <= MAX_SHIFT; shift += 1){
+        shifts.push(shift);
+      }
+
+      const initialShift = analysis.bestShift;
+
+      const traces = [
+        {
+          x:curves.years,
+          y:curves.nationalSmooth,
+          type:"scatter",
+          mode:"lines",
+          name:"National",
+          line:{color:NATIONAL_COLOR,width:3},
+          yaxis:"y2",
+          hovertemplate:"Year: %{x}<br>National: %{y:.4%}<extra></extra>",
+          showlegend:false
+        },
+        {
+          x:curves.years,
+          y:curves.stateSmooth,
+          type:"scatter",
+          mode:"lines",
+          name:stateLabel,
+          line:{color:STATE_COLOR,width:2,dash:"dot"},
+          opacity:0.65,
+          yaxis:"y",
+          hovertemplate:
+            `Year: %{x}<br>${stateCode} unshifted: %{y:.4%}<extra></extra>`,
+          showlegend:false
+        },
+        {
+          x:curves.years,
+          y:analysis.shifted.get(initialShift),
+          type:"scatter",
+          mode:"lines",
+          name:`${stateCode} shifted`,
+          line:{color:SHIFTED_COLOR,width:4},
+          yaxis:"y",
+          hovertemplate:
+            `Year: %{x}<br>${stateCode} shifted: %{y:.4%}<extra></extra>`,
+          showlegend:false
+        }
+      ];
+
+      function annotationsForShift(shift){
+        const shiftedCurve = analysis.shifted.get(shift);
+        const currentCorr = analysis.correlations.get(shift);
+
+        return [
+          summaryAnnotation(
+            stateCode,
+            shift,
+            currentCorr,
+            analysis
+          ),
+          peakAnnotation(
+            peakPoint(curves.years, curves.nationalSmooth),
+            "National",
+            "y2",
+            NATIONAL_COLOR,
+            -16
+          ),
+          peakAnnotation(
+            peakPoint(curves.years, curves.stateSmooth),
+            stateLabel,
+            "y",
+            STATE_COLOR,
+            16
+          ),
+          peakAnnotation(
+            peakPoint(curves.years, shiftedCurve),
+            `${stateCode} shifted`,
+            "y",
+            SHIFTED_COLOR,
+            34
+          )
+        ].filter(Boolean);
+      }
+
+      const sliderSteps = shifts.map(shift => ({
+        method:"update",
+        label:formatSignedShift(shift),
+        args:[
+          {
+            "y":[
+              curves.nationalSmooth,
+              curves.stateSmooth,
+              analysis.shifted.get(shift)
+            ]
+          },
+          {
+            annotations:annotationsForShift(shift)
+          }
+        ]
+      }));
+
+      const layout = {
+        autosize:true,
+        height:675,
+        paper_bgcolor:"#fff",
+        plot_bgcolor:"#fff",
+        font:{size:12,color:"#1f1f1f"},
+        showlegend:false,
+        hovermode:"x unified",
+        margin:{l:75,r:75,t:120,b:110},
+
+        title:{
+          text:
+            `${curves.displayName} in ${stateLabel} vs. National<br>` +
+            `<sup>${interpretation(stateCode, analysis.bestShift)}</sup>`,
+          x:0.5,
+          y:0.85,
+          xanchor:"center",
+          yanchor:"top",
+          font:{size:20,color:"#1f1f1f"}
+        },
+
+        annotations:annotationsForShift(initialShift),
+
+        sliders:[{
+          active:shifts.indexOf(initialShift),
+          currentvalue:{
+            prefix:"Shift: ",
+            suffix:" years",
+            font:{size:16}
+          },
+          pad:{t:65},
+          steps:sliderSteps
+        }],
+
+        xaxis:{
+          title:"Year",
+          range:[curves.yearMin,curves.yearMax],
+          fixedrange:true,
+          showgrid:true,
+          gridcolor:"rgba(140,140,140,0.16)",
+          zeroline:false
+        },
+
+        yaxis:{
+          title:{
+            text:`${stateLabel} share of births`,
+            font:{color:STATE_COLOR}
+          },
+          tickfont:{color:STATE_COLOR},
+          tickformat:".3%",
+          range:[0,(stateAxisMax > 0 ? stateAxisMax : 1) * 1.10],
+          side:"left",
+          fixedrange:true,
+          showgrid:true,
+          gridcolor:"rgba(140,140,140,0.16)",
+          zeroline:false
+        },
+
+        yaxis2:{
+          title:{
+            text:"National share of births",
+            font:{color:NATIONAL_COLOR}
+          },
+          tickfont:{color:NATIONAL_COLOR},
+          tickformat:".3%",
+          range:[0,(nationalAxisMax > 0 ? nationalAxisMax : 1) * 1.10],
+          overlaying:"y",
+          side:"right",
+          fixedrange:true,
+          showgrid:false,
+          zeroline:false
+        }
+      };
+
+      const config = {
+        scrollZoom:false,
+        displayModeBar:true,
+        displaylogo:false,
+        doubleClick:false,
+        responsive:true,
+        toImageButtonOptions:{
+          format:"png",
+          filename:"state_name_shift",
+          scale:2
+        }
+      };
+
+      await Plotly.react(
+        plotEl,
+        traces,
+        layout,
+        config
+      );
+    }
+
+    // ------------------------------------------------------------
+    // Load + render
+    // ------------------------------------------------------------
+
+    async function loadAndRender(){
+      const requestedName = normalizeName(nameInput.value);
+      const stateCode = String(stateSelect.value || "").toUpperCase();
+      const token = ++LOAD_TOKEN;
+
+      if(!requestedName){
+        setStatus("Enter a name.", true);
+        Plotly.purge(plotEl);
+        return;
+      }
+
+      if(!STATE_NAMES[stateCode]){
+        setStatus("Select a state.", true);
+        Plotly.purge(plotEl);
+        return;
+      }
+
+      runButton.disabled = true;
+      setStatus("Loading name packet…");
+
+      try{
+        if(!ACTIVE_MANIFEST){
+          await configureLatestData();
+        }
+
+        const packet = await NameData.getNamePacket(requestedName);
+
+        if(token !== LOAD_TOKEN) return;
+
+        if(!packet.national){
+          throw new Error(
+            `No national data found for "${requestedName}". ` +
+            "Names with fewer than 5 reported births in a year may be absent."
+          );
+        }
+
+        const displayName =
+          packet.national.displayName || requestedName;
+
+        nameInput.value = displayName;
+
+        const curves = buildCurves(
+          packet,
+          stateCode,
+          ACTIVE_MANIFEST
+        );
+
+        const analysis = analyzeShifts(curves);
+
+        await drawComparison(
+          curves,
+          analysis,
+          stateCode
+        );
+
+        if(token !== LOAD_TOKEN) return;
+
+        setStatus(
+          `Data through ${curves.yearMax} · ` +
+          `${SMOOTHING_WINDOW}-year centered smoothing · ` +
+          `best shift ${formatSignedShift(analysis.bestShift)} years`
+        );
+      }catch(error){
+        if(token !== LOAD_TOKEN) return;
+
+        console.error(error);
+        Plotly.purge(plotEl);
+
+        setStatus(
+          error?.message || String(error),
+          true
+        );
+      }finally{
+        if(token === LOAD_TOKEN){
+          runButton.disabled = false;
+        }
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Events + initial example
+    // ------------------------------------------------------------
+
+    populateStates();
+
+    runButton.addEventListener("click", loadAndRender);
+
+    nameInput.addEventListener("keydown", event => {
+      if(event.key === "Enter"){
+        event.preventDefault();
+        loadAndRender();
+      }
+    });
+
+    stateSelect.addEventListener("change", () => {
+      if(nameInput.value.trim()){
+        loadAndRender();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if(plotEl.data){
+        Plotly.Plots.resize(plotEl);
+      }
+    });
+
+    const query = new URLSearchParams(window.location.search);
+    const initialName = query.get("name") || "Kayden";
+    const initialState = String(query.get("state") || "UT").toUpperCase();
+
+    nameInput.value = initialName;
+
+    if(STATE_NAMES[initialState]){
+      stateSelect.value = initialState;
+    }
+
+    try{
+      await configureLatestData();
+      await loadAndRender();
+    }catch(error){
+      console.error(error);
+      setStatus(
+        "Unable to initialize the current data version. " +
+        (error?.message || String(error)),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
