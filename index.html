@@ -51,6 +51,40 @@
       font-weight:700;
     }
 
+    .headerTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    
+    .exploreLink{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 12px;
+      border-radius:12px;
+      border:1px solid rgba(96,165,250,0.35);
+      background:linear-gradient(
+        180deg,
+        rgba(96,165,250,0.20),
+        rgba(96,165,250,0.10)
+      );
+      color:var(--text);
+      text-decoration:none;
+      font-size:13px;
+      font-weight:650;
+      white-space:nowrap;
+    }
+    
+    .exploreLink:hover{
+      background:linear-gradient(
+        180deg,
+        rgba(96,165,250,0.26),
+        rgba(96,165,250,0.14)
+      );
+    }
+
     .controls{
       margin-top:12px;
       display:grid;
@@ -195,18 +229,31 @@
       }
     }
 
-    @media (max-width:620px){
-      .controls{
-        grid-template-columns:1fr;
+    @media (max-width: 620px){
+        .controls{grid-template-columns:1fr;}
+      
+        .headerTop{
+          align-items:flex-start;
+        }
+      
+        .exploreLink{
+          font-size:12px;
+          padding:7px 9px;
+        }
       }
-    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>Name Popularity Dashboard</h1>
+      <div class="headerTop">
+        <h1>Name Popularity Dashboard</h1>
+      
+        <a class="exploreLink" href="explore/">
+          Explore Visualizations →
+        </a>
+      </div>
 
       <div class="controls" role="form" aria-label="Name dashboard controls">
         <div>
