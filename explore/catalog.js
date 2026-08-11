@@ -271,20 +271,25 @@ export const visualizations = [
     shortTitle: "Name correlations",
     category: "Correlations",
     description:
-      "Compare two baby-name popularity trajectories over time and see how strongly the two series are correlated.",
+      "Explore correlation in baby-name popularity over time, either for a chosen pair of names or by finding the names most and least correlated with a target name.",
     instructions:
-      "The visualization starts with Karen and Terry. Enter any two first names above the chart to replace them. Use the controls below the visualization to switch sex, metric, scale, and highlighted year.",
+      "Choose Two-name explorer to compare any pair of names with the interactive scatter/time-series view. Choose Top/bottom correlates to find the five strongest and five weakest combined-frequency correlates for a target name among the 3,000 most common U.S. names of all time.",
     methodology:
-      "The explorer uses national SSA name packets. Frequency and percentage treat missing name-years as zero; rank is left unavailable when a name has no recorded births. Pearson correlation is recalculated for the selected Combined/Male/Female and Frequency/Rank/Percent view.",
+      "The two-name view uses national SSA name packets and recalculates Pearson correlation for the selected sex and metric. The top/bottom view uses an annually precomputed Pearson-correlation lookup among the 3,000 most common names of all time; correlations use combined-sex national frequency curves over the full national year range with missing name-years treated as zero. The plotted curves themselves still come from the standard national name packets.",
     dataThrough: 2025,
     iframeHeight: 900,
     embedMode: "scale",
     embedWidth: 1100,
     variants: [
       {
-        id: "default",
-        label: "Open visualization",
+        id: "pair",
+        label: "Two-name explorer",
         path: "../visualizations/showcase/name-correlation-explorer.html"
+      },
+      {
+        id: "correlates",
+        label: "Top/bottom correlates",
+        path: "../visualizations/showcase/name-correlation-correlates.html"
       }
     ]
   },
