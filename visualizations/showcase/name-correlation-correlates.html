@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Top and Bottom Name Correlates</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: #1f1f1f;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    body { min-width: 1100px; }
+    .app {
+      width: 1100px;
+      margin: 0 auto;
+      background: white;
+      padding-top: 10px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: end;
+      padding: 10px 20px;
+      border-bottom: 1px solid #e1e1e1;
+      background: #fafafa;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: white;
+      font: inherit;
+    }
+    button {
+      min-height: 38px;
+      padding: 7px 13px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #f7f7f7;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.primary {
+      border-color: #6d8eff;
+      background: #dfe8ff;
+      color: #243b7a;
+      font-weight: 700;
+    }
+    button.active {
+      border-color: #6d8eff;
+      background: #dfe8ff;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+    .mode-wrap label { margin-bottom: 4px; }
+    .mode-group {
+      display: flex;
+      gap: 7px;
+    }
+    .status {
+      min-height: 23px;
+      padding: 5px 20px 0;
+      color: #666;
+      font-size: 12px;
+    }
+    .status.error { color: #a61b1b; }
+    #plot {
+      width: 1100px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div>
+        <label for="name_input">Target name</label>
+        <input
+          id="name_input"
+          type="text"
+          value="Jerome"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <button
+        id="find_button"
+        class="primary"
+        type="button"
+      >
+        Find Correlates
+      </button>
+
+      <div class="mode-wrap">
+        <label>Curve scale</label>
+        <div id="mode_group" class="mode-group">
+          <button class="active" data-mode="frequency" type="button">
+            Frequency
+          </button>
+          <button data-mode="normalized" type="button">
+            Normalized
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const TOP_COLOR = "#2E8B57";
+    const BOTTOM_COLOR = "#D62728";
+    const TARGET_COLOR = "#8C8C8C";
+    const DISPLAY_EACH = 5;
+
+    const inputEl = document.getElementById("name_input");
+    const findButton = document.getElementById("find_button");
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    let currentMode = "frequency";
+    let manifest = null;
+    let lookupMap = null;
+    let currentData = null;
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function cleanKey(value) {
+      return String(value ?? "").trim().toLowerCase();
+    }
+
+    function normalizeCurve(values) {
+      const maxValue = Math.max(
+        0,
+        ...values.filter(value => Number.isFinite(value))
+      );
+
+      if (!(maxValue > 0)) {
+        return values.map(() => 0);
+      }
+
+      return values.map(value =>
+        Number.isFinite(value) ? value / maxValue : 0
+      );
+    }
+
+    function packetCurve(packet, years) {
+      const lookup = new Map(
+        (packet?.yearly || []).map(row => [
+          Number(row.year),
+          Number(row.frequency_c) || 0
+        ])
+      );
+
+      return years.map(year => Number(lookup.get(year)) || 0);
+    }
+
+    function rowNeighbors(row, side) {
+      const out = [];
+
+      for (let i = 1; i <= DISPLAY_EACH; i += 1) {
+        const name = row[`${side}_${i}_name`];
+        const r = Number(row[`${side}_${i}_r`]);
+
+        if (name && Number.isFinite(r)) {
+          out.push({
+            name: String(name),
+            r
+          });
+        }
+      }
+
+      return out;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+
+      const [loadedManifest, lookupTable] = await Promise.all([
+        NameData.loadManifest(),
+        NameData.loadGlobalTable("nameFrequencyCorrelatesTop3000")
+      ]);
+
+      manifest = loadedManifest;
+
+      lookupMap = new Map(
+        lookupTable.records.map(row => [
+          String(row.target_key).toLowerCase(),
+          row
+        ])
+      );
+    }
+
+    function axisReference(index, axis) {
+      return index === 1 ? axis : axis + index;
+    }
+
+    function layoutAxisKey(index, axis) {
+      return index === 1 ? axis + "axis" : axis + "axis" + index;
+    }
+
+    function plotDomains() {
+      const left = 0.085;
+      const right = 0.995;
+      const gap = 0.020;
+      const width = (right - left - 4 * gap) / 5;
+
+      return Array.from({ length: 5 }, (_, i) => {
+        const x0 = left + i * (width + gap);
+        return [x0, x0 + width];
+      });
+    }
+
+    function yearTicks(years) {
+      if (!years.length) return [];
+
+      const candidates = [
+        years[0],
+        1920,
+        1960,
+        2000,
+        years[years.length - 1]
+      ];
+
+      const minYear = years[0];
+      const maxYear = years[years.length - 1];
+
+      return Array.from(
+        new Set(
+          candidates.filter(year =>
+            year >= minYear && year <= maxYear
+          )
+        )
+      );
+    }
+
+    function buildFigure() {
+      const {
+        targetName,
+        years,
+        targetCurve,
+        top,
+        bottom,
+        curves
+      } = currentData;
+
+      const domains = plotDomains();
+      const topY = [0.57, 0.91];
+      const bottomY = [0.08, 0.42];
+
+      const traces = [];
+      const annotations = [];
+
+      const groups = [
+        {
+          items: top,
+          color: TOP_COLOR,
+          yDomain: topY
+        },
+        {
+          items: bottom,
+          color: BOTTOM_COLOR,
+          yDomain: bottomY
+        }
+      ];
+
+      let panelIndex = 0;
+
+      for (const group of groups) {
+        group.items.forEach((item, colIndex) => {
+          panelIndex += 1;
+
+          const xRef = axisReference(panelIndex, "x");
+          const yRef = axisReference(panelIndex, "y");
+
+          const targetValues =
+            currentMode === "normalized"
+              ? normalizeCurve(targetCurve)
+              : targetCurve;
+
+          const otherRaw = curves.get(item.name);
+
+          const otherValues =
+            currentMode === "normalized"
+              ? normalizeCurve(otherRaw)
+              : otherRaw;
+
+          traces.push({
+            type: "scatter",
+            mode: "lines",
+            x: years,
+            y: targetValues,
+            xaxis: xRef,
+            yaxis: yRef,
+            line: {
+              color: TARGET_COLOR,
+              width: 2.0
+            },
+            opacity: 0.85,
+            hoverinfo: "skip",
+            showlegend: false
+          });
+
+          traces.push({
+            type: "scatter",
+            mode: "lines",
+            x: years,
+            y: otherValues,
+            xaxis: xRef,
+            yaxis: yRef,
+            line: {
+              color: group.color,
+              width: 2.2
+            },
+            opacity: 0.95,
+            hoverinfo: "skip",
+            showlegend: false
+          });
+
+          const domain = domains[colIndex];
+          const centerX = (domain[0] + domain[1]) / 2;
+
+          annotations.push({
+            x: centerX,
+            y: group.yDomain[1] + 0.048,
+            xref: "paper",
+            yref: "paper",
+            text: `<b>${item.name}</b>`,
+            showarrow: false,
+            font: {
+              size: 12,
+              color: group.color
+            }
+          });
+
+          annotations.push({
+            x: centerX,
+            y: group.yDomain[1] + 0.020,
+            xref: "paper",
+            yref: "paper",
+            text: `r = ${item.r.toFixed(3)}`,
+            showarrow: false,
+            font: {
+              size: 9,
+              color: group.color
+            }
+          });
+        });
+      }
+
+      annotations.push(
+        {
+          x: 0.020,
+          y: (topY[0] + topY[1]) / 2,
+          xref: "paper",
+          yref: "paper",
+          text: "<b>Top correlates</b>",
+          textangle: -90,
+          showarrow: false,
+          font: {
+            size: 12,
+            color: TOP_COLOR
+          }
+        },
+        {
+          x: 0.048,
+          y: (topY[0] + topY[1]) / 2,
+          xref: "paper",
+          yref: "paper",
+          text:
+            currentMode === "normalized"
+              ? "Normalized Freq"
+              : "Frequency",
+          textangle: -90,
+          showarrow: false,
+          font: {
+            size: 9,
+            color: "#222"
+          }
+        },
+        {
+          x: 0.020,
+          y: (bottomY[0] + bottomY[1]) / 2,
+          xref: "paper",
+          yref: "paper",
+          text: "<b>Bottom correlates</b>",
+          textangle: -90,
+          showarrow: false,
+          font: {
+            size: 12,
+            color: BOTTOM_COLOR
+          }
+        },
+        {
+          x: 0.048,
+          y: (bottomY[0] + bottomY[1]) / 2,
+          xref: "paper",
+          yref: "paper",
+          text:
+            currentMode === "normalized"
+              ? "Normalized Freq"
+              : "Frequency",
+          textangle: -90,
+          showarrow: false,
+          font: {
+            size: 9,
+            color: "#222"
+          }
+        }
+      );
+
+      const title =
+        "Names "
+        + `<span style="color:${TOP_COLOR}"><b>Most</b></span>`
+        + " and "
+        + `<span style="color:${BOTTOM_COLOR}"><b>Least</b></span>`
+        + " Correlated with "
+        + `<span style="color:${TARGET_COLOR}"><b>${targetName}</b></span>`;
+
+      const layout = {
+        width: 1100,
+        height: 650,
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        showlegend: false,
+        hovermode: false,
+        margin: {
+          l: 15,
+          r: 15,
+          t: 95,
+          b: 45
+        },
+        title: {
+          text: title,
+          x: 0.5,
+          xanchor: "center",
+          y: 0.965,
+          font: { size: 20 }
+        },
+        annotations
+      };
+
+      const ticks = yearTicks(years);
+
+      for (let index = 1; index <= 10; index += 1) {
+        const row = index <= 5 ? 0 : 1;
+        const col = (index - 1) % 5;
+
+        const xKey = layoutAxisKey(index, "x");
+        const yKey = layoutAxisKey(index, "y");
+
+        const xRef = axisReference(index, "x");
+        const yRef = axisReference(index, "y");
+
+        const yDomain = row === 0 ? topY : bottomY;
+
+        layout[xKey] = {
+          domain: domains[col],
+          anchor: yRef,
+          range: [years[0], years[years.length - 1]],
+          tickmode: "array",
+          tickvals: ticks,
+          tickfont: { size: 8 },
+          showticklabels: row === 1,
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          showline: true,
+          linecolor: "rgba(0,0,0,0.45)",
+          linewidth: 1,
+          title:
+            row === 1
+              ? {
+                  text: "Year",
+                  font: { size: 10 },
+                  standoff: 6
+                }
+              : undefined
+        };
+
+        layout[yKey] = {
+          domain: yDomain,
+          anchor: xRef,
+          showticklabels: false,
+          ticks: "",
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          showline: true,
+          linecolor: "rgba(0,0,0,0.45)",
+          linewidth: 1,
+          rangemode: "tozero"
+        };
+
+        if (currentMode === "normalized") {
+          layout[yKey].range = [0, 1.05];
+          layout[yKey].autorange = false;
+        }
+      }
+
+      return { traces, layout };
+    }
+
+    async function renderCurrent() {
+      if (!currentData) return;
+
+      const figure = buildFigure();
+
+      await Plotly.react(
+        plotEl,
+        figure.traces,
+        figure.layout,
+        {
+          responsive: false,
+          displayModeBar: false,
+          scrollZoom: false
+        }
+      );
+
+      document
+        .querySelectorAll("#mode_group button")
+        .forEach(button => {
+          button.classList.toggle(
+            "active",
+            button.dataset.mode === currentMode
+          );
+        });
+    }
+
+    async function loadTarget() {
+      const key = cleanKey(inputEl.value);
+
+      if (!key) {
+        throw new Error("Enter a first name.");
+      }
+
+      const lookupRow = lookupMap.get(key);
+
+      if (!lookupRow) {
+        throw new Error(
+          "This view is available for the 3,000 most common "
+          + "U.S. names of all time."
+        );
+      }
+
+      findButton.disabled = true;
+      setStatus(`Loading correlates for ${lookupRow.target_name}…`);
+
+      try {
+        const top = rowNeighbors(lookupRow, "top");
+        const bottom = rowNeighbors(lookupRow, "bottom");
+
+        const allNames = [
+          lookupRow.target_name,
+          ...top.map(item => item.name),
+          ...bottom.map(item => item.name)
+        ];
+
+        const packets = await Promise.all(
+          allNames.map(name => NameData.getNationalName(name))
+        );
+
+        const missing = allNames.filter((_, i) => !packets[i]);
+
+        if (missing.length) {
+          throw new Error(
+            "Missing national packet data for: "
+            + missing.join(", ")
+          );
+        }
+
+        const [yearMin, yearMax] = manifest.yearRanges.national;
+
+        const years = Array.from(
+          { length: yearMax - yearMin + 1 },
+          (_, i) => yearMin + i
+        );
+
+        const curves = new Map();
+
+        allNames.forEach((name, i) => {
+          curves.set(
+            name,
+            packetCurve(packets[i], years)
+          );
+        });
+
+        currentData = {
+          targetName: String(lookupRow.target_name),
+          allTimeRank: Number(lookupRow.all_time_rank),
+          years,
+          top,
+          bottom,
+          curves,
+          targetCurve: curves.get(String(lookupRow.target_name))
+        };
+
+        inputEl.value = currentData.targetName;
+
+        await renderCurrent();
+
+        setStatus(
+          `${currentData.targetName} is #`
+          + `${currentData.allTimeRank.toLocaleString()} `
+          + "among the 3,000-name correlation universe."
+        );
+
+      } finally {
+        findButton.disabled = false;
+      }
+    }
+
+    findButton.addEventListener("click", () => {
+      loadTarget().catch(error => {
+        console.error(error);
+        setStatus(error?.message || String(error), true);
+      });
+    });
+
+    inputEl.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+
+        loadTarget().catch(error => {
+          console.error(error);
+          setStatus(error?.message || String(error), true);
+        });
+      }
+    });
+
+    document
+      .querySelectorAll("#mode_group button")
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          currentMode = button.dataset.mode;
+          renderCurrent();
+        });
+      });
+
+    try {
+      await configureLatestData();
+      await loadTarget();
+
+    } catch (error) {
+      console.error(error);
+      setStatus(error?.message || String(error), true);
+    }
+  </script>
+</body>
+</html>
