@@ -1,0 +1,898 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Yearbook Guesser</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    :root{
+      --text:#1f1f1f;
+      --muted:#666;
+      --border:#d8d8d8;
+      --panel:#f7f7f9;
+      --model:#1F77B4;
+      --model-light:#eaf3fb;
+      --error:#a61b1b;
+    }
+
+    *{box-sizing:border-box}
+
+    html,body{
+      margin:0;
+      padding:0;
+      background:#fff;
+      color:var(--text);
+      font-family:Arial,Helvetica,sans-serif;
+    }
+
+    body{min-width:1100px}
+
+    .app{
+      width:1100px;
+      margin:0 auto;
+      padding:12px 0 4px;
+    }
+
+    .controls{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 180px;
+      gap:12px;
+      align-items:stretch;
+      margin:0 16px;
+      padding:12px;
+      border:1px solid var(--border);
+      border-radius:11px;
+      background:var(--panel);
+    }
+
+    label{
+      display:block;
+      margin-bottom:5px;
+      font-size:12px;
+      font-weight:700;
+    }
+
+    textarea,select,button{
+      font:inherit;
+    }
+
+    textarea{
+      display:block;
+      width:100%;
+      height:78px;
+      resize:vertical;
+      min-height:68px;
+      max-height:150px;
+      padding:9px 10px;
+      border:1px solid #aaa;
+      border-radius:8px;
+      background:#fff;
+      color:var(--text);
+      line-height:1.35;
+    }
+
+    .control-stack{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    select{
+      width:100%;
+      min-height:38px;
+      padding:7px 9px;
+      border:1px solid #aaa;
+      border-radius:8px;
+      background:#fff;
+      color:var(--text);
+    }
+
+    button{
+      min-height:40px;
+      padding:8px 14px;
+      border:1px solid #8b7caf;
+      border-radius:8px;
+      background:#f2eff8;
+      color:#30244c;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    button:hover{background:#e8e2f3}
+    button:disabled{opacity:.55;cursor:default}
+
+    .hint{
+      margin:0 18px;
+      padding:7px 2px 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .status{
+      min-height:24px;
+      margin:0 18px;
+      padding:5px 2px 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .status.error{color:var(--error)}
+
+    .prediction{
+      display:flex;
+      align-items:baseline;
+      justify-content:center;
+      gap:12px;
+      width:fit-content;
+      min-width:330px;
+      margin:5px auto 0;
+      padding:9px 18px;
+      border:2px solid var(--model);
+      border-radius:12px;
+      background:var(--model-light);
+      color:#164f79;
+    }
+
+    .prediction[hidden]{display:none}
+
+    .prediction-label{
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .prediction-year{
+      font-size:28px;
+      line-height:1;
+      font-weight:800;
+      color:var(--model);
+      letter-spacing:.2px;
+    }
+
+    #plot{
+      width:1100px;
+      height:650px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls" aria-label="Yearbook Guesser controls">
+      <div>
+        <label for="namesInput">First names</label>
+        <textarea
+          id="namesInput"
+          spellcheck="false"
+          autocomplete="off"
+          placeholder="e.g. Angela, Pamela, Sandra, Rita, Monica, Erica, Tina, Mary, Jessica"
+        ></textarea>
+      </div>
+
+      <div class="control-stack">
+        <div>
+          <label for="metricSelect">Name curves</label>
+          <select id="metricSelect">
+            <option value="frequency">Frequency</option>
+            <option value="percentage">Percentage</option>
+          </select>
+        </div>
+
+        <button id="guessButton" type="button">
+          Guess Birth Year
+        </button>
+      </div>
+    </section>
+
+    <div class="hint">
+      Separate names with commas, semicolons, or line breaks. Duplicate names are allowed and count multiple times in the model.
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <div id="prediction" class="prediction" hidden>
+      <span class="prediction-label">Predicted birth year</span>
+      <span id="predictionYear" class="prediction-year"></span>
+    </div>
+
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const FLOOR_BIRTHS = 4;
+    const MODEL_COLOR = "#1F77B4";
+
+    // Deliberately avoids blue/cyan hues so the model prediction remains distinct.
+    const NAME_COLORS = [
+      "#E76F51", // coral
+      "#6A4C93", // purple
+      "#C44569", // magenta
+      "#3A7D44", // green
+      "#E9A23B", // amber
+      "#8C564B", // brown
+      "#BC4749", // red
+      "#7A8B35", // olive
+      "#D17B88", // rose
+      "#A06D2F", // ochre
+      "#8E5AA9", // violet
+      "#CC6B5A"  // terracotta
+    ];
+
+    const PRESETS = {
+      "mambo": {
+        label: "Mambo No. 5",
+        names: [
+          "Angela","Pamela","Sandra","Rita","Monica",
+          "Erica","Tina","Mary","Jessica"
+        ]
+      },
+      "dream-team": {
+        label: "USA Dream Team",
+        names: [
+          "Michael","Charles","Karl","Patrick","Clyde",
+          "Chris","John","Scottie","David"
+        ]
+      },
+      "friends": {
+        label: "Friends Cast",
+        names: [
+          "Jennifer","Courteney","Lisa","Matt",
+          "Matthew","David"
+        ]
+      },
+      "custom": {
+        label: "Custom names",
+        names: []
+      }
+    };
+
+    const namesInput = document.getElementById("namesInput");
+    const metricSelect = document.getElementById("metricSelect");
+    const guessButton = document.getElementById("guessButton");
+    const statusEl = document.getElementById("status");
+    const predictionEl = document.getElementById("prediction");
+    const predictionYearEl = document.getElementById("predictionYear");
+    const plotEl = document.getElementById("plot");
+
+    let manifest = null;
+    let yearbookTotals = null;
+    let currentResult = null;
+    let loadToken = 0;
+
+    function setStatus(message, isError=false){
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function cleanDisplayName(value){
+      const text = String(value ?? "").trim();
+      if(!text) return "";
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    }
+
+    function cleanKey(value){
+      return String(value ?? "").trim().toLowerCase();
+    }
+
+    function finite(value, fallback=0){
+      const number = Number(value);
+      return Number.isFinite(number) ? number : fallback;
+    }
+
+    function parseNames(text){
+      const raw = String(text ?? "").trim();
+      if(!raw) return [];
+
+      // Conveniently accept a pasted JSON/Python-style list when possible.
+      if(raw.startsWith("[") && raw.endsWith("]")){
+        try{
+          const jsonish = raw.replace(/'/g, '"');
+          const parsed = JSON.parse(jsonish);
+          if(Array.isArray(parsed)){
+            return parsed
+              .map(value => String(value ?? "").trim())
+              .filter(Boolean);
+          }
+        }catch(error){
+          // Fall through to delimiter parsing.
+        }
+      }
+
+      return raw
+        .split(/[\n,;]+/)
+        .map(value =>
+          value
+            .trim()
+            .replace(/^["']+|["']+$/g, "")
+            .trim()
+        )
+        .filter(Boolean);
+    }
+
+    function uniqueFirstSeen(names){
+      const out = [];
+      const seen = new Set();
+
+      for(const name of names){
+        const key = cleanKey(name);
+        if(!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push({key, input:name});
+      }
+
+      return out;
+    }
+
+    async function configureLatestData(){
+      const dataBase = new URL("../../data/", window.location.href);
+      const pointerUrl = new URL("latest.json", dataBase);
+
+      const response = await fetch(pointerUrl, {
+        cache:"no-cache",
+        headers:{Accept:"application/json"}
+      });
+
+      if(!response.ok){
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if(!version){
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({dataRoot});
+
+      const [loadedManifest, totalsTable] = await Promise.all([
+        NameData.loadManifest(),
+        NameData.loadGlobalTable("yearbookYearTotals")
+      ]);
+
+      manifest = loadedManifest;
+
+      yearbookTotals = totalsTable.records
+        .map(row => ({
+          year:Number(row.year),
+          total:finite(row.total_recorded_births)
+        }))
+        .filter(row =>
+          Number.isFinite(row.year) &&
+          row.total > 0
+        )
+        .sort((a,b) => a.year - b.year);
+
+      if(!yearbookTotals.length){
+        throw new Error("The Yearbook Guesser denominator table is empty.");
+      }
+    }
+
+    function smooth3YearWeighted(values){
+      const n = values.length;
+      const out = new Array(n);
+
+      for(let i=0; i<n; i+=1){
+        const previous = i > 0 ? values[i-1] : 0;
+        const current = values[i];
+        const next = i < n-1 ? values[i+1] : 0;
+
+        out[i] =
+          0.25 * previous +
+          0.50 * current +
+          0.25 * next;
+      }
+
+      return out;
+    }
+
+    function packetFrequencySeries(packet, years){
+      const lookup = new Map(
+        (packet?.yearly || []).map(row => [
+          Number(row.year),
+          finite(row.frequency_c)
+        ])
+      );
+
+      return years.map(year => finite(lookup.get(year), 0));
+    }
+
+    function medianLikelihoodYear(years, probabilities){
+      let cumulative = 0;
+
+      for(let i=0; i<years.length; i+=1){
+        cumulative += probabilities[i];
+        if(cumulative >= 0.5){
+          return years[i];
+        }
+      }
+
+      return years[years.length-1];
+    }
+
+    async function computeYearbook(names){
+      const fullNames = names.map(name => ({
+        input:name,
+        key:cleanKey(name)
+      }));
+
+      const unique = uniqueFirstSeen(names);
+
+      const packets = await Promise.all(
+        unique.map(item => NameData.getNationalName(item.input))
+      );
+
+      const packetByKey = new Map();
+      const displayByKey = new Map();
+      const missing = [];
+
+      unique.forEach((item,index) => {
+        const packet = packets[index];
+        packetByKey.set(item.key, packet);
+
+        if(packet){
+          displayByKey.set(
+            item.key,
+            packet.displayName || cleanDisplayName(item.input)
+          );
+        }else{
+          displayByKey.set(
+            item.key,
+            cleanDisplayName(item.input)
+          );
+          missing.push(cleanDisplayName(item.input));
+        }
+      });
+
+      const years = yearbookTotals.map(row => row.year);
+      const totals = yearbookTotals.map(row => row.total);
+
+      const seriesByKey = new Map();
+
+      unique.forEach(item => {
+        const raw = packetFrequencySeries(
+          packetByKey.get(item.key),
+          years
+        );
+
+        const smoothed = smooth3YearWeighted(raw);
+        const adjusted = smoothed.map(value =>
+          Math.max(value, FLOOR_BIRTHS)
+        );
+
+        const percentage = smoothed.map((value,index) =>
+          totals[index] > 0 ? value / totals[index] : 0
+        );
+
+        seriesByKey.set(item.key, {
+          raw,
+          smoothed,
+          adjusted,
+          percentage,
+          displayName:displayByKey.get(item.key)
+        });
+      });
+
+      const logLikelihood = years.map((year,yearIndex) => {
+        let score = 0;
+
+        for(const entry of fullNames){
+          const series = seriesByKey.get(entry.key);
+          const adjustedFrequency = series
+            ? series.adjusted[yearIndex]
+            : FLOOR_BIRTHS;
+
+          score += Math.log(
+            adjustedFrequency / totals[yearIndex]
+          );
+        }
+
+        return score;
+      });
+
+      const maxLog = Math.max(...logLikelihood);
+
+      const relative = logLikelihood.map(value =>
+        Math.exp(value - maxLog)
+      );
+
+      const relativeTotal = relative.reduce(
+        (sum,value) => sum + value,
+        0
+      );
+
+      const modelProbability = relative.map(value =>
+        relativeTotal > 0 ? value / relativeTotal : 0
+      );
+
+      const predictedYear = medianLikelihoodYear(
+        years,
+        modelProbability
+      );
+
+      const plotted = unique.filter(item => {
+        const series = seriesByKey.get(item.key);
+        return (
+          series &&
+          series.smoothed.reduce((sum,value) => sum + value, 0) > 0
+        );
+      });
+
+      return {
+        fullNames,
+        unique,
+        plotted,
+        years,
+        totals,
+        seriesByKey,
+        modelProbability,
+        predictedYear,
+        missing
+      };
+    }
+
+    function peakAnnotation(
+      years,
+      values,
+      displayName,
+      color,
+      yearMin,
+      yearMax
+    ){
+      let peakIndex = -1;
+      let peakValue = -Infinity;
+
+      values.forEach((value,index) => {
+        if(Number.isFinite(value) && value > peakValue){
+          peakValue = value;
+          peakIndex = index;
+        }
+      });
+
+      if(peakIndex < 0 || !(peakValue > 0)){
+        return null;
+      }
+
+      const peakYear = years[peakIndex];
+      const x = peakYear < 1920
+        ? peakYear + 1
+        : peakYear - 1;
+
+      return {
+        x,
+        y:peakValue,
+        xref:"x",
+        yref:"y",
+        text:`<b>${displayName}</b>`,
+        showarrow:false,
+        xanchor:peakYear < 1920 ? "left" : "right",
+        yanchor:"middle",
+        font:{size:13,color}
+      };
+    }
+
+    async function renderPlot(result){
+      const metric = metricSelect.value;
+      const valueKey = metric === "percentage"
+        ? "percentage"
+        : "smoothed";
+
+      const traces = [];
+      const annotations = [];
+
+      result.plotted.forEach((item,index) => {
+        const series = result.seriesByKey.get(item.key);
+        const color = NAME_COLORS[index % NAME_COLORS.length];
+        const values = series[valueKey];
+
+        traces.push({
+          type:"scatter",
+          x:result.years,
+          y:values,
+          mode:"lines",
+          line:{color,width:1.8},
+          opacity:0.42,
+          name:series.displayName,
+          showlegend:false,
+          hoverinfo:"skip"
+        });
+
+        const annotation = peakAnnotation(
+          result.years,
+          values,
+          series.displayName,
+          color,
+          result.years[0],
+          result.years[result.years.length-1]
+        );
+
+        if(annotation) annotations.push(annotation);
+      });
+
+      traces.push({
+        type:"scatter",
+        x:result.years,
+        y:result.modelProbability,
+        mode:"lines",
+        line:{color:MODEL_COLOR,width:4},
+        name:"Model probability",
+        yaxis:"y2",
+        showlegend:false,
+        hoverinfo:"skip"
+      });
+
+      const yearMin = result.years[0];
+      const yearMax = result.years[result.years.length-1];
+
+      let predictionAnchor = "center";
+      if(result.predictedYear <= yearMin + 12){
+        predictionAnchor = "left";
+      }else if(result.predictedYear >= yearMax - 12){
+        predictionAnchor = "right";
+      }
+
+      annotations.push({
+        x:result.predictedYear,
+        y:0.985,
+        xref:"x",
+        yref:"paper",
+        text:`<b>Predicted birth year: ${result.predictedYear}</b>`,
+        showarrow:false,
+        xanchor:predictionAnchor,
+        yanchor:"top",
+        font:{size:17,color:MODEL_COLOR},
+        bgcolor:"rgba(234,243,251,0.96)",
+        bordercolor:MODEL_COLOR,
+        borderwidth:2,
+        borderpad:6
+      });
+
+      const metricTitle = metric === "percentage"
+        ? "Share of all births"
+        : "Smoothed frequency";
+
+      const metricTickFormat = metric === "percentage"
+        ? ".3%"
+        : ",";
+
+      const layout = {
+        width:1100,
+        height:650,
+        paper_bgcolor:"white",
+        plot_bgcolor:"white",
+        hovermode:false,
+        showlegend:false,
+        margin:{l:75,r:85,t:105,b:75},
+        font:{size:14},
+
+        title:{
+          text:
+            `<b>Yearbook Guesser</b><br>` +
+            `<sup>${result.fullNames.length} names, median likelihood estimate</sup>`,
+          x:0.5,
+          xanchor:"center",
+          y:0.93
+        },
+
+        xaxis:{
+          title:{text:"Birth year"},
+          range:[yearMin,yearMax],
+          showgrid:true,
+          gridcolor:"rgba(0,0,0,0.10)",
+          zeroline:false,
+          fixedrange:false
+        },
+
+        yaxis:{
+          title:{text:metricTitle},
+          showgrid:true,
+          gridcolor:"rgba(0,0,0,0.10)",
+          zeroline:false,
+          tickformat:metricTickFormat,
+          rangemode:"tozero",
+          fixedrange:false
+        },
+
+        yaxis2:{
+          title:{
+            text:"Model probability",
+            font:{color:MODEL_COLOR}
+          },
+          tickfont:{color:MODEL_COLOR},
+          overlaying:"y",
+          side:"right",
+          showgrid:false,
+          zeroline:false,
+          tickformat:".2%",
+          rangemode:"tozero",
+          fixedrange:false
+        },
+
+        annotations,
+
+        shapes:[
+          {
+            type:"rect",
+            x0:result.predictedYear - 0.5,
+            x1:result.predictedYear + 0.5,
+            y0:0,
+            y1:1,
+            xref:"x",
+            yref:"paper",
+            fillcolor:"rgba(31,119,180,0.08)",
+            line:{width:0},
+            layer:"below"
+          },
+          {
+            type:"line",
+            x0:result.predictedYear,
+            x1:result.predictedYear,
+            y0:0,
+            y1:1,
+            xref:"x",
+            yref:"paper",
+            line:{
+              color:MODEL_COLOR,
+              width:4,
+              dash:"dash"
+            },
+            layer:"above"
+          }
+        ]
+      };
+
+      const config = {
+        scrollZoom:false,
+        displayModeBar:true,
+        displaylogo:false,
+        doubleClick:false,
+        responsive:false,
+        toImageButtonOptions:{
+          format:"png",
+          filename:"yearbook_guesser",
+          scale:3
+        }
+      };
+
+      await Plotly.react(
+        plotEl,
+        traces,
+        layout,
+        config
+      );
+    }
+
+    async function guess(){
+      const token = ++loadToken;
+      const names = parseNames(namesInput.value);
+
+      if(!names.length){
+        currentResult = null;
+        Plotly.purge(plotEl);
+        predictionEl.hidden = true;
+        setStatus("Enter at least one first name.", true);
+        return;
+      }
+
+      guessButton.disabled = true;
+      predictionEl.hidden = true;
+      setStatus(
+        `Loading ${new Set(names.map(cleanKey)).size} unique name packet` +
+        `${new Set(names.map(cleanKey)).size === 1 ? "" : "s"}…`
+      );
+
+      try{
+        if(!manifest || !yearbookTotals){
+          await configureLatestData();
+        }
+
+        const result = await computeYearbook(names);
+
+        if(token !== loadToken) return;
+
+        currentResult = result;
+
+        predictionYearEl.textContent = String(
+          result.predictedYear
+        );
+        predictionEl.hidden = false;
+
+        await renderPlot(result);
+
+        if(token !== loadToken) return;
+
+        const latestYear = result.years[result.years.length-1];
+
+        if(result.missing.length){
+          setStatus(
+            `Prediction uses data through ${latestYear}. ` +
+            `No national SSA rows were found for: ${result.missing.join(", ")}; ` +
+            `those entries use the model's floor value only.`
+          );
+        }else{
+          setStatus(
+            `Prediction uses ${names.length} name entr` +
+            `${names.length === 1 ? "y" : "ies"} and national data through ${latestYear}.`
+          );
+        }
+
+      }catch(error){
+        if(token !== loadToken) return;
+
+        console.error(error);
+        currentResult = null;
+        Plotly.purge(plotEl);
+        predictionEl.hidden = true;
+
+        setStatus(
+          error?.message || String(error),
+          true
+        );
+      }finally{
+        if(token === loadToken){
+          guessButton.disabled = false;
+        }
+      }
+    }
+
+    guessButton.addEventListener("click", guess);
+
+    namesInput.addEventListener("keydown", event => {
+      if((event.ctrlKey || event.metaKey) && event.key === "Enter"){
+        event.preventDefault();
+        guess();
+      }
+    });
+
+    metricSelect.addEventListener("change", () => {
+      if(currentResult){
+        renderPlot(currentResult);
+      }
+    });
+
+    const params = new URLSearchParams(
+      window.location.search
+    );
+
+    const presetKey = PRESETS[params.get("preset")]
+      ? params.get("preset")
+      : "mambo";
+
+    const preset = PRESETS[presetKey];
+
+    if(preset.names.length){
+      namesInput.value = preset.names.join(", ");
+    }
+
+    try{
+      await configureLatestData();
+
+      if(preset.names.length){
+        await guess();
+      }else{
+        setStatus(
+          "Enter a list of first names, then choose Guess Birth Year."
+        );
+      }
+    }catch(error){
+      console.error(error);
+      setStatus(
+        "Unable to initialize the current data version. " +
+        (error?.message || String(error)),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
