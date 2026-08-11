@@ -612,8 +612,17 @@
       for(let i=0;i<result.plotted.length;i+=1){
         const freqLine = i*2;
         const pctLine = frequencyCount + i*2;
+      
+        // Keep the old text-label traces permanently hidden.
+        // Labels are now handled by collision-adjusted annotations.
         traces[freqLine+1].visible = false;
         traces[pctLine+1].visible = false;
+      
+        visibleFrequency[freqLine+1] = false;
+        visiblePercentage[freqLine+1] = false;
+        visibleFrequency[pctLine+1] = false;
+        visiblePercentage[pctLine+1] = false;
+      
         freqLineTraceIndices.push(freqLine);
         pctLineTraceIndices.push(pctLine);
       }
