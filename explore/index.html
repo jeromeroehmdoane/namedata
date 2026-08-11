@@ -36,50 +36,11 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260811-yearbook";
+    import { visualizations } from "./catalog.js?v=20260810-name-balance-custom";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
     const categories = ["All", ...new Set(visualizations.map(item => item.category))];
-
-    let latestDataVersionPromise = null;
-
-    function getLatestDataVersion() {
-      if (!latestDataVersionPromise) {
-        latestDataVersionPromise = fetch("../data/latest.json", {
-          cache: "no-cache",
-          headers: { Accept: "application/json" }
-        })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-          })
-          .then(pointer => String(pointer.dataVersion ?? "").trim())
-          .then(version => {
-            if (!version) throw new Error("Missing dataVersion.");
-            return version;
-          });
-      }
-
-      return latestDataVersionPromise;
-    }
-
-    function setDataThrough(element, item) {
-      if (item.dataThrough !== "latest") {
-        element.textContent = `Data through ${item.dataThrough}`;
-        return;
-      }
-
-      element.textContent = "Data through current release";
-
-      getLatestDataVersion()
-        .then(version => {
-          element.textContent = `Data through ${version}`;
-        })
-        .catch(() => {
-          element.textContent = "Data through current release";
-        });
-    }
 
     function makeFilter(category) {
       const button = document.createElement("button");
@@ -107,7 +68,7 @@
 
       const year = document.createElement("span");
       year.className = "badge";
-      setDataThrough(year, item);
+      year.textContent = `Data through ${item.dataThrough}`;
       topLine.append(year);
 
       if (item.heavy) {
