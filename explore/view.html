@@ -215,15 +215,19 @@
         button.classList.toggle("active", button.dataset.variant === variant.id);
       });
 
-      prepareFrameForMode();
-      frame.src = variant.path;
-
       frame.onload = () => {
         attachChildObserver();
         measureChildHeight();
         resizeVisualization();
         updateLoadedStatus();
       };
+
+      frame.onerror = () => {
+        status.textContent = "Unable to load visualization";
+      };
+
+      prepareFrameForMode();
+      frame.src = variant.path;
 
       if (updateUrl) {
         const next = new URL(window.location.href);
