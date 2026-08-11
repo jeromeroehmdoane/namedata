@@ -266,6 +266,44 @@ export const visualizations = [
     ]
   },
   {
+    id: "yearbook-guesser",
+    title: "Yearbook Guesser",
+    shortTitle: "Yearbook guesser",
+    category: "Interactive tools",
+    description:
+      "Enter a group of first names and estimate the birth year most consistent with the historical popularity of those names.",
+    instructions:
+      "Choose Mambo No. 5, USA Dream Team, Friends Cast, or Custom input above the visualization. The example lists load automatically and remain editable. In the custom view, enter names separated by commas, semicolons, or line breaks, then choose Guess Birth Year. Use the Name curves selector to switch between frequency and percentage.",
+    methodology:
+      "The model uses combined-sex national SSA name frequencies. Each name curve receives light 3-year weighted smoothing, then a floor of four births prevents zero probabilities. For each candidate year, the model combines P(name | birth year) across all entered names, normalizes the resulting likelihood curve, and reports its median year. Duplicate input names count multiple times.",
+    dataThrough: "latest",
+    iframeHeight: 900,
+    embedMode: "scale",
+    embedWidth: 1100,
+    variants: [
+      {
+        id: "mambo",
+        label: "Mambo No. 5",
+        path: "../visualizations/showcase/yearbook-guesser.html?preset=mambo"
+      },
+      {
+        id: "dream-team",
+        label: "USA Dream Team",
+        path: "../visualizations/showcase/yearbook-guesser.html?preset=dream-team"
+      },
+      {
+        id: "friends",
+        label: "Friends Cast",
+        path: "../visualizations/showcase/yearbook-guesser.html?preset=friends"
+      },
+      {
+        id: "custom",
+        label: "Custom input",
+        path: "../visualizations/showcase/yearbook-guesser.html?preset=custom"
+      }
+    ]
+  },
+  {
     id: "draw-name-curve",
     title: "Draw a Name Curve",
     shortTitle: "Draw a curve",

@@ -87,7 +87,7 @@
   </main>
 
   <script type="module">
-    import { getVisualization, getVariant } from "./catalog.js?v=20260810-name-balance-custom";
+    import { getVisualization, getVariant } from "./catalog.js?v=20260811-yearbook";
 
     const params = new URLSearchParams(window.location.search);
     const item = getVisualization(params.get("viz"));
@@ -114,13 +114,52 @@
     });
     stageResizeObserver.observe(stage);
 
+    let latestDataVersionPromise = null;
+
+    function getLatestDataVersion() {
+      if (!latestDataVersionPromise) {
+        latestDataVersionPromise = fetch("../data/latest.json", {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        })
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+          })
+          .then(pointer => String(pointer.dataVersion ?? "").trim())
+          .then(version => {
+            if (!version) throw new Error("Missing dataVersion.");
+            return version;
+          });
+      }
+
+      return latestDataVersionPromise;
+    }
+
+    function setDataThrough(element, item) {
+      if (item.dataThrough !== "latest") {
+        element.textContent = `Data through ${item.dataThrough}`;
+        return;
+      }
+
+      element.textContent = "Data through current release";
+
+      getLatestDataVersion()
+        .then(version => {
+          element.textContent = `Data through ${version}`;
+        })
+        .catch(() => {
+          element.textContent = "Data through current release";
+        });
+    }
+
     function initializeViewer(item) {
       document.title = `${item.title} | U.S. Baby-Name Data`;
       document.getElementById("breadcrumbTitle").textContent = item.title;
       document.getElementById("category").textContent = item.category;
       document.getElementById("title").textContent = item.title;
       document.getElementById("description").textContent = item.description;
-      document.getElementById("dataYear").textContent = `Data through ${item.dataThrough}`;
+      setDataThrough(document.getElementById("dataYear"), item);
       document.getElementById("instructions").textContent = item.instructions;
       document.getElementById("methodology").textContent = item.methodology;
       document.getElementById("largeBadge").hidden = !item.heavy;
