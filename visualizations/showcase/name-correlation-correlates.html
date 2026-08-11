@@ -35,7 +35,7 @@
     label {
       display: block;
       margin-bottom: 4px;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 700;
     }
     input {
@@ -46,6 +46,7 @@
       border-radius: 7px;
       background: white;
       font: inherit;
+      font-size: 16px;
     }
     button {
       min-height: 38px;
@@ -54,6 +55,7 @@
       border-radius: 7px;
       background: #f7f7f7;
       font: inherit;
+      font-size: 15px;
       cursor: pointer;
     }
     button.primary {
@@ -79,7 +81,7 @@
       min-height: 23px;
       padding: 5px 20px 0;
       color: #666;
-      font-size: 12px;
+      font-size: 13px;
     }
     .status.error { color: #a61b1b; }
     #plot {
@@ -114,10 +116,10 @@
       <div class="mode-wrap">
         <label>Curve scale</label>
         <div id="mode_group" class="mode-group">
-          <button class="active" data-mode="frequency" type="button">
+          <button data-mode="frequency" type="button">
             Frequency
           </button>
-          <button data-mode="normalized" type="button">
+          <button class="active" data-mode="normalized" type="button">
             Normalized
           </button>
         </div>
@@ -141,7 +143,7 @@
     const statusEl = document.getElementById("status");
     const plotEl = document.getElementById("plot");
 
-    let currentMode = "frequency";
+    let currentMode = "normalized";
     let manifest = null;
     let lookupMap = null;
     let currentData = null;
@@ -268,23 +270,13 @@
     function yearTicks(years) {
       if (!years.length) return [];
 
-      const candidates = [
-        years[0],
-        1920,
-        1960,
-        2000,
-        years[years.length - 1]
-      ];
-
       const minYear = years[0];
       const maxYear = years[years.length - 1];
 
-      return Array.from(
-        new Set(
-          candidates.filter(year =>
-            year >= minYear && year <= maxYear
-          )
-        )
+      return [1900, 1950, 2000].filter(
+        year =>
+          year >= minYear
+          && year <= maxYear
       );
     }
 
@@ -371,93 +363,77 @@
             showlegend: false
           });
 
-          const domain = domains[colIndex];
-          const centerX = (domain[0] + domain[1]) / 2;
+          annotations.push({
+            x: 0.5,
+            y: 1.10,
+            xref: `${xRef} domain`,
+            yref: `${yRef} domain`,
+            xanchor: "center",
+            yanchor: "bottom",
+            text: `<b>${item.name}</b>`,
+            showarrow: false,
+            font: {
+              size: 15,
+              color: group.color
+            }
+          });
 
           annotations.push({
-            x: centerX,
-            y: group.yDomain[1] + 0.048,
-            xref: "paper",
-            yref: "paper",
-            text: `<b>${item.name}</b>`,
+            x: 0.5,
+            y: 1.025,
+            xref: `${xRef} domain`,
+            yref: `${yRef} domain`,
+            xanchor: "center",
+            yanchor: "bottom",
+            text: `r = ${item.r.toFixed(3)}`,
             showarrow: false,
             font: {
               size: 12,
               color: group.color
             }
           });
-
-          annotations.push({
-            x: centerX,
-            y: group.yDomain[1] + 0.020,
-            xref: "paper",
-            yref: "paper",
-            text: `r = ${item.r.toFixed(3)}`,
-            showarrow: false,
-            font: {
-              size: 9,
-              color: group.color
-            }
-          });
         });
       }
 
+      const metricLabel =
+        currentMode === "normalized"
+          ? "Normalized Freq"
+          : "Frequency";
+
       annotations.push(
         {
-          x: 0.020,
+          x: 0.042,
           y: (topY[0] + topY[1]) / 2,
           xref: "paper",
           yref: "paper",
-          text: "<b>Top correlates</b>",
+          xanchor: "center",
+          yanchor: "middle",
+          align: "center",
           textangle: -90,
-          showarrow: false,
-          font: {
-            size: 12,
-            color: TOP_COLOR
-          }
-        },
-        {
-          x: 0.048,
-          y: (topY[0] + topY[1]) / 2,
-          xref: "paper",
-          yref: "paper",
           text:
-            currentMode === "normalized"
-              ? "Normalized Freq"
-              : "Frequency",
-          textangle: -90,
+            `<b><span style="color:${TOP_COLOR}">Top correlates</span></b>`
+            + `<br><span style="color:#222">${metricLabel}</span>`,
           showarrow: false,
           font: {
-            size: 9,
+            size: 13,
             color: "#222"
           }
         },
         {
-          x: 0.020,
+          x: 0.042,
           y: (bottomY[0] + bottomY[1]) / 2,
           xref: "paper",
           yref: "paper",
-          text: "<b>Bottom correlates</b>",
+          xanchor: "center",
+          yanchor: "middle",
+          align: "center",
           textangle: -90,
-          showarrow: false,
-          font: {
-            size: 12,
-            color: BOTTOM_COLOR
-          }
-        },
-        {
-          x: 0.048,
-          y: (bottomY[0] + bottomY[1]) / 2,
-          xref: "paper",
-          yref: "paper",
           text:
-            currentMode === "normalized"
-              ? "Normalized Freq"
-              : "Frequency",
-          textangle: -90,
+            `<b><span style="color:${BOTTOM_COLOR}">Bottom correlates</span></b>`
+            + `<br><span style="color:#222">${metricLabel}</span>`,
           showarrow: false,
           font: {
-            size: 9,
+            size: 13,
             color: "#222"
           }
         }
@@ -488,8 +464,9 @@
           text: title,
           x: 0.5,
           xanchor: "center",
-          y: 0.965,
-          font: { size: 20 }
+          y: 0.985,
+          yanchor: "top",
+          font: { size: 24 }
         },
         annotations
       };
@@ -514,7 +491,7 @@
           range: [years[0], years[years.length - 1]],
           tickmode: "array",
           tickvals: ticks,
-          tickfont: { size: 8 },
+          tickfont: { size: 11 },
           showticklabels: row === 1,
           showgrid: true,
           gridcolor: "rgba(0,0,0,0.10)",
@@ -526,8 +503,8 @@
             row === 1
               ? {
                   text: "Year",
-                  font: { size: 10 },
-                  standoff: 6
+                  font: { size: 12 },
+                  standoff: 7
                 }
               : undefined
         };
@@ -592,7 +569,7 @@
 
       if (!lookupRow) {
         throw new Error(
-          "This view is available for the 3,000 most common "
+          "This view is only available for the 3,000 most common "
           + "U.S. names of all time."
         );
       }
