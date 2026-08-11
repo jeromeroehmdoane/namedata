@@ -555,31 +555,69 @@
       return {counts,total,props,denom,selectedPct,hover};
     }
 
-    function binaryBackgroundTrace(colors) {
-      const y = [];
-      const z = [];
-      const n = 301;
-      for (let i=0; i<n; i+=1) {
-        const v = i/(n-1);
-        y.push(v);
-        z.push([v,v]);
+    function interpolateHex(c1, c2, t) {
+      const a = hexToRgb(c1);
+      const b = hexToRgb(c2);
+      return rgbToHex([
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t
+      ]);
+    }
+
+    function binaryColorValue(v, colors) {
+      if (v <= 0.5) {
+        return interpolateHex(
+          colors[1],
+          COLORS.neutral,
+          v / 0.5
+        );
       }
+
+      return interpolateHex(
+        COLORS.neutral,
+        colors[0],
+        (v - 0.5) / 0.5
+      );
+    }
+
+    function binaryBackgroundImage(colors) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 24;
+      canvas.height = 300;
+
+      const ctx = canvas.getContext("2d");
+
+      for (let row = 0; row < canvas.height; row += 1) {
+        const v = 1 - row / (canvas.height - 1);
+        ctx.fillStyle = binaryColorValue(v, colors);
+        ctx.fillRect(0, row, canvas.width, 1);
+      }
+
       return {
-        type:"heatmap",
-        x:[-0.135,0.135],
-        y,
-        z,
-        colorscale:[
-          [0.00, colors[1]],
-          [0.50, COLORS.neutral],
-          [1.00, colors[0]]
-        ],
-        zmin:0,
-        zmax:1,
-        showscale:false,
-        hoverinfo:"skip",
-        xaxis:"x",
-        yaxis:"y"
+        source: canvas.toDataURL("image/png"),
+        xref: "x",
+        yref: "y",
+        x: -0.135,
+        y: 1.03,
+        sizex: 0.27,
+        sizey: 1.06,
+        sizing: "stretch",
+        opacity: 1,
+        layer: "below"
+      };
+    }
+
+    function binaryBackgroundPlaceholder() {
+      return {
+        type: "scatter",
+        x: [],
+        y: [],
+        mode: "markers",
+        hoverinfo: "skip",
+        showlegend: false,
+        xaxis: "x",
+        yaxis: "y"
       };
     }
 
@@ -852,7 +890,7 @@
         initialTraces.map,
         spec.mode==="ternary-name"
           ? ternaryBackgroundTrace(spec.colors)
-          : binaryBackgroundTrace(spec.colors),
+          : binaryBackgroundPlaceholder(),
         initialTraces.key,
         initialTraces.avg,
         {
@@ -948,19 +986,32 @@
         width:1150,height:860,
         margin:{l:30,r:30,t:80,b:70},
         plot_bgcolor:"white",paper_bgcolor:"white",
-        title:{text:`${title}<br><sup>${initial.label}</sup>`},
+        title:{
+          text:`${title}<br><sup>${initial.label}</sup>`,
+          x:0.05
+        },
         geo:{
           scope:"usa",projection:{type:"albers usa"},
           domain:{x:[0.00,0.70],y:[0.39,1.00]},
           showlakes:false,bgcolor:"rgba(0,0,0,0)"
         },
         xaxis:{
-          domain:[0.705,0.995],showgrid:false,zeroline:false,
-          showticklabels:false,fixedrange:true
+          domain:[0.705,0.995],
+          showgrid:false,
+          zeroline:false,
+          showticklabels:false,
+          ticks:"",
+          showline:false,
+          fixedrange:true
         },
         yaxis:{
-          domain:[0.39,1.00],showgrid:false,zeroline:false,
-          showticklabels:false,fixedrange:true
+          domain:[0.39,1.00],
+          showgrid:false,
+          zeroline:false,
+          showticklabels:false,
+          ticks:"",
+          showline:false,
+          fixedrange:true
         },
         xaxis2:{
           domain:[0.05,0.975],anchor:"y2",
@@ -972,11 +1023,19 @@
           fixedrange:false
         },
         yaxis2:{
-          domain:[0.165,0.325],anchor:"x2",
-          range:[0,yMax*1.08],title:{text:"National frequency"},
-          showgrid:true,zeroline:false,fixedrange:false
+          domain:[0.165,0.325],
+          anchor:"x2",
+          range:[0,yMax*1.08],
+          title:{text:"National frequency"},
+          showgrid:false,
+          zeroline:false,
+          fixedrange:false
         },
-        annotations,shapes,
+        annotations,
+        shapes,
+        images: spec.mode==="ternary-name"
+          ? []
+          : [binaryBackgroundImage(spec.colors)],
         sliders:[{
           active:0,
           currentvalue:{prefix:"Period: "},
