@@ -1,0 +1,1561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Name Correlation Explorer</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: #1f1f1f;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      min-width: 1100px;
+    }
+
+    .app {
+      width: 1100px;
+      margin: 0 auto;
+      background: white;
+    }
+
+    .name-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px 20px 10px;
+      border-bottom: 1px solid #e1e1e1;
+      background: #fafafa;
+    }
+
+    .name-control label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .name-control input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: white;
+      font: inherit;
+    }
+
+    .compare-button {
+      min-height: 38px;
+      padding: 7px 14px;
+      border: 1px solid #6d8eff;
+      border-radius: 7px;
+      background: #dfe8ff;
+      color: #243b7a;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .compare-button:hover {
+      background: #d3dfff;
+    }
+
+    .compare-button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    .status {
+      min-height: 22px;
+      padding: 4px 20px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 100%;
+      height: 700px;
+    }
+
+    .controls {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 20px 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-top: 1px solid #ddd;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      flex-wrap: nowrap;
+    }
+
+    .group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 0 0 auto;
+    }
+
+    .separator {
+      color: #999;
+      font-size: 22px;
+      line-height: 1;
+      user-select: none;
+      margin: 0 2px;
+    }
+
+    .btn {
+      padding: 7px 13px;
+      border: 1px solid #aaa;
+      background: #f7f7f7;
+      cursor: pointer;
+      border-radius: 7px;
+      font-size: 15px;
+    }
+
+    .btn.active {
+      background: #dfe8ff;
+      border-color: #6d8eff;
+    }
+
+    .year-box {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+      flex: 1 1 auto;
+      min-width: 280px;
+      font-size: 15px;
+    }
+
+    .year-box input[type=range] {
+      flex: 1 1 auto;
+    }
+
+    #year_label {
+      min-width: 58px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 17px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <div class="name-controls">
+      <div class="name-control">
+        <label for="name_1_input">First name</label>
+        <input
+          id="name_1_input"
+          type="text"
+          value="Karen"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <div class="name-control">
+        <label for="name_2_input">Second name</label>
+        <input
+          id="name_2_input"
+          type="text"
+          value="Terry"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <button id="compare_button" class="compare-button" type="button">
+        Compare Names
+      </button>
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <div id="plot"></div>
+
+    <div class="controls">
+      <div class="group" id="sex_group">
+        <button class="btn" data-sex="combined">Combined</button>
+        <button class="btn" data-sex="male">Male</button>
+        <button class="btn" data-sex="female">Female</button>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="group" id="metric_group">
+        <button class="btn" data-metric="frequency">Frequency</button>
+        <button class="btn" data-metric="rank">Rank</button>
+        <button class="btn" data-metric="percent">Percent</button>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="group" id="scale_group">
+        <button class="btn" data-scale="linear">Linear</button>
+        <button class="btn" data-scale="log">Log</button>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="year-box">
+        <span>Year:</span>
+        <input id="year_slider" type="range" min="0" max="0" step="1" value="0" />
+        <span id="year_label"></span>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const gd = document.getElementById("plot");
+    const name1Input = document.getElementById("name_1_input");
+    const name2Input = document.getElementById("name_2_input");
+    const compareButton = document.getElementById("compare_button");
+    const statusEl = document.getElementById("status");
+    const yearSlider = document.getElementById("year_slider");
+    const yearLabel = document.getElementById("year_label");
+
+    let payload = null;
+
+    let currentSex = "combined";
+    let currentMetric = "frequency";
+    let currentLog = false;
+    let currentYearIndex = 0;
+
+    const VIRIDIS_STOPS = [
+      [0.00, "#440154"],
+      [0.13, "#482878"],
+      [0.25, "#3e4989"],
+      [0.38, "#31688e"],
+      [0.50, "#26828e"],
+      [0.63, "#1f9e89"],
+      [0.75, "#35b779"],
+      [0.88, "#6ece58"],
+      [1.00, "#fde725"]
+    ];
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function cleanName(value) {
+      const text = String(value ?? "").trim();
+      if (!text) return "";
+      return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+    }
+
+    function hexToRgb(hex) {
+      const h = hex.replace("#", "");
+      return [
+        parseInt(h.slice(0, 2), 16),
+        parseInt(h.slice(2, 4), 16),
+        parseInt(h.slice(4, 6), 16)
+      ];
+    }
+
+    function rgbToHex(rgb) {
+      return "#" + rgb.map(value =>
+        Math.max(0, Math.min(255, Math.round(value)))
+          .toString(16)
+          .padStart(2, "0")
+      ).join("");
+    }
+
+    function viridisColor(t) {
+      const value = Math.max(0, Math.min(1, Number(t)));
+
+      for (let i = 1; i < VIRIDIS_STOPS.length; i += 1) {
+        const [rightT, rightColor] = VIRIDIS_STOPS[i];
+        const [leftT, leftColor] = VIRIDIS_STOPS[i - 1];
+
+        if (value <= rightT) {
+          const local = (value - leftT) / Math.max(rightT - leftT, 1e-12);
+          const left = hexToRgb(leftColor);
+          const right = hexToRgb(rightColor);
+
+          return rgbToHex([
+            left[0] + local * (right[0] - left[0]),
+            left[1] + local * (right[1] - left[1]),
+            left[2] + local * (right[2] - left[2])
+          ]);
+        }
+      }
+
+      return VIRIDIS_STOPS[VIRIDIS_STOPS.length - 1][1];
+    }
+
+    function fmtCorr(value) {
+      return (
+        value == null || !Number.isFinite(value)
+          ? "NA"
+          : Number(value).toFixed(3)
+      );
+    }
+
+    function corrText(metric, sex) {
+      return "r = " + fmtCorr(payload.corr_by_metric[metric][sex]);
+    }
+
+    function axisTitle(metric, label) {
+      if (metric === "rank") return label + " rank (1 = most popular)";
+      if (metric === "percent") return label + " share of births";
+      return label + " frequency";
+    }
+
+    function tickFormat(metric) {
+      return metric === "percent" ? ".2%" : ",";
+    }
+
+    function sexMask(sex) {
+      if (sex === "combined") {
+        return {
+          line: [true, true, false, false, false, false],
+          scatter: [true, false, false]
+        };
+      }
+
+      if (sex === "male") {
+        return {
+          line: [false, false, true, true, false, false],
+          scatter: [false, true, false]
+        };
+      }
+
+      return {
+        line: [false, false, false, false, true, true],
+        scatter: [false, false, true]
+      };
+    }
+
+    function finiteVals(arr) {
+      return arr.filter(value =>
+        value !== null && Number.isFinite(value)
+      );
+    }
+
+    function axisRanges(metric, sex, logOn) {
+      const mask = sexMask(sex);
+
+      const lineKeys = payload.line_order
+        .filter((_, i) => mask.line[i])
+        .map(pair =>
+          `${pair[0]}|${pair[1]}|${metric}`
+        );
+
+      const leftVals = lineKeys.flatMap(key =>
+        finiteVals(payload.line_data[key])
+      );
+
+      const scatKey = `${sex}|${metric}`;
+      const xVals = finiteVals(payload.scatter_data[scatKey].x);
+      const yVals = finiteVals(payload.scatter_data[scatKey].y);
+
+      function linearRange(vals) {
+        if (!vals.length) return [0, 1];
+
+        let lo = Math.min(...vals);
+        let hi = Math.max(...vals);
+
+        if (lo === hi) {
+          if (lo === 0) return [-0.5, 1];
+          return [0.95 * lo, 1.05 * hi];
+        }
+
+        const pad = 0.04 * (hi - lo);
+        return [lo - pad, hi + pad];
+      }
+
+      function rankRange(vals, extraTopRoom=false) {
+        if (!vals.length) return [10, extraTopRoom ? 0 : 1];
+
+        let lo = Math.min(...vals);
+        let hi = Math.max(...vals);
+        const span = Math.max(hi - lo, 1);
+
+        const bottomPad = Math.max(1, 0.04 * span);
+        const topPad = (
+          extraTopRoom
+            ? Math.max(3, 0.10 * span)
+            : Math.max(1, 0.04 * span)
+        );
+
+        return [
+          hi + bottomPad,
+          Math.max(0.5, lo - topPad)
+        ];
+      }
+
+      function logRange(vals) {
+        vals = vals.filter(value => value > 0);
+        if (!vals.length) return [-6, 0];
+
+        const lo = Math.min(...vals);
+        const hi = Math.max(...vals);
+
+        return [
+          Math.log10(lo / 1.2),
+          Math.log10(hi * 1.2)
+        ];
+      }
+
+      function logRankRange(vals, extraTopRoom=false) {
+        vals = vals.filter(value => value > 0);
+        if (!vals.length) return [1, 0];
+
+        const lo = Math.min(...vals);
+        const hi = Math.max(...vals);
+
+        const topFactor = extraTopRoom ? 1.45 : 1.15;
+        const bottomFactor = 1.15;
+
+        const topValue = Math.max(0.75, lo / topFactor);
+        const bottomValue = hi * bottomFactor;
+
+        return [
+          Math.log10(bottomValue),
+          Math.log10(topValue)
+        ];
+      }
+
+      if (metric === "rank") {
+        if (logOn) {
+          return {
+            left: logRankRange(leftVals, true),
+            x: logRankRange(xVals, false),
+            y: logRankRange(yVals, false),
+            type: "log"
+          };
+        }
+
+        return {
+          left: rankRange(leftVals, true),
+          x: rankRange(xVals, false),
+          y: rankRange(yVals, false),
+          type: "linear"
+        };
+      }
+
+      if (logOn) {
+        return {
+          left: logRange(leftVals),
+          x: logRange(xVals),
+          y: logRange(yVals),
+          type: "log"
+        };
+      }
+
+      return {
+        left: linearRange(leftVals),
+        x: linearRange(xVals),
+        y: linearRange(yVals),
+        type: "linear"
+      };
+    }
+
+    function markerSizes(selectedIndex) {
+      const arr = new Array(payload.years.length).fill(payload.marker_size);
+      arr[selectedIndex] = payload.selected_marker_size;
+      return arr;
+    }
+
+    function compactNumber(value) {
+      if (!Number.isFinite(value)) return "";
+
+      const absolute = Math.abs(value);
+
+      if (absolute >= 1000000) {
+        return (
+          (value / 1000000).toFixed(1).replace(/\.0$/, "") + "M"
+        );
+      }
+
+      if (absolute >= 1000) {
+        return (
+          (value / 1000).toFixed(1).replace(/\.0$/, "") + "k"
+        );
+      }
+
+      if (absolute >= 1) return String(Math.round(value));
+      return value.toPrecision(1);
+    }
+
+    function compactPercent(value) {
+      if (!Number.isFinite(value)) return "";
+
+      const pct = 100 * value;
+      const absolute = Math.abs(pct);
+
+      if (absolute >= 10) return pct.toFixed(0) + "%";
+      if (absolute >= 1) {
+        return pct.toFixed(1).replace(/\.0$/, "") + "%";
+      }
+      if (absolute >= 0.01) return pct.toFixed(2) + "%";
+
+      return pct.toExponential(0) + "%";
+    }
+
+    function logTickSettings(axisRange, metric) {
+      if (
+        !(
+          currentLog &&
+          metric !== "rank" &&
+          axisRange &&
+          axisRange.length === 2
+        )
+      ) {
+        return {};
+      }
+
+      const loExp = Math.ceil(axisRange[0]);
+      const hiExp = Math.floor(axisRange[1]);
+
+      if (
+        !Number.isFinite(loExp) ||
+        !Number.isFinite(hiExp)
+      ) {
+        return {};
+      }
+
+      const span = Math.max(hiExp - loExp, 0);
+      const step = Math.max(
+        1,
+        Math.ceil((span + 1) / 5)
+      );
+
+      let start = Math.ceil(loExp / step) * step;
+
+      let exps = [];
+      for (let exponent = start; exponent <= hiExp; exponent += step) {
+        exps.push(exponent);
+      }
+
+      if (!exps.length) {
+        exps = [
+          Math.round((axisRange[0] + axisRange[1]) / 2)
+        ];
+      }
+
+      const vals = exps.map(exponent =>
+        Math.pow(10, exponent)
+      );
+
+      return {
+        tickmode: "array",
+        tickvals: vals,
+        ticktext: vals.map(value =>
+          metric === "percent"
+            ? compactPercent(value)
+            : compactNumber(value)
+        )
+      };
+    }
+
+    function lineLabelAnnotations(metric, sex) {
+      const mask = sexMask(sex);
+      const annotations = [];
+
+      payload.line_order.forEach((pair, i) => {
+        if (!mask.line[i]) return;
+
+        const lineSex = pair[0];
+        const name = pair[1];
+        const key = `${lineSex}|${name}|${metric}`;
+        const vals = payload.line_data[key];
+
+        let labelIndex = -1;
+        let labelValue = null;
+
+        vals.forEach((value, index) => {
+          if (
+            value === null ||
+            !Number.isFinite(value)
+          ) {
+            return;
+          }
+
+          if (
+            labelIndex < 0 ||
+            (
+              metric === "rank"
+                ? value < labelValue
+                : value > labelValue
+            )
+          ) {
+            labelIndex = index;
+            labelValue = value;
+          }
+        });
+
+        if (labelIndex < 0) return;
+
+        let xanchor = "center";
+
+        if (labelIndex <= 2) {
+          xanchor = "left";
+        } else if (
+          labelIndex >= payload.years.length - 3
+        ) {
+          xanchor = "right";
+        }
+
+        const labelKey = lineSex + "|" + name;
+
+        annotations.push({
+          text:
+            "<b>" +
+            payload.line_labels[labelKey] +
+            "</b>",
+          x: payload.years[labelIndex],
+          y: currentLog
+            ? Math.log10(labelValue)
+            : labelValue,
+          xref: "x",
+          yref: "y",
+          showarrow: false,
+          xanchor,
+          yanchor:
+            metric === "rank" ? "top" : "bottom",
+          yshift:
+            metric === "rank" ? -5 : 6,
+          font: {
+            size: 14,
+            color: payload.name_colors[name]
+          },
+          bgcolor: "rgba(255,255,255,0.68)",
+          borderpad: 1
+        });
+      });
+
+      return annotations;
+    }
+
+    function buildFigureState() {
+      const mask = sexMask(currentSex);
+
+      const lineTraces = payload.line_order.map((pair, i) => {
+        const sex = pair[0];
+        const name = pair[1];
+        const key =
+          `${sex}|${name}|${currentMetric}`;
+
+        return {
+          x: payload.years,
+          y: payload.line_data[key],
+          mode: "lines",
+          line: {
+            color: payload.name_colors[name],
+            width: payload.line_width,
+            dash:
+              payload.line_dashes[
+                `${sex}|${name}`
+              ]
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          visible: mask.line[i],
+          cliponaxis: false,
+          name:
+            payload.line_labels[
+              `${sex}|${name}`
+            ],
+          xaxis: "x",
+          yaxis: "y"
+        };
+      });
+
+      const scatterTraces = payload.sexes.map((sex, i) => {
+        const key = `${sex}|${currentMetric}`;
+
+        return {
+          x: payload.scatter_data[key].x,
+          y: payload.scatter_data[key].y,
+          mode: "lines+markers",
+          line: {
+            width: payload.scatter_line_width,
+            color: "rgba(0,0,0,0.35)"
+          },
+          marker: {
+            size: markerSizes(currentYearIndex),
+            color: payload.years,
+            colorscale: "Viridis",
+            showscale: false,
+            line: {
+              width: 0.5,
+              color: "black"
+            },
+            opacity: 0.85
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          visible: mask.scatter[i],
+          name: sex,
+          xaxis: "x2",
+          yaxis: "y2"
+        };
+      });
+
+      const year = payload.years[currentYearIndex];
+      const yearColor =
+        payload.year_to_color[String(year)];
+
+      const ranges = axisRanges(
+        currentMetric,
+        currentSex,
+        currentLog
+      );
+
+      const correlation =
+        corrText(currentMetric, currentSex);
+
+      const titleText =
+        `<b>${payload.title}</b><br>` +
+        `<sup>${payload.subtitle} · ${correlation}</sup>`;
+
+      const scatterXTickSettings =
+        logTickSettings(ranges.x, currentMetric);
+
+      const scatterYTickSettings =
+        logTickSettings(ranges.y, currentMetric);
+
+      const layout = {
+        title: {
+          text: titleText,
+          x: 0.5,
+          xanchor: "center",
+          font: {size: 24}
+        },
+
+        template: "plotly_white",
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        margin: {
+          l: 70,
+          r: 35,
+          t: 95,
+          b: 125
+        },
+        height: payload.height,
+        showlegend: false,
+
+        xaxis: {
+          domain: [0.0, 0.56],
+          anchor: "y",
+          title: {
+            text: "Year",
+            font: {size: 16}
+          },
+          tickmode: "array",
+          tickvals: payload.tick_years,
+          ticktext: payload.tick_text,
+          showticklabels: true,
+          tickfont: {size: 14}
+        },
+
+        yaxis: {
+          domain: [0, 1],
+          anchor: "x",
+          title: {
+            text:
+              axisTitle(
+                currentMetric,
+                "Popularity"
+              ),
+            font: {size: 16},
+            standoff: 22
+          },
+          type: ranges.type,
+          tickformat: tickFormat(currentMetric),
+          range: ranges.left,
+          autorange: false,
+          tickfont: {size: 14},
+          zeroline: false
+        },
+
+        xaxis2: {
+          domain: [0.64, 1.0],
+          anchor: "y2",
+          title: {
+            text:
+              axisTitle(
+                currentMetric,
+                payload.name_1
+              ),
+            font: {
+              color:
+                payload.name_colors[
+                  payload.name_1
+                ],
+              size: 16
+            }
+          },
+          tickfont: {
+            color:
+              payload.name_colors[
+                payload.name_1
+              ],
+            size: 14
+          },
+          type: ranges.type,
+          tickformat: tickFormat(currentMetric),
+          ...scatterXTickSettings,
+          range: ranges.x,
+          autorange: false,
+          zeroline: false
+        },
+
+        yaxis2: {
+          domain: [0, 1],
+          anchor: "x2",
+          title: {
+            text:
+              axisTitle(
+                currentMetric,
+                payload.name_2
+              ),
+            font: {
+              color:
+                payload.name_colors[
+                  payload.name_2
+                ],
+              size: 16
+            }
+          },
+          tickfont: {
+            color:
+              payload.name_colors[
+                payload.name_2
+              ],
+            size: 14
+          },
+          type: ranges.type,
+          tickformat: tickFormat(currentMetric),
+          ...scatterYTickSettings,
+          range: ranges.y,
+          autorange: false,
+          zeroline: false
+        },
+
+        annotations:
+          lineLabelAnnotations(
+            currentMetric,
+            currentSex
+          ).concat([
+            {
+              text: "Popularity over time",
+              x: 0.28,
+              y: 1.06,
+              xref: "paper",
+              yref: "paper",
+              showarrow: false,
+              font: {size: 18}
+            },
+            {
+              text: "Pair scatter by year",
+              x: 0.82,
+              y: 1.06,
+              xref: "paper",
+              yref: "paper",
+              showarrow: false,
+              font: {size: 18}
+            },
+            {
+              x: 0.99,
+              y: 0.01,
+              xref: "paper",
+              yref: "paper",
+              xanchor: "right",
+              yanchor: "bottom",
+              text: correlation,
+              showarrow: false,
+              font: {size: 14},
+              bgcolor:
+                "rgba(255,255,255,0.75)",
+              bordercolor:
+                "rgba(0,0,0,0.2)",
+              borderwidth: 1
+            }
+          ]),
+
+        shapes: [
+          {
+            type: "line",
+            xref: "x",
+            yref: "paper",
+            x0: year,
+            x1: year,
+            y0: 0.0,
+            y1: 1.0,
+            line: {
+              color: yearColor,
+              width: 3
+            }
+          }
+        ]
+      };
+
+      return {
+        data: lineTraces.concat(scatterTraces),
+        layout
+      };
+    }
+
+    function setActiveButtons() {
+      document
+        .querySelectorAll("#sex_group .btn")
+        .forEach(button => {
+          button.classList.toggle(
+            "active",
+            button.dataset.sex === currentSex
+          );
+        });
+
+      document
+        .querySelectorAll("#metric_group .btn")
+        .forEach(button => {
+          button.classList.toggle(
+            "active",
+            button.dataset.metric === currentMetric
+          );
+        });
+
+      document
+        .querySelectorAll("#scale_group .btn")
+        .forEach(button => {
+          const value = button.dataset.scale;
+
+          button.classList.toggle(
+            "active",
+            (
+              value === "log" &&
+              currentLog
+            ) ||
+            (
+              value === "linear" &&
+              !currentLog
+            )
+          );
+        });
+
+      if (!payload || !payload.years.length) return;
+
+      const year = payload.years[currentYearIndex];
+
+      yearLabel.textContent = String(year);
+      yearLabel.style.color =
+        payload.year_to_color[String(year)];
+
+      yearSlider.value =
+        String(currentYearIndex);
+    }
+
+    function redrawAll() {
+      if (!payload) return;
+
+      const state = buildFigureState();
+
+      Plotly.react(
+        gd,
+        state.data,
+        state.layout,
+        {
+          responsive: true,
+          displayModeBar: false,
+          scrollZoom: false
+        }
+      );
+
+      setActiveButtons();
+    }
+
+    function updateYearOnly() {
+      if (!payload) return;
+
+      const year = payload.years[currentYearIndex];
+      const yearColor =
+        payload.year_to_color[String(year)];
+
+      const sizes = markerSizes(currentYearIndex);
+
+      Plotly.relayout(gd, {
+        "shapes[0].x0": year,
+        "shapes[0].x1": year,
+        "shapes[0].line.color": yearColor
+      });
+
+      Plotly.restyle(
+        gd,
+        {"marker.size": [sizes, sizes, sizes]},
+        [6, 7, 8]
+      );
+
+      setActiveButtons();
+    }
+
+    function safeCorrelation(xValues, yValues) {
+      const x = [];
+      const y = [];
+
+      for (let i = 0; i < xValues.length; i += 1) {
+        const xv = xValues[i];
+        const yv = yValues[i];
+
+        if (
+          xv !== null &&
+          yv !== null &&
+          Number.isFinite(xv) &&
+          Number.isFinite(yv)
+        ) {
+          x.push(xv);
+          y.push(yv);
+        }
+      }
+
+      if (x.length < 2) return null;
+
+      const xMean =
+        x.reduce((sum, value) => sum + value, 0) /
+        x.length;
+
+      const yMean =
+        y.reduce((sum, value) => sum + value, 0) /
+        y.length;
+
+      let xSS = 0;
+      let ySS = 0;
+      let cross = 0;
+
+      for (let i = 0; i < x.length; i += 1) {
+        const dx = x[i] - xMean;
+        const dy = y[i] - yMean;
+
+        xSS += dx * dx;
+        ySS += dy * dy;
+        cross += dx * dy;
+      }
+
+      if (!(xSS > 0) || !(ySS > 0)) return null;
+
+      return cross / Math.sqrt(xSS * ySS);
+    }
+
+    function packetRowLookup(packet) {
+      return new Map(
+        (packet?.yearly || []).map(row => [
+          Number(row.year),
+          row
+        ])
+      );
+    }
+
+    function seriesForYears(
+      lookup,
+      years,
+      column,
+      fillValue
+    ) {
+      return years.map(year => {
+        const row = lookup.get(year);
+
+        if (!row) return fillValue;
+
+        const value = row[column];
+
+        if (
+          value === null ||
+          value === undefined ||
+          !Number.isFinite(Number(value))
+        ) {
+          return fillValue;
+        }
+
+        return Number(value);
+      });
+    }
+
+    function buildPayload(
+      name1,
+      name2,
+      packet1,
+      packet2
+    ) {
+      const yearSet = new Set();
+
+      (packet1.yearly || []).forEach(row => {
+        if (Number.isFinite(Number(row.year))) {
+          yearSet.add(Number(row.year));
+        }
+      });
+
+      (packet2.yearly || []).forEach(row => {
+        if (Number.isFinite(Number(row.year))) {
+          yearSet.add(Number(row.year));
+        }
+      });
+
+      const years = Array
+        .from(yearSet)
+        .sort((a, b) => a - b);
+
+      if (!years.length) {
+        throw new Error(
+          "No observed years were found for these names."
+        );
+      }
+
+      const lookup1 = packetRowLookup(packet1);
+      const lookup2 = packetRowLookup(packet2);
+
+      const nameColors = {
+        [name1]: "#1f77b4",
+        [name2]: "#d62728"
+      };
+
+      const lineOrder = [
+        ["combined", name1],
+        ["combined", name2],
+        ["male", name1],
+        ["male", name2],
+        ["female", name1],
+        ["female", name2]
+      ];
+
+      const lineLabels = {
+        [`combined|${name1}`]: name1,
+        [`combined|${name2}`]: name2,
+        [`male|${name1}`]: `${name1} (M)`,
+        [`male|${name2}`]: `${name2} (M)`,
+        [`female|${name1}`]: `${name1} (F)`,
+        [`female|${name2}`]: `${name2} (F)`
+      };
+
+      const lineDashes = {
+        [`combined|${name1}`]: "solid",
+        [`combined|${name2}`]: "solid",
+        [`male|${name1}`]: "solid",
+        [`male|${name2}`]: "solid",
+        [`female|${name1}`]: "dash",
+        [`female|${name2}`]: "dash"
+      };
+
+      const specs = {
+        combined: {
+          frequency: "frequency_c",
+          rank: "rank_c",
+          percent: "proportion_c"
+        },
+        male: {
+          frequency: "frequency_m",
+          rank: "rank_m",
+          percent: "proportion_m"
+        },
+        female: {
+          frequency: "frequency_f",
+          rank: "rank_f",
+          percent: "proportion_f"
+        }
+      };
+
+      const lineData = {};
+
+      for (const sex of [
+        "combined",
+        "male",
+        "female"
+      ]) {
+        for (const metric of [
+          "frequency",
+          "rank",
+          "percent"
+        ]) {
+          const column = specs[sex][metric];
+          const fillValue =
+            metric === "rank" ? null : 0;
+
+          lineData[
+            `${sex}|${name1}|${metric}`
+          ] = seriesForYears(
+            lookup1,
+            years,
+            column,
+            fillValue
+          );
+
+          lineData[
+            `${sex}|${name2}|${metric}`
+          ] = seriesForYears(
+            lookup2,
+            years,
+            column,
+            fillValue
+          );
+        }
+      }
+
+      const scatterData = {};
+      const corrByMetric = {
+        frequency: {},
+        rank: {},
+        percent: {}
+      };
+
+      for (const sex of [
+        "combined",
+        "male",
+        "female"
+      ]) {
+        for (const metric of [
+          "frequency",
+          "rank",
+          "percent"
+        ]) {
+          const x =
+            lineData[
+              `${sex}|${name1}|${metric}`
+            ];
+
+          const y =
+            lineData[
+              `${sex}|${name2}|${metric}`
+            ];
+
+          scatterData[`${sex}|${metric}`] = {
+            x,
+            y
+          };
+
+          corrByMetric[metric][sex] =
+            safeCorrelation(x, y);
+        }
+      }
+
+      const yearToColor = {};
+
+      years.forEach((year, index) => {
+        const t =
+          years.length <= 1
+            ? 0
+            : index / (years.length - 1);
+
+        yearToColor[String(year)] =
+          viridisColor(t);
+      });
+
+      const tickCount = Math.min(10, years.length);
+      const tickIndexSet = new Set();
+
+      if (tickCount === 1) {
+        tickIndexSet.add(0);
+      } else {
+        for (let i = 0; i < tickCount; i += 1) {
+          tickIndexSet.add(
+            Math.round(
+              i * (years.length - 1) /
+              (tickCount - 1)
+            )
+          );
+        }
+      }
+
+      const tickYears = Array
+        .from(tickIndexSet)
+        .sort((a, b) => a - b)
+        .map(index => years[index]);
+
+      const tickText = tickYears.map(year =>
+        `<span style="color:${yearToColor[String(year)]}">${year}</span>`
+      );
+
+      return {
+        title: `${name1} vs. ${name2}`,
+        subtitle: "Correlation over time",
+        height: 700,
+        years,
+        tick_years: tickYears,
+        tick_text: tickText,
+        year_to_color: yearToColor,
+        name_1: name1,
+        name_2: name2,
+        name_colors: nameColors,
+        marker_size: 7,
+        selected_marker_size: 18,
+        line_width: 2.4,
+        scatter_line_width: 1.2,
+        line_order: lineOrder,
+        line_labels: lineLabels,
+        line_dashes: lineDashes,
+        line_data: lineData,
+        scatter_data: scatterData,
+        corr_by_metric: corrByMetric,
+        sexes: [
+          "combined",
+          "male",
+          "female"
+        ]
+      };
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+
+      const version =
+        String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot = new URL(
+        String(
+          pointer.dataRoot ?? `${version}/`
+        ),
+        dataBase
+      );
+
+      NameData.configure({dataRoot});
+
+      return version;
+    }
+
+    async function loadNames() {
+      const requested1 =
+        cleanName(name1Input.value);
+
+      const requested2 =
+        cleanName(name2Input.value);
+
+      if (!requested1 || !requested2) {
+        throw new Error(
+          "Enter two first names."
+        );
+      }
+
+      if (
+        requested1.toLowerCase() ===
+        requested2.toLowerCase()
+      ) {
+        throw new Error(
+          "Enter two different first names."
+        );
+      }
+
+      compareButton.disabled = true;
+      setStatus(
+        `Loading ${requested1} and ${requested2}…`
+      );
+
+      try {
+        const [packet1, packet2] =
+          await Promise.all([
+            NameData.getNationalName(requested1),
+            NameData.getNationalName(requested2)
+          ]);
+
+        if (!packet1) {
+          throw new Error(
+            `No national data found for "${requested1}".`
+          );
+        }
+
+        if (!packet2) {
+          throw new Error(
+            `No national data found for "${requested2}".`
+          );
+        }
+
+        const name1 =
+          packet1.displayName || requested1;
+
+        const name2 =
+          packet2.displayName || requested2;
+
+        name1Input.value = name1;
+        name2Input.value = name2;
+
+        payload = buildPayload(
+          name1,
+          name2,
+          packet1,
+          packet2
+        );
+
+        currentSex = "combined";
+        currentMetric = "frequency";
+        currentLog = false;
+        currentYearIndex = 0;
+
+        yearSlider.min = "0";
+        yearSlider.max =
+          String(payload.years.length - 1);
+        yearSlider.step = "1";
+        yearSlider.value = "0";
+
+        redrawAll();
+
+        const latestYear =
+          payload.years[payload.years.length - 1];
+
+        setStatus(
+          `Loaded ${name1} and ${name2} · data through ${latestYear}.`
+        );
+
+      } finally {
+        compareButton.disabled = false;
+      }
+    }
+
+    compareButton.addEventListener(
+      "click",
+      () => {
+        loadNames().catch(error => {
+          console.error(error);
+          setStatus(
+            error?.message || String(error),
+            true
+          );
+        });
+      }
+    );
+
+    [name1Input, name2Input].forEach(input => {
+      input.addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+
+            loadNames().catch(error => {
+              console.error(error);
+              setStatus(
+                error?.message || String(error),
+                true
+              );
+            });
+          }
+        }
+      );
+    });
+
+    document
+      .querySelectorAll("#sex_group .btn")
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => {
+            if (!payload) return;
+            currentSex = button.dataset.sex;
+            redrawAll();
+          }
+        );
+      });
+
+    document
+      .querySelectorAll("#metric_group .btn")
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => {
+            if (!payload) return;
+            currentMetric =
+              button.dataset.metric;
+            redrawAll();
+          }
+        );
+      });
+
+    document
+      .querySelectorAll("#scale_group .btn")
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => {
+            if (!payload) return;
+            currentLog =
+              button.dataset.scale === "log";
+            redrawAll();
+          }
+        );
+      });
+
+    yearSlider.addEventListener(
+      "input",
+      () => {
+        if (!payload) return;
+        currentYearIndex =
+          Number(yearSlider.value);
+        updateYearOnly();
+      }
+    );
+
+    window.addEventListener(
+      "resize",
+      () => {
+        Plotly.Plots.resize(gd);
+      }
+    );
+
+    Plotly.newPlot(
+      gd,
+      [],
+      {},
+      {
+        responsive: true,
+        displayModeBar: false,
+        scrollZoom: false
+      }
+    );
+
+    try {
+      await configureLatestData();
+      await loadNames();
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        error?.message || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
