@@ -266,6 +266,29 @@ export const visualizations = [
     ]
   },
   {
+    id: "name-correlation-explorer",
+    title: "Name Correlation Explorer",
+    shortTitle: "Name correlations",
+    category: "Correlations",
+    description:
+      "Compare two baby-name popularity trajectories over time and see how strongly the two series are correlated.",
+    instructions:
+      "The visualization starts with Karen and Terry. Enter any two first names above the chart to replace them. Use the controls below the visualization to switch sex, metric, scale, and highlighted year.",
+    methodology:
+      "The explorer uses national SSA name packets. Frequency and percentage treat missing name-years as zero; rank is left unavailable when a name has no recorded births. Pearson correlation is recalculated for the selected Combined/Male/Female and Frequency/Rank/Percent view.",
+    dataThrough: 2025,
+    iframeHeight: 900,
+    embedMode: "scale",
+    embedWidth: 1100,
+    variants: [
+      {
+        id: "default",
+        label: "Open visualization",
+        path: "../visualizations/showcase/name-correlation-explorer.html"
+      }
+    ]
+  },
+  {
     id: "yearbook-guesser",
     title: "Yearbook Guesser",
     shortTitle: "Yearbook guesser",
@@ -307,7 +330,7 @@ export const visualizations = [
     id: "draw-name-curve",
     title: "Draw a Name Curve",
     shortTitle: "Draw a curve",
-    category: "Interactive tools",
+    category: "Correlations",
     description:
       "Draw a popularity curve and find historical baby names whose trajectories most closely match it.",
     instructions:
