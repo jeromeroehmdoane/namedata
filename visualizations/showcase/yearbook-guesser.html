@@ -198,7 +198,7 @@
   </main>
 
   <script type="module">
-    import NameData from "../../assets/js/name-data-loader.js";
+    let NameData = null;
 
     const FLOOR_BIRTHS = 4;
     const MODEL_COLOR = "#1F77B4";
@@ -1013,6 +1013,15 @@
     }
 
     try{
+      const loaderModule = await import(
+        "../../assets/js/name-data-loader.js"
+      );
+      NameData = loaderModule.default;
+
+      if(!NameData){
+        throw new Error("Shared name-data loader did not initialize.");
+      }
+
       await configureLatestData();
 
       if(preset.names.length){
