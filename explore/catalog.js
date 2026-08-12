@@ -306,8 +306,7 @@ export const visualizations = [
       "Rounds 1–4 are precomputed from the 1,000 most common U.S. names of all time, using curve shape, popularity, peak timing, sex balance, and geographic differentiation to tune difficulty. Round 5 uses curated themed name groups. The website stores only the compact round banks; national curves and state maps are loaded on demand from the standard name packets. Custom mode is unrestricted by the round-bank universe.",
     dataThrough: 2025,
     iframeHeight: 900,
-    embedMode: "scale",
-    embedWidth: 1200,
+    embedMode: "fluid",
     variants: [
       {
         id: "game",
