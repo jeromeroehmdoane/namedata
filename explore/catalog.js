@@ -294,6 +294,29 @@ export const visualizations = [
     ]
   },
   {
+    id: "name-guessing-game",
+    title: "Name Guessing Game",
+    shortTitle: "Name guessing game",
+    category: "Interactive tools",
+    description:
+      "Guess baby names from their historical popularity curves, then inspect the same names through sex-specific trends and state geography.",
+    instructions:
+      "Single curve gives one hidden name with four choices across five increasing difficulty levels. Match asks you to match three numbered curves to three names. Custom accepts any 2–6 names available in the packet data. Use the View, Sex, Y, Scale, and generation controls to inspect the evidence before answering.",
+    methodology:
+      "Rounds 1–4 are precomputed from the 1,000 most common U.S. names of all time, using curve shape, popularity, peak timing, sex balance, and geographic differentiation to tune difficulty. Round 5 uses curated themed name groups. The website stores only the compact round banks; national curves and state maps are loaded on demand from the standard name packets. Custom mode is unrestricted by the round-bank universe.",
+    dataThrough: 2025,
+    iframeHeight: 900,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
+        id: "game",
+        label: "Play game",
+        path: "../visualizations/showcase/name-guessing-game.html"
+      }
+    ]
+  },
+  {
     id: "yearbook-guesser",
     title: "Yearbook Guesser",
     shortTitle: "Yearbook guesser",
