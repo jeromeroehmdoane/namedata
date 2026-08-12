@@ -294,6 +294,52 @@ export const visualizations = [
     ]
   },
   {
+    id: "cumulative-name-bar-race",
+    title: "Most Popular Names Over Time",
+    shortTitle: "Cumulative name race",
+    category: "Overall Patterns",
+    description:
+      "Watch the ten names with the highest cumulative recorded births change as the U.S. baby-name record advances from 1880 through 2025.",
+    instructions:
+      "Use Play/Pause to animate through the historical record, step one year at a time with the year buttons, or drag the year slider directly.",
+    methodology:
+      "For each displayed year, the bars show cumulative recorded births from 1880 through that year with male and female usage combined. The ten leading names are displayed; bar color indicates which recorded sex accounts for more of that name's cumulative births at that point.",
+    dataThrough: 2025,
+    iframeHeight: 750,
+    embedMode: "scale",
+    embedWidth: 1100,
+    variants: [
+      {
+        id: "default",
+        label: "Open visualization",
+        path: "../visualizations/showcase/cumulative-name-bar-race.html"
+      }
+    ]
+  },
+  {
+    id: "name-concentration",
+    title: "Name Concentration",
+    shortTitle: "Name concentration",
+    category: "Overall Patterns",
+    description:
+      "See how quickly the most common names account for the overall baby-name distribution, and how sharply name frequency falls as rank increases.",
+    instructions:
+      "Hover over a line to inspect rank, name, cumulative share, or frequency. Use the legend to compare Combined, Male, and Female distributions; solid lines show cumulative percentage and dashed lines show the frequency of the name at each rank.",
+    methodology:
+      "Names are ordered by all-time recorded frequency. Solid curves show the cumulative percentage accounted for by the top X names, while dashed curves use the logarithmic right axis to show the frequency of the Xth-ranked name. Combined, male, and female distributions are shown separately.",
+    dataThrough: 2025,
+    iframeHeight: 650,
+    embedMode: "scale",
+    embedWidth: 1050,
+    variants: [
+      {
+        id: "default",
+        label: "Open visualization",
+        path: "../visualizations/showcase/name-concentration.html"
+      }
+    ]
+  },
+  {
     id: "name-guessing-game",
     title: "Name Guessing Game",
     shortTitle: "Name guessing game",
