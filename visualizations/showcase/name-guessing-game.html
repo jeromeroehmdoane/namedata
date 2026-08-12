@@ -1,0 +1,3908 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Name Guessing Game</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body style="margin:10px 14px;background:white;">
+
+<div id="nameCurveGameWeb" class="ncg-app">
+  <style>
+    #nameCurveGameWeb {
+      font-family: Arial, Helvetica, sans-serif;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      color: #222;
+    }
+
+    #nameCurveGameWeb * {
+      box-sizing: border-box;
+    }
+
+    #nameCurveGameWeb .ncg-topbar {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 20px;
+      align-items: center;
+      padding: 8px 0 9px 0;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    #nameCurveGameWeb .ncg-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      flex: 0 0 auto;
+    }
+
+    #nameCurveGameWeb label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    #nameCurveGameWeb select,
+    #nameCurveGameWeb input,
+    #nameCurveGameWeb button,
+    #nameCurveGameWeb textarea {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+    }
+
+    #nameCurveGameWeb select,
+    #nameCurveGameWeb input,
+    #nameCurveGameWeb textarea {
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      padding: 7px 9px;
+      background: white;
+    }
+
+    #nameCurveGameWeb textarea {
+      width: 100%;
+      min-height: 54px;
+      resize: vertical;
+    }
+
+    #nameCurveGameWeb button {
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #f7f7f7;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #nameCurveGameWeb button:hover:not(:disabled) {
+      background: #eeeeee;
+    }
+
+    #nameCurveGameWeb button:disabled,
+    #nameCurveGameWeb select:disabled,
+    #nameCurveGameWeb input:disabled {
+      opacity: 0.62;
+      cursor: default;
+    }
+
+    #nameCurveGameWeb .ncg-new-game {
+      margin-left: auto;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    #nameCurveGameWeb .ncg-custom-box {
+      display: none;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 0 10px 0;
+      background: #fafafa;
+    }
+
+    #nameCurveGameWeb .ncg-custom-box.visible {
+      display: block;
+    }
+
+    #nameCurveGameWeb .ncg-custom-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    #nameCurveGameWeb .ncg-custom-row button {
+      flex: 0 0 auto;
+    }
+
+    #nameCurveGameWeb .ncg-status {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin: 8px 0;
+      font-size: 16px;
+      color: #333;
+      flex-wrap: wrap;
+    }
+
+    #nameCurveGameWeb .ncg-status strong {
+      font-size: 17px;
+    }
+
+    #nameCurveGameWeb .ncg-plot-wrap {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 6px;
+      background: white;
+      overflow: visible;
+    }
+
+    #nameCurveGameWeb canvas {
+      display: block;
+      width: 100%;
+    }
+
+    #nameCurveGameWeb #ncgCanvas {
+      height: 465px;
+    }
+
+    #nameCurveGameWeb #ncgMap {
+      width: 100%;
+      height: 417px;
+      min-height: 417px;
+      display: none;
+    }
+
+    #nameCurveGameWeb .ncg-map-slider-box {
+      display: none;
+      width: 54%;
+      min-width: 450px;
+      max-width: 700px;
+      margin: 2px auto 0 auto;
+      padding: 0 4px 0 4px;
+    }
+
+    #nameCurveGameWeb .ncg-map-slider-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 1px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #nameCurveGameWeb #ncgPeriodSlider {
+      width: 100%;
+      padding: 0;
+    }
+
+    #nameCurveGameWeb .ncg-slider-ticks {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.0;
+      margin-top: 1px;
+      user-select: none;
+    }
+
+    #nameCurveGameWeb .ncg-slider-ticks span {
+      text-align: center;
+      max-width: 82px;
+      white-space: pre-line;
+    }
+
+    #nameCurveGameWeb .ncg-answer-area {
+      margin-top: 8px;
+    }
+
+    #nameCurveGameWeb .ncg-answer-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    #nameCurveGameWeb .ncg-name-list {
+      font-size: 16px;
+      margin: -2px 0 7px 0;
+      color: #333;
+    }
+
+    #nameCurveGameWeb .ncg-match-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: -2px 0 7px 0;
+    }
+
+    #nameCurveGameWeb .ncg-match-header .ncg-name-list {
+      flex: 1 1 auto;
+      margin: 0;
+    }
+
+    #nameCurveGameWeb .ncg-submit-inline {
+      flex: 0 0 auto;
+      font-weight: 700;
+    }
+
+    #nameCurveGameWeb .ncg-match-header .ncg-nav-row {
+      margin-top: 0;
+      flex: 0 0 auto;
+    }
+
+    #nameCurveGameWeb .ncg-match-header .ncg-nav-row button {
+      font-weight: 700;
+    }
+
+    #nameCurveGameWeb .ncg-choice-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    #nameCurveGameWeb .ncg-choice {
+      width: 100%;
+      min-height: 42px;
+      font-weight: 700;
+    }
+
+    #nameCurveGameWeb .ncg-choice.correct {
+      border-color: #2E8B57;
+      background: #eaf6ef;
+    }
+
+    #nameCurveGameWeb .ncg-choice.incorrect {
+      border-color: #D62728;
+      background: #fdecee;
+    }
+
+    #nameCurveGameWeb .ncg-match-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 7px;
+      align-items: start;
+    }
+
+    #nameCurveGameWeb .ncg-match-card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 7px;
+      background: white;
+    }
+
+    #nameCurveGameWeb .ncg-match-label {
+      font-weight: 700;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    #nameCurveGameWeb .ncg-match-card select {
+      width: 100%;
+    }
+
+    #nameCurveGameWeb .ncg-checkline {
+      margin-top: 7px;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    #nameCurveGameWeb .ncg-swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    #nameCurveGameWeb .ncg-feedback {
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      font-size: 16px;
+      line-height: 1.35;
+      display: none;
+    }
+
+    #nameCurveGameWeb .ncg-feedback.visible {
+      display: block;
+    }
+
+    #nameCurveGameWeb .ncg-feedback.correct {
+      background: #eaf6ef;
+      border: 1px solid #b8dfc6;
+    }
+
+    #nameCurveGameWeb .ncg-feedback.incorrect {
+      background: #fdecee;
+      border: 1px solid #f3bbc2;
+    }
+
+    #nameCurveGameWeb .ncg-feedback.neutral {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+    }
+
+    #nameCurveGameWeb .ncg-nav-row {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #nameCurveGameWeb .ncg-note {
+      color: #555;
+      font-size: 15px;
+      line-height: 1.35;
+    }
+
+    @media (max-width: 800px) {
+      #nameCurveGameWeb .ncg-choice-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      #nameCurveGameWeb .ncg-match-grid {
+        grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      }
+
+      #nameCurveGameWeb .ncg-new-game {
+        margin-left: 0;
+      }
+
+      #nameCurveGameWeb .ncg-map-slider-box {
+        width: 100%;
+        min-width: 0;
+      }
+
+      #nameCurveGameWeb .ncg-slider-ticks {
+        font-size: 10px;
+      }
+    }
+  </style>
+
+  <div class="ncg-topbar">
+    <div class="ncg-group">
+      <label for="ncgMode">Mode:</label>
+      <select id="ncgMode">
+        <option value="single">Single curve</option>
+        <option value="multi">Match</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+
+    <div class="ncg-group">
+      <label for="ncgView">View:</label>
+      <select id="ncgView">
+        <option value="line">Line</option>
+        <option value="percentage">Map %</option>
+      </select>
+    </div>
+
+    <div class="ncg-group">
+      <label for="ncgSex">Sex:</label>
+      <select id="ncgSex"></select>
+    </div>
+
+    <div class="ncg-group">
+      <label for="ncgMetric">Y:</label>
+      <select id="ncgMetric">
+        <option value="frequency">Freq</option>
+        <option value="percent">Pct</option>
+        <option value="rank">Rank</option>
+      </select>
+    </div>
+
+    <div class="ncg-group">
+      <label for="ncgScale">Scale:</label>
+      <select id="ncgScale">
+        <option value="linear">Lin</option>
+        <option value="log">Log</option>
+      </select>
+    </div>
+
+    <button type="button" id="ncgNewGame" class="ncg-new-game">New</button>
+  </div>
+
+  <div id="ncgCustomBox" class="ncg-custom-box">
+    <label for="ncgCustomNames">Enter 2–6 names, separated by commas or line breaks:</label>
+    <div class="ncg-custom-row">
+      <textarea id="ncgCustomNames" placeholder="Example: Linda, Ashley, Jennifer"></textarea>
+      <button type="button" id="ncgStartCustom">Start</button>
+    </div>
+    <div class="ncg-note">
+      Custom mode can use any name available in the national baby-name packets.
+    </div>
+  </div>
+
+  <div class="ncg-status">
+    <div id="ncgRoundStatus"><strong>Round 1 of 5</strong></div>
+    <div id="ncgControlHint" class="ncg-note">Use the controls to inspect the same curves in different ways.</div>
+  </div>
+
+  <div class="ncg-plot-wrap">
+    <canvas id="ncgCanvas"></canvas>
+    <div id="ncgMap"></div>
+
+    <div id="ncgMapSliderBox" class="ncg-map-slider-box">
+      <div class="ncg-map-slider-label">
+        <span>Map period</span>
+        <span id="ncgPeriodLabel">All time</span>
+      </div>
+      <input id="ncgPeriodSlider" type="range" min="0" max="0" step="1" value="0">
+      <div id="ncgPeriodTicks" class="ncg-slider-ticks"></div>
+    </div>
+  </div>
+
+  <div id="ncgAnswerArea" class="ncg-answer-area"></div>
+  <div id="ncgFeedback" class="ncg-feedback"></div>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    (async function() {
+      const DISPLAY_STATES_BOOTSTRAP = [
+        "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+        "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+        "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+        "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+        "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+      ];
+
+      const DIFFICULTY_LABELS_BOOTSTRAP = {
+        "1": "Beginner",
+        "2": "Mild",
+        "3": "Moderate",
+        "4": "Nuanced",
+        "5": "Themed"
+      };
+
+      async function configureLatestDataRoot() {
+        const dataBase = new URL("../../data/", window.location.href);
+        const response = await fetch(
+          new URL("latest.json", dataBase),
+          {
+            cache: "no-cache",
+            headers: {Accept: "application/json"}
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Could not load data/latest.json (HTTP ${response.status}).`
+          );
+        }
+
+        const pointer = await response.json();
+        const version = String(pointer.dataVersion ?? "").trim();
+
+        if (!version) {
+          throw new Error("data/latest.json does not contain dataVersion.");
+        }
+
+        const dataRoot = new URL(
+          String(pointer.dataRoot ?? `${version}/`),
+          dataBase
+        );
+
+        NameData.configure({dataRoot});
+        return version;
+      }
+
+      function reconstructRoundBanks(records, registerName) {
+        const banks = {single: [], multi: []};
+
+        ["single", "multi"].forEach(mode => {
+          const modeRows = records
+            .filter(row => String(row.mode) === mode)
+            .sort((a, b) => (
+              Number(a.sequence_id) - Number(b.sequence_id)
+              || Number(a.round_number) - Number(b.round_number)
+            ));
+
+          const bySequence = new Map();
+
+          modeRows.forEach(row => {
+            const sequenceId = Number(row.sequence_id);
+            if (!bySequence.has(sequenceId)) bySequence.set(sequenceId, []);
+
+            if (mode === "single") {
+              const choiceNames = [
+                row.choice_1,
+                row.choice_2,
+                row.choice_3,
+                row.choice_4
+              ].filter(Boolean).map(String);
+
+              const choices = choiceNames.map(registerName);
+              const answer = registerName(String(row.answer_name));
+
+              bySequence.get(sequenceId).push({
+                level: Number(row.level),
+                answer,
+                choices,
+                theme: row.theme || null,
+                themeCategory: row.theme_category || null
+              });
+            } else {
+              const names = [
+                row.name_1,
+                row.name_2,
+                row.name_3
+              ].filter(Boolean).map(String).map(registerName);
+
+              bySequence.get(sequenceId).push({
+                level: Number(row.level),
+                names,
+                theme: row.theme || null,
+                themeCategory: row.theme_category || null
+              });
+            }
+          });
+
+          banks[mode] = Array.from(bySequence.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([, sequence]) => sequence)
+            .filter(sequence => sequence.length === 5);
+        });
+
+        return banks;
+      }
+
+      async function buildWebsitePayload() {
+        await configureLatestDataRoot();
+
+        const [manifest, roundTable, periodTable, statePeriodTable] = await Promise.all([
+          NameData.loadManifest(),
+          NameData.loadGlobalTable("nameGuessingGameRounds"),
+          NameData.loadGlobalTable("generationPeriods"),
+          NameData.loadGlobalTable("statePeriodTotals")
+        ]);
+
+        const [yearMin, yearMax] = manifest.yearRanges.national;
+        const years = Array.from(
+          {length: yearMax - yearMin + 1},
+          (_, i) => yearMin + i
+        );
+
+        const periods = periodTable.records
+          .slice()
+          .sort((a, b) => Number(a.period_order) - Number(b.period_order))
+          .map(row => ({
+            label: String(row.period),
+            key: String(row.period_key),
+            start: Number(row.period_start),
+            end: Number(row.period_end)
+          }));
+
+        const names = [];
+        const cleanNames = [];
+        const nameIndex = new Map();
+
+        function registerName(displayName) {
+          const display = String(displayName ?? "").trim();
+          const key = display.toLowerCase();
+
+          if (nameIndex.has(key)) return nameIndex.get(key);
+
+          const idx = names.length;
+          nameIndex.set(key, idx);
+          names.push(display);
+          cleanNames.push(key);
+          return idx;
+        }
+
+        const roundBanks = reconstructRoundBanks(
+          roundTable.records,
+          registerName
+        );
+
+        if (!roundBanks.single.length || !roundBanks.multi.length) {
+          throw new Error(
+            "The Name Guessing Game round bank is empty or incomplete."
+          );
+        }
+
+        const denomLookup = new Map();
+        statePeriodTable.records.forEach(row => {
+          const state = String(row.state || "").toUpperCase();
+          if (!DISPLAY_STATES_BOOTSTRAP.includes(state)) return;
+          denomLookup.set(`${String(row.period_key)}|${state}`, row);
+        });
+
+        const suffixByMode = {
+          combined: "c",
+          male: "m",
+          female: "f"
+        };
+
+        const denoms = {};
+        Object.entries(suffixByMode).forEach(([mode, suffix]) => {
+          const flat = [];
+          periods.forEach(period => {
+            DISPLAY_STATES_BOOTSTRAP.forEach(state => {
+              const row = denomLookup.get(`${period.key}|${state}`);
+              flat.push(Number(row?.[`frequency_${suffix}`]) || 0);
+            });
+          });
+          denoms[mode] = flat;
+        });
+
+        return {
+          version: "packet_backed_name_guessing_game_v1",
+          years,
+          names,
+          cleanNames,
+          gameTopN: 1000,
+          difficultyLabels: DIFFICULTY_LABELS_BOOTSTRAP,
+          metadata: new Array(names.length).fill(null),
+          modes: {
+            combined: {
+              frequency: new Array(names.length).fill(null),
+              percent: new Array(names.length).fill(null),
+              rank: new Array(names.length).fill(null)
+            },
+            male: {
+              frequency: new Array(names.length).fill(null),
+              percent: new Array(names.length).fill(null),
+              rank: new Array(names.length).fill(null)
+            },
+            female: {
+              frequency: new Array(names.length).fill(null),
+              percent: new Array(names.length).fill(null),
+              rank: new Array(names.length).fill(null)
+            }
+          },
+          stateMap: {
+            states: DISPLAY_STATES_BOOTSTRAP.slice(),
+            periods,
+            counts: {
+              combined: new Array(names.length).fill(null),
+              male: new Array(names.length).fill(null),
+              female: new Array(names.length).fill(null)
+            },
+            denoms
+          },
+          roundBankFormat: "no_repeat_5_round_sequences_v1",
+          roundBanks,
+          manifest
+        };
+      }
+
+      const PAYLOAD = await buildWebsitePayload();
+      const root = document.getElementById("nameCurveGameWeb");
+
+      const canvas = root.querySelector("#ncgCanvas");
+      const ctx = canvas.getContext("2d");
+      const mapDiv = root.querySelector("#ncgMap");
+
+      const modeSelect = root.querySelector("#ncgMode");
+      const viewSelect = root.querySelector("#ncgView");
+      const sexSelect = root.querySelector("#ncgSex");
+      const metricSelect = root.querySelector("#ncgMetric");
+      const scaleSelect = root.querySelector("#ncgScale");
+      const periodSlider = root.querySelector("#ncgPeriodSlider");
+      const periodLabelEl = root.querySelector("#ncgPeriodLabel");
+      const periodTicks = root.querySelector("#ncgPeriodTicks");
+      const mapSliderBox = root.querySelector("#ncgMapSliderBox");
+      const newGameButton = root.querySelector("#ncgNewGame");
+
+      const customBox = root.querySelector("#ncgCustomBox");
+      const customNamesInput = root.querySelector("#ncgCustomNames");
+      const startCustomButton = root.querySelector("#ncgStartCustom");
+
+      const roundStatus = root.querySelector("#ncgRoundStatus");
+      const answerArea = root.querySelector("#ncgAnswerArea");
+      const feedback = root.querySelector("#ncgFeedback");
+
+      const YEARS = PAYLOAD.years;
+      const STATE_MAP = PAYLOAD.stateMap;
+      const PAYLOAD_STATES = STATE_MAP.states;
+      const PERIODS = STATE_MAP.periods;
+
+      const DISPLAY_STATES = [
+        "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+        "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+        "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+        "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+        "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+      ];
+
+      const stateIndexByCode = {};
+      PAYLOAD_STATES.forEach((st, i) => {
+        stateIndexByCode[st] = i;
+      });
+
+      const LETTERS = ["A", "B", "C", "D", "E", "F"];
+
+      const CORRECT_COLOR = "#2E8B57";
+      const SINGLE_DISTRACTOR_PALETTE = ["#5E3C99", "#D95F02", "#377EB8", "#E7298A", "#A6761D", "#666666"];
+
+      // Same tri-color family used by the balance map: yellow, cyan, pink.
+      const BALANCE_TRI_COLORS = ["#f2d64b", "#39bcd3", "#d85c9a"];
+      const LINE_MULTI_COLORS = ["#c49a00", "#39bcd3", "#d85c9a"];
+
+      const CUSTOM_EXTRA_PALETTE = ["#7570B3", "#66A61E", "#A6761D"];
+      const SINGLE_COLOR = "#5E3C99";
+      const MALE_COLOR = "#2f6fb3";
+      const FEMALE_COLOR = "#d85c9a";
+      const GRID_COLOR = "rgba(0,0,0,0.13)";
+      const AXIS_COLOR = "rgba(0,0,0,0.58)";
+
+      periodSlider.min = "0";
+      periodSlider.max = String(Math.max(0, PERIODS.length - 1));
+      periodSlider.step = "1";
+      periodSlider.value = "0";
+
+      PERIODS.forEach((p) => {
+        const tick = document.createElement("span");
+        tick.textContent = p.label === "All time" ? "All" : p.label.replace(" ", "\n");
+        periodTicks.appendChild(tick);
+      });
+
+      const nameLookup = {};
+      PAYLOAD.cleanNames.forEach((cleanName, i) => {
+        nameLookup[String(cleanName).toLowerCase()] = i;
+      });
+
+
+      const nationalPacketPromises = new Map();
+      const statePacketPromises = new Map();
+
+      function registerDynamicName(displayName, cleanName=null) {
+        const display = String(displayName ?? "").trim();
+        const clean = String(cleanName ?? display).trim().toLowerCase();
+
+        if (nameLookup[clean] !== undefined) {
+          return nameLookup[clean];
+        }
+
+        const idx = PAYLOAD.names.length;
+        PAYLOAD.names.push(display);
+        PAYLOAD.cleanNames.push(clean);
+        PAYLOAD.metadata.push(null);
+
+        ["combined", "male", "female"].forEach(mode => {
+          PAYLOAD.modes[mode].frequency.push(null);
+          PAYLOAD.modes[mode].percent.push(null);
+          PAYLOAD.modes[mode].rank.push(null);
+          STATE_MAP.counts[mode].push(null);
+        });
+
+        nameLookup[clean] = idx;
+        return idx;
+      }
+
+      function nationalArraysFromPacket(packet) {
+        const byYear = new Map(
+          (packet?.yearly || []).map(row => [Number(row.year), row])
+        );
+
+        const result = {};
+        const suffixByMode = {
+          combined: "c",
+          male: "m",
+          female: "f"
+        };
+
+        Object.entries(suffixByMode).forEach(([mode, suffix]) => {
+          result[mode] = {
+            frequency: YEARS.map(year => {
+              const value = byYear.get(year)?.[`frequency_${suffix}`];
+              return Number.isFinite(Number(value)) ? Number(value) : 0;
+            }),
+            percent: YEARS.map(year => {
+              const value = byYear.get(year)?.[`proportion_${suffix}`];
+              return Number.isFinite(Number(value)) ? Number(value) : 0;
+            }),
+            rank: YEARS.map(year => {
+              const value = byYear.get(year)?.[`rank_${suffix}`];
+              return value === null || value === undefined || !Number.isFinite(Number(value))
+                ? null
+                : Number(value);
+            })
+          };
+        });
+
+        return result;
+      }
+
+      function metadataFromNationalArrays(arrays) {
+        const curve = arrays.combined.frequency;
+        let peakFrequency = -1;
+        let peakYear = YEARS[0];
+
+        curve.forEach((value, i) => {
+          if (Number(value) > peakFrequency) {
+            peakFrequency = Number(value);
+            peakYear = YEARS[i];
+          }
+        });
+
+        return {
+          peakYear,
+          peakFrequency: Math.max(0, peakFrequency)
+        };
+      }
+
+      function populateNationalAtIndex(idx, packet) {
+        const arrays = nationalArraysFromPacket(packet);
+
+        ["combined", "male", "female"].forEach(mode => {
+          ["frequency", "percent", "rank"].forEach(metric => {
+            PAYLOAD.modes[mode][metric][idx] = arrays[mode][metric];
+          });
+        });
+
+        PAYLOAD.metadata[idx] = metadataFromNationalArrays(arrays);
+      }
+
+      async function ensureNationalIndex(idx) {
+        if (PAYLOAD.modes.combined.frequency[idx]) return idx;
+
+        const clean = PAYLOAD.cleanNames[idx];
+        if (!nationalPacketPromises.has(clean)) {
+          nationalPacketPromises.set(
+            clean,
+            NameData.getNationalName(PAYLOAD.names[idx])
+          );
+        }
+
+        const packet = await nationalPacketPromises.get(clean);
+
+        if (!packet) {
+          throw new Error(`No national baby-name data found for ${PAYLOAD.names[idx]}.`);
+        }
+
+        if (packet.displayName && packet.displayName !== PAYLOAD.names[idx]) {
+          PAYLOAD.names[idx] = packet.displayName;
+        }
+
+        populateNationalAtIndex(idx, packet);
+        return idx;
+      }
+
+      function stateCountsFromPacket(packet) {
+        const suffixByMode = {
+          combined: "c",
+          male: "m",
+          female: "f"
+        };
+
+        const statePos = {};
+        PAYLOAD_STATES.forEach((stateCode, i) => {
+          statePos[stateCode] = i;
+        });
+
+        const output = {};
+        Object.keys(suffixByMode).forEach(mode => {
+          output[mode] = new Array(PERIODS.length * PAYLOAD_STATES.length).fill(0);
+        });
+
+        (packet?.yearly || []).forEach(row => {
+          const stateCode = String(row.state || "").toUpperCase();
+          const stPos = statePos[stateCode];
+          const year = Number(row.year);
+
+          if (stPos === undefined || !Number.isFinite(year)) return;
+
+          PERIODS.forEach((period, periodIndex) => {
+            if (year < Number(period.start) || year > Number(period.end)) return;
+
+            Object.entries(suffixByMode).forEach(([mode, suffix]) => {
+              const value = Number(row[`frequency_${suffix}`]) || 0;
+              output[mode][periodIndex * PAYLOAD_STATES.length + stPos] += value;
+            });
+          });
+        });
+
+        return output;
+      }
+
+      async function ensureStateIndex(idx) {
+        if (STATE_MAP.counts.combined[idx]) return idx;
+
+        const clean = PAYLOAD.cleanNames[idx];
+        if (!statePacketPromises.has(clean)) {
+          statePacketPromises.set(
+            clean,
+            NameData.getStateName(PAYLOAD.names[idx])
+          );
+        }
+
+        const packet = await statePacketPromises.get(clean);
+        const counts = stateCountsFromPacket(packet);
+
+        ["combined", "male", "female"].forEach(mode => {
+          STATE_MAP.counts[mode][idx] = counts[mode];
+        });
+
+        return idx;
+      }
+
+      function roundIndicesForLoad(round) {
+        if (!round) return [];
+        if (round.type === "single") return round.choices.slice();
+        return (round.indices || round.curveOrder || []).slice();
+      }
+
+      async function ensureRoundNational(round) {
+        const indices = Array.from(new Set(roundIndicesForLoad(round)));
+        await Promise.all(indices.map(ensureNationalIndex));
+      }
+
+      async function ensureRoundState(round) {
+        const indices = Array.from(new Set(roundIndicesForLoad(round)));
+        await Promise.all(indices.map(ensureStateIndex));
+      }
+
+      async function resolveCustomName(raw) {
+        const clean = cleanNameInput(raw);
+        if (!clean) return null;
+
+        if (nameLookup[clean] !== undefined) {
+          const idx = nameLookup[clean];
+          await ensureNationalIndex(idx);
+          return idx;
+        }
+
+        const packet = await NameData.getNationalName(raw);
+        if (!packet) return null;
+
+        const idx = registerDynamicName(packet.displayName || raw, packet.key || clean);
+        populateNationalAtIndex(idx, packet);
+        return idx;
+      }
+
+      const state = {
+        mode: "single",
+        view: "line",
+        sex: "combined",
+        metric: "frequency",
+        scale: "linear",
+        periodIndex: 0,
+        rounds: [],
+        roundIndex: 0,
+        hover: null,
+        mapKind: null,
+        axisAnimation: null,
+        freeSettings: {
+          sex: "combined",
+          metric: "frequency",
+          scale: "linear"
+        },
+        lastNonRankScale: "linear"
+      };
+
+      function cleanNameInput(s) {
+        return String(s || "").trim().toLowerCase();
+      }
+
+      function randomChoice(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      function shuffle(arr) {
+        const out = arr.slice();
+
+        for (let i = out.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [out[i], out[j]] = [out[j], out[i]];
+        }
+
+        return out;
+      }
+
+      function currentRound() {
+        return state.rounds[state.roundIndex] || null;
+      }
+
+      function getName(idx) {
+        return PAYLOAD.names[idx] || "Unknown";
+      }
+
+      function getMetadata(idx) {
+        return PAYLOAD.metadata[idx] || {};
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function getMultiColor(pos) {
+        if (pos < BALANCE_TRI_COLORS.length) return BALANCE_TRI_COLORS[pos];
+        return CUSTOM_EXTRA_PALETTE[(pos - BALANCE_TRI_COLORS.length) % CUSTOM_EXTRA_PALETTE.length];
+      }
+
+      function getMultiLineColor(pos) {
+        if (pos < LINE_MULTI_COLORS.length) return LINE_MULTI_COLORS[pos];
+        return CUSTOM_EXTRA_PALETTE[(pos - LINE_MULTI_COLORS.length) % CUSTOM_EXTRA_PALETTE.length];
+      }
+
+      function singleRevealColorForChoice(round, idx) {
+        if (!round || !round.answered) return SINGLE_COLOR;
+        if (idx === round.answer) return CORRECT_COLOR;
+
+        const distractors = (round.choices || []).filter(choiceIdx => choiceIdx !== round.answer);
+        const pos = Math.max(0, distractors.indexOf(idx));
+        return SINGLE_DISTRACTOR_PALETTE[pos % SINGLE_DISTRACTOR_PALETTE.length];
+      }
+
+      function singleAnswerColor(round) {
+        if (!round || !round.answered) return SINGLE_COLOR;
+        return CORRECT_COLOR;
+      }
+
+      function currentNationalModeForLine(seriesItem) {
+        if (seriesItem.sexLine === "male") return "male";
+        if (seriesItem.sexLine === "female") return "female";
+
+        if (state.mode === "single") {
+          return "combined";
+        }
+
+        return state.sex;
+      }
+
+      function nationalModeForSeries(seriesItem=null) {
+        return seriesItem ? currentNationalModeForLine(seriesItem) : (
+          state.sex === "separate" ? "combined" : state.sex
+        );
+      }
+
+      function getCurveForMetric(idx, seriesItem=null, metric=state.metric) {
+        const mode = nationalModeForSeries(seriesItem);
+        return PAYLOAD.modes[mode][metric][idx];
+      }
+
+      function getCurve(idx, seriesItem=null) {
+        return getCurveForMetric(idx, seriesItem, state.metric);
+      }
+
+      function getMetricValueAt(idx, seriesItem, metric, yearIndex) {
+        const arr = getCurveForMetric(idx, seriesItem, metric);
+        if (!arr || yearIndex < 0 || yearIndex >= arr.length) return NaN;
+        return Number(arr[yearIndex]);
+      }
+
+      function resetInspectionDefaults() {
+        state.view = "line";
+        state.metric = "frequency";
+        state.scale = "linear";
+        state.periodIndex = 0;
+        state.hover = null;
+        cancelAxisAnimation();
+        state.freeSettings = {
+          sex: "combined",
+          metric: "frequency",
+          scale: "linear"
+        };
+        state.lastNonRankScale = "linear";
+
+        periodSlider.value = "0";
+
+        setSexOptionsForCurrentMode();
+        syncViewOptionsForRound();
+
+        viewSelect.value = "line";
+        metricSelect.value = "frequency";
+        scaleSelect.value = "linear";
+      }
+
+      function setSexOptionsForCurrentMode() {
+        const mode = modeSelect.value;
+        sexSelect.innerHTML = "";
+
+        const opts = mode === "single"
+          ? [
+              ["combined", "Combined"],
+              ["separate", "Separate"]
+            ]
+          : [
+              ["combined", "Combined"],
+              ["male", "Male"],
+              ["female", "Female"]
+            ];
+
+        opts.forEach(([value, label]) => {
+          const opt = document.createElement("option");
+          opt.value = value;
+          opt.textContent = label;
+          sexSelect.appendChild(opt);
+        });
+
+        const preferred = state.freeSettings && state.freeSettings.sex
+          ? state.freeSettings.sex
+          : "combined";
+        const allowed = opts.map(d => d[0]);
+
+        sexSelect.value = allowed.includes(preferred) ? preferred : "combined";
+        state.sex = sexSelect.value;
+        state.freeSettings.sex = state.sex;
+      }
+
+      function isMapView(viewValue) {
+        return viewValue !== "line";
+      }
+
+      function viewOptionsForRound() {
+        const round = currentRound();
+
+        if (!round) {
+          return [["line", "Line"]];
+        }
+
+        if (round.type === "single") {
+          return [
+            ["line", "Line"],
+            ["percentage", "Map %"]
+          ];
+        }
+
+        const n = (round.curveOrder || []).length;
+
+        if (n <= 3) {
+          return [
+            ["line", "Line"],
+            ["balance", "Map balance"],
+            ["split", "Map split"]
+          ];
+        }
+
+        return [
+          ["line", "Line"],
+          ["split", "Map split"]
+        ];
+      }
+
+      function syncViewOptionsForRound() {
+        const options = viewOptionsForRound();
+        const current = viewSelect.value || state.view || "line";
+        const allowed = options.map(d => d[0]);
+
+        viewSelect.innerHTML = "";
+
+        options.forEach(([value, label]) => {
+          const opt = document.createElement("option");
+          opt.value = value;
+          opt.textContent = label;
+          viewSelect.appendChild(opt);
+        });
+
+        const nextView = allowed.includes(current) ? current : "line";
+        viewSelect.value = nextView;
+        state.view = nextView;
+      }
+
+      function saveFreeSettingsFromControls() {
+        if (isMapView(viewSelect.value)) return;
+
+        state.freeSettings.sex = sexSelect.value;
+        state.freeSettings.metric = metricSelect.value;
+
+        if (metricSelect.value === "rank") {
+          state.freeSettings.scale = "log";
+        } else {
+          state.freeSettings.scale = scaleSelect.value;
+          state.lastNonRankScale = scaleSelect.value;
+        }
+      }
+
+      function syncInspectionControlsForView() {
+        syncViewOptionsForRound();
+
+        const mapVisible = isMapView(viewSelect.value);
+
+        if (mapVisible) {
+          sexSelect.value = "combined";
+          metricSelect.value = "percent";
+          scaleSelect.value = "linear";
+
+          sexSelect.disabled = true;
+          metricSelect.disabled = true;
+          scaleSelect.disabled = true;
+        } else {
+          sexSelect.disabled = false;
+          metricSelect.disabled = false;
+
+          if (Array.from(sexSelect.options).some(opt => opt.value === state.freeSettings.sex)) {
+            sexSelect.value = state.freeSettings.sex;
+          } else {
+            sexSelect.value = "combined";
+            state.freeSettings.sex = "combined";
+          }
+
+          metricSelect.value = state.freeSettings.metric;
+
+          if (metricSelect.value === "rank") {
+            scaleSelect.value = "log";
+            scaleSelect.disabled = true;
+          } else {
+            scaleSelect.value = state.freeSettings.scale || state.lastNonRankScale || "linear";
+            scaleSelect.disabled = false;
+          }
+        }
+      }
+
+      function formatCompact(v) {
+        if (!Number.isFinite(v)) return "";
+
+        const abs = Math.abs(v);
+
+        if (abs >= 1000000) return (v / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+        if (abs >= 1000) return (v / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+        if (abs >= 1) return String(Math.round(v));
+
+        return v.toPrecision(2);
+      }
+
+      function formatPercent(v) {
+        if (!Number.isFinite(v)) return "";
+
+        const pct = 100 * v;
+        const abs = Math.abs(pct);
+
+        if (abs >= 10) return pct.toFixed(0) + "%";
+        if (abs >= 1) return pct.toFixed(1).replace(/\.0$/, "") + "%";
+        if (abs >= 0.01) return pct.toFixed(2) + "%";
+
+        return pct.toExponential(0) + "%";
+      }
+
+      function formatMetricValueForMetric(v, metric) {
+        if (!Number.isFinite(v)) return "";
+
+        if (metric === "percent") return formatPercent(v);
+        if (metric === "rank") return "#" + Math.round(v).toLocaleString();
+
+        return formatCompact(v);
+      }
+
+      function formatMetricValue(v) {
+        return formatMetricValueForMetric(v, state.metric);
+      }
+
+      function shortMetricLabel(metric) {
+        if (metric === "frequency") return "Frequency";
+        if (metric === "percent") return "Pct";
+        return "Rank";
+      }
+
+      function metricLabel() {
+        if (state.metric === "frequency") return "Frequency";
+        if (state.metric === "percent") return "Percentage of births";
+        return "Rank";
+      }
+
+      function transformValue(v) {
+        if (v === null || v === undefined || !Number.isFinite(Number(v))) return null;
+
+        v = Number(v);
+
+        if (state.scale === "log") {
+          if (v <= 0) return null;
+          return Math.log10(v);
+        }
+
+        return v;
+      }
+
+      function inverseTransformValue(v) {
+        if (state.scale === "log") return Math.pow(10, v);
+        return v;
+      }
+
+      function resizeCanvasToDisplaySize(canvasEl) {
+        const rect = canvasEl.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+
+        const cssWidth = Math.max(320, Math.round(rect.width));
+        const cssHeight = Math.max(260, Math.round(rect.height));
+
+        const backingWidth = Math.max(1, Math.round(cssWidth * dpr));
+        const backingHeight = Math.max(1, Math.round(cssHeight * dpr));
+
+        if (canvasEl.width !== backingWidth || canvasEl.height !== backingHeight) {
+          canvasEl.width = backingWidth;
+          canvasEl.height = backingHeight;
+        }
+
+        // Draw using CSS-pixel coordinates, while keeping the canvas sharp.
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        return { width: cssWidth, height: cssHeight, dpr };
+      }
+
+      function pointerPosition(evt) {
+        const rect = canvas.getBoundingClientRect();
+
+        return {
+          x: evt.clientX - rect.left,
+          y: evt.clientY - rect.top
+        };
+      }
+
+      function plotBox() {
+        const { width, height } = resizeCanvasToDisplaySize(canvas);
+
+        return {
+          width,
+          height,
+          left: 110,
+          right: width - 38,
+          top: 42,
+          bottom: height - 58
+        };
+      }
+
+      function xFromYear(year, box) {
+        const minYear = YEARS[0];
+        const maxYear = YEARS[YEARS.length - 1];
+        const t = (year - minYear) / Math.max(1, maxYear - minYear);
+
+        return box.left + t * (box.right - box.left);
+      }
+
+      function computeYRange(series) {
+        const vals = [];
+
+        series.forEach(s => {
+          const curve = getCurve(s.idx, s);
+
+          curve.forEach(v => {
+            const tv = transformValue(v);
+            if (tv !== null && Number.isFinite(tv)) vals.push(tv);
+          });
+        });
+
+        if (!vals.length) {
+          return {
+            lo: 0,
+            hi: 1,
+            reverse: state.metric === "rank"
+          };
+        }
+
+        let lo = Math.min(...vals);
+        let hi = Math.max(...vals);
+
+        if (lo === hi) {
+          const pad = Math.abs(lo) > 0 ? Math.abs(lo) * 0.08 : 1;
+          lo -= pad;
+          hi += pad;
+        } else {
+          const pad = 0.07 * (hi - lo);
+          lo -= pad;
+          hi += pad;
+        }
+
+        if (state.scale !== "log") {
+          if (state.metric === "rank") {
+            lo = Math.max(1, lo);
+          } else {
+            lo = Math.max(0, lo);
+          }
+        }
+
+        return {
+          lo,
+          hi,
+          reverse: state.metric === "rank"
+        };
+      }
+
+      function cloneRange(range) {
+        return {
+          lo: Number(range.lo),
+          hi: Number(range.hi),
+          reverse: Boolean(range.reverse)
+        };
+      }
+
+      function rangesAreClose(a, b) {
+        if (!a || !b) return true;
+        return (
+          Math.abs(a.lo - b.lo) < 1e-9 &&
+          Math.abs(a.hi - b.hi) < 1e-9 &&
+          Boolean(a.reverse) === Boolean(b.reverse)
+        );
+      }
+
+      function easeInOutCubic(t) {
+        t = Math.max(0, Math.min(1, t));
+        return t < 0.5
+          ? 4 * t * t * t
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      }
+
+      function cancelAxisAnimation() {
+        if (state.axisAnimation && state.axisAnimation.timer) {
+          clearTimeout(state.axisAnimation.timer);
+        }
+        state.axisAnimation = null;
+      }
+
+      function beginSingleRevealAxisAnimation(fromRange, toRange) {
+        cancelAxisAnimation();
+
+        if (rangesAreClose(fromRange, toRange) || viewSelect.value !== "line") {
+          return;
+        }
+
+        state.axisAnimation = {
+          fromRange: cloneRange(fromRange),
+          toRange: cloneRange(toRange),
+          metric: state.metric,
+          scale: state.scale,
+          sex: state.sex,
+          roundIndex: state.roundIndex,
+          holdMs: 1500,
+          durationMs: 2000,
+          frameCount: 10,
+          startedAt: performance.now(),
+          timer: null
+        };
+
+        const scheduleNext = () => {
+          if (!state.axisAnimation) return;
+          const anim = state.axisAnimation;
+          const now = performance.now();
+          const elapsed = now - anim.startedAt;
+
+          if (elapsed >= anim.holdMs + anim.durationMs) {
+            state.axisAnimation = null;
+            drawLinePlot();
+            return;
+          }
+
+          drawLinePlot();
+
+          const frameMs = anim.durationMs / anim.frameCount;
+          const nextDelay = elapsed < anim.holdMs
+            ? Math.min(anim.holdMs - elapsed, frameMs)
+            : frameMs;
+          anim.timer = setTimeout(scheduleNext, Math.max(20, nextDelay));
+        };
+
+        state.axisAnimation.timer = setTimeout(scheduleNext, state.axisAnimation.holdMs);
+      }
+
+      function displayRangeForSeries(series) {
+        const naturalRange = computeYRange(series);
+        const anim = state.axisAnimation;
+
+        if (!anim) return naturalRange;
+
+        const compatible = (
+          state.view === "line" &&
+          anim.metric === state.metric &&
+          anim.scale === state.scale &&
+          anim.sex === state.sex &&
+          anim.roundIndex === state.roundIndex
+        );
+
+        if (!compatible) {
+          cancelAxisAnimation();
+          return naturalRange;
+        }
+
+        const elapsed = performance.now() - anim.startedAt;
+
+        if (elapsed <= anim.holdMs) {
+          return cloneRange(anim.fromRange);
+        }
+
+        const rawProgress = (elapsed - anim.holdMs) / anim.durationMs;
+        const steppedProgress = Math.min(1, Math.ceil(rawProgress * anim.frameCount) / anim.frameCount);
+        const t = easeInOutCubic(steppedProgress);
+
+        return {
+          lo: anim.fromRange.lo + (anim.toRange.lo - anim.fromRange.lo) * t,
+          hi: anim.fromRange.hi + (anim.toRange.hi - anim.fromRange.hi) * t,
+          reverse: anim.toRange.reverse
+        };
+      }
+
+      function yFromRaw(v, box, range) {
+        const tv = transformValue(v);
+
+        if (tv === null || !Number.isFinite(tv)) return null;
+
+        const denom = Math.max(1e-12, range.hi - range.lo);
+        const t = (tv - range.lo) / denom;
+
+        if (range.reverse) {
+          return box.top + t * (box.bottom - box.top);
+        }
+
+        return box.bottom - t * (box.bottom - box.top);
+      }
+
+      function buildYTicks(range) {
+        const ticks = [];
+
+        if (state.scale === "log") {
+          const loExp = Math.ceil(range.lo);
+          const hiExp = Math.floor(range.hi);
+
+          if (Number.isFinite(loExp) && Number.isFinite(hiExp)) {
+            const span = Math.max(0, hiExp - loExp + 1);
+            const step = Math.max(1, Math.ceil(span / 5));
+            const start = Math.ceil(loExp / step) * step;
+
+            for (let e = start; e <= hiExp; e += step) {
+              ticks.push(Math.pow(10, e));
+            }
+          }
+
+          if (!ticks.length) {
+            ticks.push(Math.pow(10, (range.lo + range.hi) / 2));
+          }
+
+          return ticks;
+        }
+
+        for (let i = 0; i <= 4; i++) {
+          const tv = range.lo + (i / 4) * (range.hi - range.lo);
+          const raw = inverseTransformValue(tv);
+
+          if (state.metric === "rank") {
+            const rounded = Math.max(1, Math.round(raw));
+            if (!ticks.includes(rounded)) ticks.push(rounded);
+          } else {
+            ticks.push(raw);
+          }
+        }
+
+        return ticks;
+      }
+
+      function drawAxes(box, range) {
+        ctx.save();
+
+        ctx.strokeStyle = AXIS_COLOR;
+        ctx.lineWidth = 1.35;
+
+        ctx.beginPath();
+        ctx.moveTo(box.left, box.top);
+        ctx.lineTo(box.left, box.bottom);
+        ctx.lineTo(box.right, box.bottom);
+        ctx.stroke();
+
+        const yTicks = buildYTicks(range);
+
+        ctx.font = "24px Arial";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+
+        yTicks.forEach(rawTick => {
+          const y = yFromRaw(rawTick, box, range);
+          if (y === null) return;
+
+          ctx.strokeStyle = GRID_COLOR;
+          ctx.beginPath();
+          ctx.moveTo(box.left, y);
+          ctx.lineTo(box.right, y);
+          ctx.stroke();
+
+          ctx.fillStyle = "rgba(0,0,0,0.76)";
+          ctx.fillText(formatMetricValue(rawTick), box.left - 12, y);
+        });
+
+        const yearTicks = [
+          YEARS[0],
+          1900,
+          1920,
+          1940,
+          1960,
+          1980,
+          2000,
+          2020,
+          
+        ].filter((v, i, arr) => (
+          arr.indexOf(v) === i &&
+          v >= YEARS[0] &&
+          v <= YEARS[YEARS.length - 1]
+        ));
+
+        ctx.fillStyle = "rgba(0,0,0,0.76)";
+        ctx.font = "22px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+
+        yearTicks.forEach(yr => {
+          const x = xFromYear(yr, box);
+          ctx.fillText(String(yr), x, box.bottom + 14);
+        });
+
+        ctx.save();
+        ctx.translate(15, (box.top + box.bottom) / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "26px Arial";
+        ctx.fillStyle = "rgba(0,0,0,0.82)";
+        ctx.fillText(metricLabel() + (state.scale === "log" ? " (log scale)" : ""), 0, 0);
+        ctx.restore();
+
+        ctx.restore();
+      }
+
+      function drawCurve(curve, box, range, style) {
+        ctx.save();
+        ctx.strokeStyle = style.color;
+        ctx.lineWidth = style.width || 3.4;
+        ctx.globalAlpha = style.alpha === undefined ? 1 : style.alpha;
+        ctx.setLineDash(style.dash || []);
+
+        ctx.beginPath();
+
+        let drawing = false;
+
+        for (let i = 0; i < YEARS.length; i++) {
+          const y = yFromRaw(curve[i], box, range);
+          const x = xFromYear(YEARS[i], box);
+
+          if (y === null) {
+            drawing = false;
+            continue;
+          }
+
+          if (!drawing) {
+            ctx.moveTo(x, y);
+            drawing = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function labelPointForCurve(curve) {
+        let bestIndex = null;
+        let bestScore = null;
+
+        for (let i = 0; i < curve.length; i++) {
+          const raw = curve[i];
+
+          if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) continue;
+          if (state.scale === "log" && Number(raw) <= 0) continue;
+
+          const val = Number(raw);
+          const score = state.metric === "rank" ? -val : val;
+
+          if (bestIndex === null || score > bestScore) {
+            bestIndex = i;
+            bestScore = score;
+          }
+        }
+
+        if (bestIndex === null) return null;
+
+        return {
+          index: bestIndex,
+          year: YEARS[bestIndex],
+          value: curve[bestIndex]
+        };
+      }
+
+      function expandedRect(rect, pad) {
+        return {
+          left: rect.left - pad,
+          right: rect.right + pad,
+          top: rect.top - pad,
+          bottom: rect.bottom + pad
+        };
+      }
+
+      function rectOverlapArea(a, b, pad=0) {
+        const aa = expandedRect(a, pad);
+        const bb = expandedRect(b, pad);
+        const w = Math.max(0, Math.min(aa.right, bb.right) - Math.max(aa.left, bb.left));
+        const h = Math.max(0, Math.min(aa.bottom, bb.bottom) - Math.max(aa.top, bb.top));
+        return w * h;
+      }
+
+      function drawLabel(text, x, y, color, box, small=false, occupiedRects=[]) {
+        ctx.save();
+
+        ctx.font = small ? "bold 30px Arial" : "bold 30px Arial";
+        const paddingX = 6;
+        const paddingY = 5;
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+        const textHeight = small ? 23 : 25;
+        const rectWidth = textWidth + 2 * paddingX;
+        const rectHeight = textHeight + 2 * paddingY;
+        const gap = small ? 10 : 12;
+
+        function rectFromTextOrigin(tx, ty) {
+          return {
+            tx,
+            ty,
+            left: tx - paddingX,
+            right: tx - paddingX + rectWidth,
+            top: ty - textHeight + 1 - paddingY,
+            bottom: ty - textHeight + 1 - paddingY + rectHeight
+          };
+        }
+
+        function clampCandidate(c) {
+          let tx = c.tx;
+          let ty = c.ty;
+          let rect = rectFromTextOrigin(tx, ty);
+
+          if (rect.right > box.right) tx -= rect.right - box.right;
+          if (rect.left < box.left) tx += box.left - rect.left;
+
+          rect = rectFromTextOrigin(tx, ty);
+          if (rect.top < box.top) ty += box.top - rect.top;
+          if (rect.bottom > box.bottom) ty -= rect.bottom - box.bottom;
+
+          return rectFromTextOrigin(tx, ty);
+        }
+
+        const baseCandidates = [
+          {tx: x + gap, ty: y - gap, priority: 0},
+          {tx: x - textWidth - 2 * paddingX - gap, ty: y - gap, priority: 1},
+          {tx: x + gap, ty: y + textHeight + gap, priority: 2},
+          {tx: x - textWidth - 2 * paddingX - gap, ty: y + textHeight + gap, priority: 3},
+          {tx: x - textWidth / 2, ty: y - gap, priority: 4},
+          {tx: x - textWidth / 2, ty: y + textHeight + gap, priority: 5},
+          {tx: x + 2 * gap, ty: y + Math.round(textHeight / 2), priority: 6},
+          {tx: x - textWidth - 2 * paddingX - 2 * gap, ty: y + Math.round(textHeight / 2), priority: 7}
+        ];
+
+        const verticalOffsets = [0, -36, 36, -72, 72, -108, 108];
+        let best = null;
+        let bestScore = Infinity;
+
+        baseCandidates.forEach(c => {
+          verticalOffsets.forEach((dy, offsetIndex) => {
+            const rect = clampCandidate({
+              tx: c.tx,
+              ty: c.ty + dy
+            });
+
+            const overlap = occupiedRects.reduce((acc, other) => {
+              return acc + rectOverlapArea(rect, other, 5);
+            }, 0);
+
+            const distancePenalty = 0.03 * Math.hypot(rect.tx - c.tx, rect.ty - c.ty);
+            const priorityPenalty = c.priority * 22 + offsetIndex * 12;
+            const edgePenalty = (
+              Math.max(0, box.top + 2 - rect.top) +
+              Math.max(0, rect.bottom - box.bottom + 2) +
+              Math.max(0, box.left + 2 - rect.left) +
+              Math.max(0, rect.right - box.right + 2)
+            ) * 80;
+            const score = overlap * 12 + priorityPenalty + distancePenalty + edgePenalty;
+
+            if (score < bestScore) {
+              bestScore = score;
+              best = rect;
+            }
+          });
+        });
+
+        if (!best) {
+          ctx.restore();
+          return null;
+        }
+
+        ctx.fillStyle = "rgba(255,255,255,0.88)";
+        ctx.fillRect(best.left, best.top, rectWidth, rectHeight);
+
+        ctx.fillStyle = color;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(text, best.tx, best.ty);
+
+        ctx.restore();
+        return {
+          left: best.left,
+          right: best.left + rectWidth,
+          top: best.top,
+          bottom: best.top + rectHeight
+        };
+      }
+
+      function getSeriesForRound(round) {
+        if (!round) return [];
+
+        if (round.type === "single") {
+          if (state.sex === "separate") {
+            if (!round.answered) {
+              return [
+                {
+                  idx: round.answer,
+                  sexLine: "male",
+                  color: MALE_COLOR,
+                  label: "Male",
+                  width: 3.7,
+                  dash: []
+                },
+                {
+                  idx: round.answer,
+                  sexLine: "female",
+                  color: FEMALE_COLOR,
+                  label: "Female",
+                  width: 3.7,
+                  dash: [9, 6]
+                }
+              ];
+            }
+
+            const series = [];
+
+            round.choices.forEach((idx, i) => {
+              const isAnswer = idx === round.answer;
+              const nameColor = singleRevealColorForChoice(round, idx);
+
+              series.push({
+                idx,
+                sexLine: "male",
+                color: nameColor,
+                label: `${getName(idx)} M`,
+                width: isAnswer ? 5.4 : 2.4,
+                alpha: isAnswer ? 1.0 : 0.56,
+                dash: []
+              });
+
+              series.push({
+                idx,
+                sexLine: "female",
+                color: nameColor,
+                label: `${getName(idx)} F`,
+                width: isAnswer ? 5.4 : 2.4,
+                alpha: isAnswer ? 1.0 : 0.56,
+                dash: [9, 6]
+              });
+            });
+
+            return series;
+          }
+
+          if (!round.answered) {
+            return [{
+              idx: round.answer,
+              color: SINGLE_COLOR,
+              label: "",
+              hideLabel: true,
+              width: 4.0
+            }];
+          }
+
+          return round.choices.map((idx, i) => ({
+            idx,
+            color: singleRevealColorForChoice(round, idx),
+            label: getName(idx),
+            hideLabel: false,
+            width: idx === round.answer ? 5.4 : 2.6,
+            alpha: idx === round.answer ? 1.0 : 0.64
+          }));
+        }
+
+        return round.curveOrder.map((idx, i) => {
+          const nameLabel = `Name ${i + 1}`;
+          const name = getName(idx);
+
+          return {
+            idx,
+            color: getMultiLineColor(i),
+            label: round.answered ? `${nameLabel}: ${name}` : nameLabel,
+            hideLabel: false,
+            width: 3.7
+          };
+        });
+      }
+
+      function findNearestPoint(series, box, range, pos) {
+        let best = null;
+        let bestD = Infinity;
+
+        series.forEach(s => {
+          const curve = getCurve(s.idx, s);
+
+          for (let i = 0; i < YEARS.length; i++) {
+            const y = yFromRaw(curve[i], box, range);
+            if (y === null) continue;
+
+            const x = xFromYear(YEARS[i], box);
+            const d = Math.hypot(pos.x - x, pos.y - y);
+
+            if (d < bestD) {
+              bestD = d;
+              best = {
+                series: s,
+                year: YEARS[i],
+                yearIndex: i,
+                value: curve[i],
+                x,
+                y,
+                distance: d
+              };
+            }
+          }
+        });
+
+        return bestD <= 24 ? best : null;
+      }
+
+      function drawHoverTooltip(hover, box) {
+        if (!hover) return;
+
+        ctx.save();
+
+        ctx.fillStyle = hover.series.color;
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hover.x, hover.y, 6.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        const yearIndex = hover.yearIndex === undefined
+          ? YEARS.indexOf(hover.year)
+          : hover.yearIndex;
+
+        const tooltipRows = [
+          {text: hover.series.label || "Hidden curve", title: true},
+          {text: `Year: ${hover.year}`},
+          {
+            text: `${shortMetricLabel("frequency")}: ${formatMetricValueForMetric(getMetricValueAt(hover.series.idx, hover.series, "frequency", yearIndex), "frequency")}`,
+            metric: "frequency"
+          },
+          {
+            text: `${shortMetricLabel("percent")}: ${formatMetricValueForMetric(getMetricValueAt(hover.series.idx, hover.series, "percent", yearIndex), "percent")}`,
+            metric: "percent"
+          },
+          {
+            text: `${shortMetricLabel("rank")}: ${formatMetricValueForMetric(getMetricValueAt(hover.series.idx, hover.series, "rank", yearIndex), "rank")}`,
+            metric: "rank"
+          }
+        ];
+
+        const lineGap = 28;
+        const padX = 14;
+        const padY = 12;
+
+        const measuredWidths = tooltipRows.map(row => {
+          const isBold = row.title || row.metric === state.metric;
+          ctx.font = isBold ? "bold 22px Arial" : "22px Arial";
+          return ctx.measureText(row.text).width;
+        });
+
+        const width = Math.max(...measuredWidths) + 2 * padX;
+        const height = tooltipRows.length * lineGap + 2 * padY - 4;
+
+        let tx = hover.x + 16;
+        let ty = hover.y - height - 12;
+
+        if (tx + width > box.right) tx = hover.x - width - 16;
+        if (ty < box.top) ty = hover.y + 16;
+        if (ty + height > box.bottom) ty = box.bottom - height;
+
+        ctx.fillStyle = "rgba(255,255,255,0.97)";
+        ctx.strokeStyle = "rgba(0,0,0,0.25)";
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+
+        if (ctx.roundRect) {
+          ctx.roundRect(tx, ty, width, height, 8);
+        } else {
+          ctx.rect(tx, ty, width, height);
+        }
+
+        ctx.fill();
+        ctx.stroke();
+
+        tooltipRows.forEach((row, i) => {
+          const isBold = row.title || row.metric === state.metric;
+          ctx.fillStyle = row.title ? hover.series.color : "#333";
+          ctx.font = isBold ? "bold 22px Arial" : "22px Arial";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(row.text, tx + padX, ty + padY - 1 + i * lineGap);
+        });
+
+        ctx.restore();
+      }
+
+      function drawLinePlot() {
+        const round = currentRound();
+        const series = getSeriesForRound(round);
+        const box = plotBox();
+
+        ctx.clearRect(0, 0, box.width, box.height);
+
+        const range = displayRangeForSeries(series);
+
+        drawAxes(box, range);
+
+        if (!series.length) {
+          ctx.save();
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.font = "20px Arial";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(
+            "Choose or start a game mode.",
+            (box.left + box.right) / 2,
+            (box.top + box.bottom) / 2
+          );
+          ctx.restore();
+          return;
+        }
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(box.left, box.top, box.right - box.left, box.bottom - box.top);
+        ctx.clip();
+
+        series.forEach(s => {
+          const curve = getCurve(s.idx, s);
+
+          drawCurve(curve, box, range, {
+            color: s.color,
+            width: s.width,
+            alpha: s.alpha,
+            dash: s.dash || []
+          });
+        });
+
+        ctx.restore();
+
+        const labelItems = [];
+
+        series.forEach(s => {
+          if (s.hideLabel) return;
+
+          const curve = getCurve(s.idx, s);
+          const pt = labelPointForCurve(curve);
+
+          if (!pt) return;
+
+          const x = xFromYear(pt.year, box);
+          const y = yFromRaw(pt.value, box, range);
+
+          if (y === null) return;
+
+          labelItems.push({
+            s,
+            x,
+            y,
+            importance: s.width || 3.0
+          });
+        });
+
+        labelItems.sort((a, b) => {
+          if (b.importance !== a.importance) return b.importance - a.importance;
+          return a.x - b.x;
+        });
+
+        const occupiedLabels = [];
+        labelItems.forEach(item => {
+          const rect = drawLabel(
+            item.s.label,
+            item.x,
+            item.y,
+            item.s.color,
+            box,
+            series.length > 5,
+            occupiedLabels
+          );
+
+          if (rect) occupiedLabels.push(rect);
+        });
+
+        if (state.hover) {
+          drawHoverTooltip(state.hover, box);
+        }
+      }
+
+      function hexToRgb(hex) {
+        const h = hex.replace("#", "");
+
+        return [
+          parseInt(h.slice(0, 2), 16),
+          parseInt(h.slice(2, 4), 16),
+          parseInt(h.slice(4, 6), 16)
+        ];
+      }
+
+      function rgbToHex(rgb) {
+        return "#" + rgb.map(v => {
+          const s = Math.max(0, Math.min(255, Math.round(v))).toString(16);
+          return s.length === 1 ? "0" + s : s;
+        }).join("");
+      }
+
+      function mixHex(c1, c2, t) {
+        const a = hexToRgb(c1);
+        const b = hexToRgb(c2);
+
+        return rgbToHex([
+          a[0] + (b[0] - a[0]) * t,
+          a[1] + (b[1] - a[1]) * t,
+          a[2] + (b[2] - a[2]) * t
+        ]);
+      }
+
+      function blendColors(weights, colors) {
+        const total = weights.reduce((a, b) => a + b, 0);
+
+        if (total <= 0) return "#eeeeee";
+
+        const rgb = [0, 0, 0];
+
+        weights.forEach((w, i) => {
+          const c = hexToRgb(colors[i % colors.length]);
+          const ww = w / total;
+
+          rgb[0] += ww * c[0];
+          rgb[1] += ww * c[1];
+          rgb[2] += ww * c[2];
+        });
+
+        return rgbToHex(rgb);
+      }
+
+      function periodCenter(rows) {
+        const valid = rows
+          .map(r => r.props)
+          .filter(p => p.length === 3 && p.every(v => Number.isFinite(v) && v > 0));
+
+        if (!valid.length) {
+          return [1 / 3, 1 / 3, 1 / 3];
+        }
+
+        const gm = [0, 0, 0];
+
+        for (let j = 0; j < 3; j++) {
+          const vals = valid.map(p => Math.max(1e-9, p[j]));
+          gm[j] = Math.exp(vals.reduce((a, b) => a + Math.log(b), 0) / vals.length);
+        }
+
+        const total = gm.reduce((a, b) => a + b, 0);
+
+        return gm.map(v => v / total);
+      }
+
+      function centerComposition(p, center) {
+        if (p.some(v => !Number.isFinite(v)) || p.reduce((a, b) => a + b, 0) <= 0) {
+          return p.map(() => NaN);
+        }
+
+        const transformed = p.map((v, i) => Math.max(1e-9, v) / Math.max(1e-9, center[i]));
+        const total = transformed.reduce((a, b) => a + b, 0);
+
+        return transformed.map(v => v / total);
+      }
+
+      function monoColorscale(color) {
+        return [
+          [0.00, "#f5f5f5"],
+          [1.00, color]
+        ];
+      }
+
+      function binaryColorscale(color1, color2) {
+        return [
+          [0.00, color2],
+          [0.50, "#f2f2f2"],
+          [1.00, color1]
+        ];
+      }
+
+      function constantColorscale(color) {
+        return [
+          [0.00, color],
+          [1.00, color]
+        ];
+      }
+
+      function binaryColorAt(p, color1, color2) {
+        const t = Math.max(0, Math.min(1, p));
+
+        if (t <= 0.5) {
+          return mixHex(color2, "#f2f2f2", t / 0.5);
+        }
+
+        return mixHex("#f2f2f2", color1, (t - 0.5) / 0.5);
+      }
+
+      function stateFlatIndex(periodIndex, payloadStateIndex) {
+        return periodIndex * PAYLOAD_STATES.length + payloadStateIndex;
+      }
+
+      function stateCountByCode(idx, mode, periodIndex, stateCode) {
+        const payloadStateIndex = stateIndexByCode[stateCode];
+
+        if (payloadStateIndex === undefined) return 0;
+
+        const arr = STATE_MAP.counts[mode][idx];
+        if (!arr) return 0;
+
+        return Number(arr[stateFlatIndex(periodIndex, payloadStateIndex)] || 0);
+      }
+
+      function stateDenomByCode(mode, periodIndex, stateCode) {
+        const payloadStateIndex = stateIndexByCode[stateCode];
+
+        if (payloadStateIndex === undefined) return 0;
+
+        const arr = STATE_MAP.denoms[mode];
+        if (!arr) return 0;
+
+        return Number(arr[stateFlatIndex(periodIndex, payloadStateIndex)] || 0);
+      }
+
+      function comma(v) {
+        return Math.round(Number(v || 0)).toLocaleString();
+      }
+
+      function periodText(i) {
+        const p = PERIODS[i] || PERIODS[0];
+
+        if (!p) return "All time";
+        if (p.label === "All time") return `All time (${p.start}–${p.end})`;
+
+        return `${p.label} (${p.start}–${p.end})`;
+      }
+
+      function periodLabel() {
+        return periodText(state.periodIndex);
+      }
+
+      function selectedIndicesForRound(round) {
+        if (!round) return [];
+
+        if (round.type === "single") return [round.answer];
+
+        return round.curveOrder || [];
+      }
+
+      function stateRowsForIndices(indices, periodIndex, mode="combined") {
+        return DISPLAY_STATES.map(st => {
+          const counts = indices.map(idx => stateCountByCode(idx, mode, periodIndex, st));
+          const selectedTotal = counts.reduce((a, b) => a + b, 0);
+          const denom = stateDenomByCode(mode, periodIndex, st);
+          const props = selectedTotal > 0
+            ? counts.map(c => c / selectedTotal)
+            : counts.map(() => NaN);
+          const selectedPct = denom > 0 ? selectedTotal / denom : 0;
+
+          return {
+            state: st,
+            counts,
+            selectedTotal,
+            denom,
+            props,
+            selectedPct,
+            hasData: denom > 0
+          };
+        });
+      }
+
+      function markerSizes(rows, minSize=7.0, maxSize=24.0) {
+        const vals = rows.map(r => r.selectedPct || 0);
+        const maxVal = Math.max(...vals, 1e-12);
+
+        return vals.map(v => {
+          const t = Math.sqrt(Math.max(0, v) / maxVal);
+          return minSize + t * (maxSize - minSize);
+        });
+      }
+
+      function jitterXForStates(width=0.20) {
+        const n = DISPLAY_STATES.length;
+        return DISPLAY_STATES.map((_, i) => {
+          if (n <= 1) return 0;
+          return -width / 2 + width * (i / (n - 1));
+        });
+      }
+
+      function singleChoroplethTrace(locations, z, colorscale, hoverText, options={}) {
+        return {
+          type: "choropleth",
+          locationmode: "USA-states",
+          locations,
+          z,
+          zmin: options.zmin === undefined ? 0 : options.zmin,
+          zmax: options.zmax === undefined ? 1 : options.zmax,
+          colorscale,
+          showscale: false,
+          marker: {
+            line: {
+              color: "white",
+              width: 0.9
+            }
+          },
+          hovertext: hoverText,
+          hoverinfo: "text",
+          geo: options.geo || "geo"
+        };
+      }
+
+      function groupedColorMapTraces(rows, colorValues, hoverText, geoName="geo") {
+        const groups = {};
+
+        rows.forEach((r, i) => {
+          const color = colorValues[i] || "#eeeeee";
+
+          if (!groups[color]) {
+            groups[color] = {
+              locations: [],
+              hover: []
+            };
+          }
+
+          groups[color].locations.push(r.state);
+          groups[color].hover.push(hoverText[i]);
+        });
+
+        return Object.entries(groups).map(([color, g]) => {
+          return {
+            type: "choropleth",
+            locationmode: "USA-states",
+            locations: g.locations,
+            z: g.locations.map(() => 1),
+            zmin: 0,
+            zmax: 1,
+            colorscale: constantColorscale(color),
+            showscale: false,
+            marker: {
+              line: {
+                color: "white",
+                width: 0.9
+              }
+            },
+            hovertext: g.hover,
+            hoverinfo: "text",
+            geo: geoName
+          };
+        });
+      }
+
+      function buildSingleMapTrace(round) {
+        const periodIndex = state.periodIndex;
+        const idx = round ? round.answer : null;
+        const locations = DISPLAY_STATES.slice();
+        const z = [];
+        const hoverText = [];
+
+        if (idx === null) {
+          return singleChoroplethTrace(
+            locations,
+            DISPLAY_STATES.map(() => 0),
+            constantColorscale("#eeeeee"),
+            DISPLAY_STATES.map(st => `<b>${st}</b>`)
+          );
+        }
+
+        const revealed = Boolean(round.answered);
+        const nameText = revealed ? getName(idx) : "Hidden name";
+        const period = periodLabel();
+        const mapColor = revealed ? singleAnswerColor(round) : SINGLE_COLOR;
+
+        let maxPct = 0;
+
+        DISPLAY_STATES.forEach(st => {
+          const count = stateCountByCode(idx, "combined", periodIndex, st);
+          const denom = stateDenomByCode("combined", periodIndex, st);
+          const pct = denom > 0 ? count / denom : 0;
+
+          maxPct = Math.max(maxPct, pct);
+          z.push(pct);
+
+          if (denom <= 0) {
+            hoverText.push(
+              `<b>${st}</b><br>` +
+              `Period: ${period}<br>` +
+              `${nameText}<br>` +
+              `No state data in precomputed payload`
+            );
+          } else {
+            hoverText.push(
+              `<b>${st}</b><br>` +
+              `Period: ${period}<br>` +
+              `${nameText}<br>` +
+              `Births: ${comma(count)}<br>` +
+              `All births: ${comma(denom)}<br>` +
+              `<b>Share of Births:</b> ${(100 * pct).toFixed(3)}%`
+            );
+          }
+        });
+
+        return singleChoroplethTrace(
+          locations,
+          z,
+          monoColorscale(mapColor),
+          hoverText,
+          {
+            zmin: 0,
+            zmax: Math.max(maxPct, 1e-12),
+            geo: "geo"
+          }
+        );
+      }
+
+      function binaryLimits(indices) {
+        const vals = [];
+
+        for (let p = 0; p < PERIODS.length; p++) {
+          const rows = stateRowsForIndices(indices, p, "combined");
+
+          rows.forEach(r => {
+            if (r.selectedTotal > 0 && Number.isFinite(r.props[0])) {
+              vals.push(r.props[0]);
+            }
+          });
+        }
+
+        if (!vals.length) return {vmin: 0, vmax: 1};
+
+        const dev = vals.map(v => Math.abs(v - 0.5)).sort((a, b) => a - b);
+        const q = dev[Math.min(dev.length - 1, Math.floor(0.98 * (dev.length - 1)))] || 0.1;
+        const d = Math.max(q, 0.10);
+
+        return {
+          vmin: Math.max(0, 0.5 - d),
+          vmax: Math.min(1, 0.5 + d)
+        };
+      }
+
+      function binaryGradientShapes(colors) {
+        const shapes = [];
+        const n = 90;
+        const x0 = -0.145;
+        const x1 = 0.145;
+
+        for (let i = 0; i < n; i++) {
+          const y0 = i / n;
+          const y1 = (i + 1) / n;
+          const yMid = (y0 + y1) / 2;
+
+          shapes.push({
+            type: "rect",
+            xref: "x",
+            yref: "y",
+            x0,
+            x1,
+            y0,
+            y1,
+            line: {width: 0},
+            fillcolor: binaryColorAt(yMid, colors[0], colors[1]),
+            layer: "below"
+          });
+        }
+
+        return shapes;
+      }
+
+      function binaryShapes() {
+        return [
+          {
+            type: "rect",
+            xref: "x",
+            yref: "y",
+            x0: -0.145,
+            x1: 0.145,
+            y0: 0,
+            y1: 1,
+            line: {color: "rgba(80,80,80,0.68)", width: 1.2},
+            fillcolor: "rgba(0,0,0,0)",
+            layer: "above"
+          },
+          {
+            type: "line",
+            xref: "x",
+            yref: "y",
+            x0: -0.145,
+            x1: 0.145,
+            y0: 0.5,
+            y1: 0.5,
+            line: {color: "rgba(80,80,80,0.85)", width: 1.2, dash: "dot"},
+            layer: "above"
+          }
+        ];
+      }
+
+      function buildBinaryBalanceTraces(round, indices, colors) {
+        const periodIndex = state.periodIndex;
+        const rows = stateRowsForIndices(indices, periodIndex, "combined");
+        const limits = binaryLimits(indices);
+
+        const z = [];
+        const hoverText = [];
+
+        const labels = indices.map((idx, i) => {
+          if (round.answered) return getName(idx);
+          return `Name ${i + 1}`;
+        });
+
+        rows.forEach(r => {
+          const p1 = r.selectedTotal > 0 && Number.isFinite(r.props[0]) ? r.props[0] : 0.5;
+          z.push(p1);
+
+          if (!r.hasData) {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `No state data in precomputed payload`
+            );
+          } else if (r.selectedTotal <= 0) {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `No selected-name births<br>` +
+              `<b>Share of Births:</b> ${(100 * r.selectedPct).toFixed(3)}%`
+            );
+          } else {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `${labels[0]}: ${comma(r.counts[0])} (${(100 * r.props[0]).toFixed(1)}% of selected)<br>` +
+              `${labels[1]}: ${comma(r.counts[1])} (${(100 * r.props[1]).toFixed(1)}% of selected)<br>` +
+              `Selected total: ${comma(r.selectedTotal)}<br>` +
+              `All births: ${comma(r.denom)}<br>` +
+              `<b>Share of Births:</b> ${(100 * r.selectedPct).toFixed(3)}%`
+            );
+          }
+        });
+
+        const mapTrace = singleChoroplethTrace(
+          DISPLAY_STATES.slice(),
+          z,
+          binaryColorscale(colors[0], colors[1]),
+          hoverText,
+          {
+            zmin: limits.vmin,
+            zmax: limits.vmax,
+            geo: "geo"
+          }
+        );
+
+        const keyX = jitterXForStates(0.20);
+        const keyY = rows.map(r => r.selectedTotal > 0 && Number.isFinite(r.props[0]) ? r.props[0] : 0.5);
+        const keySizes = markerSizes(rows, 7.0, 24.0);
+
+        const keyTrace = {
+          type: "scatter",
+          mode: "markers",
+          x: keyX,
+          y: keyY,
+          marker: {
+            size: keySizes,
+            color: keyY,
+            cmin: 0,
+            cmax: 1,
+            colorscale: binaryColorscale(colors[0], colors[1]),
+            opacity: rows.map(r => r.selectedTotal > 0 ? 1.0 : 0.20),
+            line: {color: "rgba(30,30,30,0.75)", width: 1.0}
+          },
+          customdata: rows.map(r => [r.state]),
+          hovertext: hoverText,
+          hoverinfo: "text",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+
+        const counts = [0, 0];
+
+        rows.forEach(r => {
+          counts[0] += r.counts[0] || 0;
+          counts[1] += r.counts[1] || 0;
+        });
+
+        const total = counts[0] + counts[1];
+        const avgP1 = total > 0 ? counts[0] / total : 0.5;
+
+        const avgTrace = {
+          type: "scatter",
+          mode: "markers",
+          x: [0],
+          y: [avgP1],
+          marker: {
+            size: 17,
+            color: "black",
+            symbol: "x-thin",
+            line: {color: "black", width: 1.4}
+          },
+          hovertext: [
+            `<b>National average</b><br>` +
+            `Period: ${periodLabel()}<br>` +
+            `${labels[0]}: ${comma(counts[0])} (${total > 0 ? (100 * counts[0] / total).toFixed(1) : "0.0"}% of selected)<br>` +
+            `${labels[1]}: ${comma(counts[1])} (${total > 0 ? (100 * counts[1] / total).toFixed(1) : "0.0"}% of selected)<br>` +
+            `Selected total: ${comma(total)}`
+          ],
+          hoverinfo: "text",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+
+        return [mapTrace, keyTrace, avgTrace];
+      }
+
+      function ternaryPlotCoords(p) {
+        const p1 = p[0], p2 = p[1], p3 = p[2];
+
+        return {
+          x: p2 + 0.5 * p3,
+          y: (Math.sqrt(3) / 2) * p3
+        };
+      }
+
+      function allTimeTernaryCenter(indices) {
+        const allTimeRows = stateRowsForIndices(indices, 0, "combined");
+        return periodCenter(allTimeRows);
+      }
+
+      function buildTernaryBackgroundTrace(colors, center) {
+        const bgX = [];
+        const bgY = [];
+        const bgColor = [];
+        const ngrid = 64;
+
+        for (let i = 0; i <= ngrid; i++) {
+          for (let j = 0; j <= ngrid - i; j++) {
+            const p1 = i / ngrid;
+            const p2 = j / ngrid;
+            const p3 = 1 - p1 - p2;
+            const rawP = [p1, p2, p3];
+            const centeredP = centerComposition(rawP, center);
+            const pt = ternaryPlotCoords(rawP);
+
+            bgX.push(pt.x);
+            bgY.push(pt.y);
+            bgColor.push(blendColors(centeredP, colors));
+          }
+        }
+
+        return {
+          type: "scatter",
+          mode: "markers",
+          x: bgX,
+          y: bgY,
+          marker: {
+            size: 9.5,
+            color: bgColor,
+            symbol: "square",
+            line: {width: 0}
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+      }
+
+      function buildTernaryBalanceTraces(round, indices, colors) {
+        const periodIndex = state.periodIndex;
+        const rows = stateRowsForIndices(indices, periodIndex, "combined");
+        const center = allTimeTernaryCenter(indices);
+
+        const mapColors = [];
+        const hoverText = [];
+
+        const labels = indices.map((idx, i) => {
+          if (round.answered) return getName(idx);
+          return `Name ${i + 1}`;
+        });
+
+        rows.forEach(r => {
+          if (!r.hasData || r.selectedTotal <= 0 || r.props.some(v => !Number.isFinite(v))) {
+            mapColors.push("#eeeeee");
+          } else {
+            const centeredProps = centerComposition(r.props, center);
+            mapColors.push(blendColors(centeredProps, colors));
+          }
+
+          if (!r.hasData) {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `No state data in precomputed payload`
+            );
+          } else if (r.selectedTotal <= 0) {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `No selected-name births<br>` +
+              `<b>Share of Births:</b> ${(100 * r.selectedPct).toFixed(3)}%`
+            );
+          } else {
+            hoverText.push(
+              `<b>${r.state}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `${labels[0]}: ${comma(r.counts[0])} (${(100 * r.props[0]).toFixed(1)}% of selected)<br>` +
+              `${labels[1]}: ${comma(r.counts[1])} (${(100 * r.props[1]).toFixed(1)}% of selected)<br>` +
+              `${labels[2]}: ${comma(r.counts[2])} (${(100 * r.props[2]).toFixed(1)}% of selected)<br>` +
+              `Selected total: ${comma(r.selectedTotal)}<br>` +
+              `All births: ${comma(r.denom)}<br>` +
+              `<b>Share of Births:</b> ${(100 * r.selectedPct).toFixed(3)}%`
+            );
+          }
+        });
+
+        const mapTraces = groupedColorMapTraces(rows, mapColors, hoverText, "geo");
+
+        const bgTrace = buildTernaryBackgroundTrace(colors, center);
+
+        const borderTrace = {
+          type: "scatter",
+          mode: "lines",
+          x: [0, 1, 0.5, 0],
+          y: [0, 0, Math.sqrt(3) / 2, 0],
+          line: {
+            color: "rgba(80,80,80,0.75)",
+            width: 1.6
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+
+        const keyX = [];
+        const keyY = [];
+
+        rows.forEach(r => {
+          const plotP = r.selectedTotal > 0 && r.props.every(v => Number.isFinite(v))
+            ? r.props
+            : [1 / 3, 1 / 3, 1 / 3];
+
+          const pt = ternaryPlotCoords(plotP);
+          keyX.push(pt.x);
+          keyY.push(pt.y);
+        });
+
+        const keyTrace = {
+          type: "scatter",
+          mode: "markers",
+          x: keyX,
+          y: keyY,
+          marker: {
+            size: markerSizes(rows, 7.0, 24.0),
+            color: mapColors,
+            opacity: rows.map(r => r.selectedTotal > 0 ? 1.0 : 0.20),
+            line: {color: "rgba(30,30,30,0.80)", width: 1.1}
+          },
+          customdata: rows.map(r => [r.state]),
+          hovertext: hoverText,
+          hoverinfo: "text",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+
+        const counts = [0, 0, 0];
+
+        rows.forEach(r => {
+          for (let i = 0; i < 3; i++) {
+            counts[i] += r.counts[i] || 0;
+          }
+        });
+
+        const total = counts.reduce((a, b) => a + b, 0);
+        const avgProps = total > 0 ? counts.map(c => c / total) : [NaN, NaN, NaN];
+        const avgPt = total > 0 ? ternaryPlotCoords(avgProps) : {x: NaN, y: NaN};
+
+        const avgTrace = {
+          type: "scatter",
+          mode: "markers",
+          x: [avgPt.x],
+          y: [avgPt.y],
+          marker: {
+            size: 17,
+            color: "black",
+            symbol: "x-thin",
+            line: {color: "black", width: 1.4}
+          },
+          hovertext: [
+            `<b>National average</b><br>` +
+            `Period: ${periodLabel()}<br>` +
+            `${labels[0]}: ${comma(counts[0])} (${total > 0 ? (100 * counts[0] / total).toFixed(1) : "0.0"}% of selected)<br>` +
+            `${labels[1]}: ${comma(counts[1])} (${total > 0 ? (100 * counts[1] / total).toFixed(1) : "0.0"}% of selected)<br>` +
+            `${labels[2]}: ${comma(counts[2])} (${total > 0 ? (100 * counts[2] / total).toFixed(1) : "0.0"}% of selected)<br>` +
+            `Selected total: ${comma(total)}`
+          ],
+          hoverinfo: "text",
+          showlegend: false,
+          xaxis: "x",
+          yaxis: "y"
+        };
+
+        return [...mapTraces, bgTrace, borderTrace, keyTrace, avgTrace];
+      }
+
+      function triangleAnnotations(round, indices) {
+        if (!round || indices.length !== 3) return [];
+
+        const labels = indices.map((idx, i) => {
+          return round.answered ? `Name ${i + 1}: ${getName(idx)}` : `Name ${i + 1}`;
+        });
+
+        return [
+          {
+            text: `<b>${labels[0]}</b>`,
+            x: 0,
+            y: -0.075,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "left",
+            yanchor: "top",
+            font: {size: 18, color: getMultiColor(0)}
+          },
+          {
+            text: `<b>${labels[1]}</b>`,
+            x: 1,
+            y: -0.075,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "right",
+            yanchor: "top",
+            font: {size: 18, color: getMultiColor(1)}
+          },
+          {
+            text: `<b>${labels[2]}</b>`,
+            x: 0.5,
+            y: Math.sqrt(3) / 2 + 0.055,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "center",
+            yanchor: "bottom",
+            font: {size: 18, color: getMultiColor(2)}
+          }
+        ];
+      }
+
+      function binaryAnnotations(round, indices) {
+        if (!round || indices.length !== 2) return [];
+
+        const labels = indices.map((idx, i) => {
+          return round.answered ? getName(idx) : `Name ${i + 1}`;
+        });
+
+        return [
+          {
+            text: `<b>${labels[0]}</b>`,
+            x: 0,
+            y: 1.055,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "center",
+            yanchor: "bottom",
+            font: {size: 18, color: getMultiColor(0)}
+          },
+          {
+            text: `<b>${labels[1]}</b>`,
+            x: 0,
+            y: -0.055,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "center",
+            yanchor: "top",
+            font: {size: 18, color: getMultiColor(1)}
+          },
+          {
+            text: "even split",
+            x: 0.16,
+            y: 0.5,
+            xref: "x",
+            yref: "y",
+            showarrow: false,
+            xanchor: "left",
+            yanchor: "middle",
+            font: {size: 15, color: "#555"}
+          }
+        ];
+      }
+
+      function smallMultipleDomain(index, total) {
+        const ncols = total <= 2 ? 2 : (total === 4 ? 2 : 3);
+        const nrows = Math.ceil(total / ncols);
+
+        const row = Math.floor(index / ncols);
+        const rowStart = row * ncols;
+        const rowCount = Math.min(ncols, total - rowStart);
+        const colWithinRow = index - rowStart;
+
+        const gapX = 0.036;
+        const gapY = nrows === 1 ? 0.030 : 0.052;
+        const topPad = nrows === 1 ? 0.060 : 0.045;
+        const bottomPad = nrows === 1 ? 0.035 : 0.030;
+        const labelReserve = nrows === 1 ? 0.050 : 0.040;
+
+        const w = (1 - gapX * (ncols - 1)) / ncols;
+        const rowSlot = (1 - topPad - bottomPad - gapY * (nrows - 1)) / nrows;
+
+        const rowWidth = rowCount * w + (rowCount - 1) * gapX;
+        const xOffset = (1 - rowWidth) / 2;
+
+        const x0 = xOffset + colWithinRow * (w + gapX);
+        const x1 = x0 + w;
+
+        const rowTop = 1 - topPad - row * (rowSlot + gapY);
+        const rowBottom = rowTop - rowSlot;
+
+        // Plotly keeps USA maps at a fixed geographic aspect ratio inside each
+        // domain. Estimate a domain height that is close to the visible map
+        // height so titles do not float far above the maps at different browser
+        // zoom levels or widths.
+        const mapWidth = Math.max(600, mapDiv.clientWidth || root.clientWidth || 1000);
+        const mapHeight = Math.max(320, mapDiv.clientHeight || 417);
+        const plotAspect = mapWidth / mapHeight;
+        const usaAspect = 1.58;
+        const desiredMapHeight = Math.min(
+          rowSlot - labelReserve,
+          Math.max(0.20, w * plotAspect / usaAspect)
+        );
+
+        const y1 = rowTop - labelReserve;
+        const y0 = Math.max(rowBottom, y1 - desiredMapHeight);
+
+        return {
+          x: [x0, x1],
+          y: [y0, y1],
+          labelY: Math.min(0.985, y1 + 0.010)
+        };
+      }
+
+      function buildSmallMultipleMapTraces(round, indices) {
+        const traces = [];
+        const annotations = [];
+        const periodIndex = state.periodIndex;
+
+        indices.forEach((idx, i) => {
+          const locations = DISPLAY_STATES.slice();
+          const z = [];
+          const hoverText = [];
+
+          let maxPct = 0;
+
+          DISPLAY_STATES.forEach(st => {
+            const count = stateCountByCode(idx, "combined", periodIndex, st);
+            const denom = stateDenomByCode("combined", periodIndex, st);
+            const pct = denom > 0 ? count / denom : 0;
+
+            maxPct = Math.max(maxPct, pct);
+            z.push(pct);
+
+            hoverText.push(
+              `<b>${st}</b><br>` +
+              `Period: ${periodLabel()}<br>` +
+              `${round.answered ? getName(idx) : `Name ${i + 1}`}<br>` +
+              `Births: ${comma(count)}<br>` +
+              `All births: ${comma(denom)}<br>` +
+              `<b>Share of Births:</b> ${(100 * pct).toFixed(3)}%`
+            );
+          });
+
+          const geoName = i === 0 ? "geo" : `geo${i + 1}`;
+
+          traces.push(singleChoroplethTrace(
+            locations,
+            z,
+            monoColorscale(getMultiLineColor(i)),
+            hoverText,
+            {
+              zmin: 0,
+              zmax: Math.max(maxPct, 1e-12),
+              geo: geoName
+            }
+          ));
+
+          const domain = smallMultipleDomain(i, indices.length);
+          annotations.push({
+            text: `<b>${round.answered ? getName(idx) : `Name ${i + 1}`}</b>`,
+            x: (domain.x[0] + domain.x[1]) / 2,
+            y: domain.labelY,
+            xref: "paper",
+            yref: "paper",
+            showarrow: false,
+            xanchor: "center",
+            yanchor: "top",
+            font: {size: 18, color: getMultiLineColor(i)}
+          });
+        });
+
+        return {traces, annotations};
+      }
+
+      function baseGeo(domain) {
+        return {
+          scope: "usa",
+          projection: {type: "albers usa"},
+          domain: domain,
+          showlakes: false,
+          showland: true,
+          landcolor: "#ffffff",
+          bgcolor: "rgba(0,0,0,0)"
+        };
+      }
+
+      function baseMapLayout(title, keyType, annotations, shapes=[]) {
+        const layout = {
+          title: {
+            text: `${title}<br><sup>${periodLabel()}</sup>`,
+            x: 0.5,
+            xanchor: "center",
+            font: {size: 21}
+          },
+          margin: {l: 10, r: 10, t: 58, b: 4},
+          paper_bgcolor: "white",
+          plot_bgcolor: "white",
+          geo: baseGeo(
+            keyType
+              ? {x: [0.00, 0.72], y: [0.00, 1.00]}
+              : {x: [0.00, 1.00], y: [0.00, 1.00]}
+          ),
+          xaxis: {
+            domain: [0.755, 0.985],
+            showgrid: false,
+            zeroline: false,
+            showticklabels: false,
+            fixedrange: true
+          },
+          yaxis: {
+            domain: keyType === "binary" ? [0.13, 0.88] : [0.18, 0.82],
+            showgrid: false,
+            zeroline: false,
+            showticklabels: false,
+            fixedrange: true
+          },
+          annotations: annotations || [],
+          shapes: shapes || [],
+          showlegend: false,
+          hoverlabel: {
+            bgcolor: "white",
+            bordercolor: "rgba(0,0,0,0.25)",
+            font: {family: "Arial", size: 17, color: "#222"}
+          },
+          transition: {
+            duration: 350,
+            easing: "cubic-in-out"
+          },
+          uirevision: "name_curve_game_map"
+        };
+
+        if (keyType === "binary") {
+          layout.xaxis.range = [-0.18, 0.18];
+          layout.yaxis.range = [-0.075, 1.075];
+        }
+
+        if (keyType === "ternary") {
+          layout.xaxis.range = [-0.065, 1.065];
+          layout.yaxis.range = [-0.115, Math.sqrt(3) / 2 + 0.115];
+          layout.yaxis.scaleanchor = "x";
+          layout.yaxis.scaleratio = 1;
+        }
+
+        return layout;
+      }
+
+      function plotMapWithKind(kind, traces, layout) {
+        if (state.mapKind !== kind) {
+          try {
+            Plotly.purge(mapDiv);
+          } catch (e) {
+            // Safe no-op if Plotly has not initialized this div yet.
+          }
+          state.mapKind = kind;
+        }
+
+        const config = {
+          responsive: true,
+          displayModeBar: false,
+          scrollZoom: false
+        };
+
+        Plotly.react(mapDiv, traces, layout, config).then(() => {
+          window.requestAnimationFrame(() => {
+            if (isMapView(state.view)) {
+              Plotly.Plots.resize(mapDiv);
+            }
+          });
+        });
+      }
+
+      function drawMap() {
+        const round = currentRound();
+
+        if (!round) {
+          plotMapWithKind("empty", [], {});
+          return;
+        }
+
+        const indices = selectedIndicesForRound(round);
+
+        if (round.type === "single" || state.view === "percentage") {
+          const trace = buildSingleMapTrace(round);
+          const layout = baseMapLayout("State map of name percentage", null, []);
+          plotMapWithKind("single_percentage", [trace], layout);
+          return;
+        }
+
+        if (state.view === "split") {
+          const small = buildSmallMultipleMapTraces(round, indices);
+          const layout = {
+            title: {
+              text: `Split state percentage maps<br><sup>${periodLabel()}</sup>`,
+              x: 0.5,
+              xanchor: "center",
+              font: {size: 19}
+            },
+            margin: {l: 8, r: 8, t: 42, b: 0},
+            paper_bgcolor: "white",
+            plot_bgcolor: "white",
+            annotations: small.annotations,
+            showlegend: false,
+            hoverlabel: {
+              bgcolor: "white",
+              bordercolor: "rgba(0,0,0,0.25)",
+              font: {family: "Arial", size: 17, color: "#222"}
+            },
+            transition: {
+              duration: 350,
+              easing: "cubic-in-out"
+            },
+            uirevision: "name_curve_game_small_multiples"
+          };
+
+          indices.forEach((idx, i) => {
+            const geoName = i === 0 ? "geo" : `geo${i + 1}`;
+            const domain = smallMultipleDomain(i, indices.length);
+
+            layout[geoName] = baseGeo({x: domain.x, y: domain.y});
+          });
+
+          plotMapWithKind(`split_${indices.length}`, small.traces, layout);
+          return;
+        }
+
+        if (indices.length === 2) {
+          const colors = [getMultiColor(0), getMultiColor(1)];
+          const traces = buildBinaryBalanceTraces(round, indices, colors);
+          const layout = baseMapLayout(
+            "State balance map of selected names",
+            "binary",
+            binaryAnnotations(round, indices),
+            binaryGradientShapes(colors).concat(binaryShapes())
+          );
+
+          plotMapWithKind("binary_balance", traces, layout);
+          return;
+        }
+
+        if (indices.length === 3) {
+          const traces = buildTernaryBalanceTraces(round, indices, BALANCE_TRI_COLORS);
+          const layout = baseMapLayout(
+            "Centered state balance map of selected names",
+            "ternary",
+            triangleAnnotations(round, indices)
+          );
+
+          plotMapWithKind("ternary_balance", traces, layout);
+          return;
+        }
+
+        const small = buildSmallMultipleMapTraces(round, indices);
+        const layout = {
+          title: {
+            text: `Split state percentage maps<br><sup>${periodLabel()}</sup>`,
+            x: 0.5,
+            xanchor: "center",
+            font: {size: 21}
+          },
+          margin: {l: 8, r: 8, t: 54, b: 0},
+          paper_bgcolor: "white",
+          plot_bgcolor: "white",
+          annotations: small.annotations,
+          showlegend: false,
+          hoverlabel: {
+            bgcolor: "white",
+            bordercolor: "rgba(0,0,0,0.25)",
+            font: {family: "Arial", size: 17, color: "#222"}
+          },
+          transition: {
+            duration: 350,
+            easing: "cubic-in-out"
+          },
+          uirevision: "name_curve_game_small_multiples"
+        };
+
+        indices.forEach((idx, i) => {
+          const geoName = i === 0 ? "geo" : `geo${i + 1}`;
+          const domain = smallMultipleDomain(i, indices.length);
+
+          layout[geoName] = baseGeo({x: domain.x, y: domain.y});
+        });
+
+        plotMapWithKind(`split_${indices.length}`, small.traces, layout);
+      }
+
+      function showFeedback(kind, html) {
+        feedback.className = "ncg-feedback visible " + kind;
+        feedback.innerHTML = html;
+      }
+
+      function clearFeedback() {
+        feedback.className = "ncg-feedback";
+        feedback.innerHTML = "";
+      }
+
+      function renderRoundStatus() {
+        const round = currentRound();
+
+        if (state.mode === "custom") {
+          roundStatus.innerHTML = "<strong>Custom challenge</strong>";
+          return;
+        }
+
+        if (!round) {
+          roundStatus.innerHTML = "<strong>No active game</strong>";
+          return;
+        }
+
+        const diffLabel = PAYLOAD.difficultyLabels[String(round.level)] || "";
+        const descriptor = round.theme
+          ? `${escapeHtml(diffLabel)}: ${escapeHtml(round.theme)}`
+          : `Difficulty ${round.level}/5: ${escapeHtml(diffLabel)}`;
+
+        roundStatus.innerHTML =
+          `<strong>Round ${state.roundIndex + 1} of ${state.rounds.length}</strong>` +
+          ` <span class="ncg-note">${descriptor}</span>`;
+      }
+
+      function renderSingleChoice(round) {
+        const title = document.createElement("div");
+        title.className = "ncg-answer-title";
+        title.textContent = round.answered
+          ? "Answer revealed. Other choice curves are shown for comparison."
+          : "Which name matches the curve?";
+
+        answerArea.appendChild(title);
+
+        const grid = document.createElement("div");
+        grid.className = "ncg-choice-grid";
+
+        round.choices.forEach(idx => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ncg-choice";
+          btn.textContent = getName(idx);
+
+          if (round.answered) {
+            btn.disabled = true;
+
+            if (idx === round.answer) {
+              btn.classList.add("correct");
+            } else if (idx === round.selected) {
+              btn.classList.add("incorrect");
+            }
+          }
+
+          btn.addEventListener("click", () => {
+            if (round.answered) return;
+
+            const shouldAnimateReveal = viewSelect.value === "line";
+            const beforeRange = shouldAnimateReveal
+              ? computeYRange(getSeriesForRound(round))
+              : null;
+
+            round.selected = idx;
+            round.answered = true;
+            state.hover = null;
+
+            if (shouldAnimateReveal) {
+              const afterRange = computeYRange(getSeriesForRound(round));
+              beginSingleRevealAxisAnimation(beforeRange, afterRange);
+            } else {
+              cancelAxisAnimation();
+            }
+
+            render();
+          });
+
+          grid.appendChild(btn);
+        });
+
+        answerArea.appendChild(grid);
+
+        if (round.answered) {
+          const correct = round.selected === round.answer;
+          const md = getMetadata(round.answer);
+
+          if (correct) {
+            showFeedback(
+              "correct",
+              `<b>Correct.</b> The curve is ${getName(round.answer)}. ` +
+              `Peak year: ${md.peakYear}. Peak frequency: ${Number(md.peakFrequency || 0).toLocaleString()}.`
+            );
+          } else {
+            showFeedback(
+              "incorrect",
+              `<b>Not quite.</b> You chose ${getName(round.selected)}, but the curve is ${getName(round.answer)}. ` +
+              `Peak year: ${md.peakYear}. Peak frequency: ${Number(md.peakFrequency || 0).toLocaleString()}.`
+            );
+          }
+
+          renderNavigationButtons();
+        }
+      }
+
+      function renderMatchRound(round) {
+        const title = document.createElement("div");
+        title.className = "ncg-answer-title";
+        title.textContent = round.answered
+          ? "Answers revealed."
+          : "Match each numbered curve to its name.";
+
+        answerArea.appendChild(title);
+
+        const header = document.createElement("div");
+        header.className = "ncg-match-header";
+
+        const nameList = document.createElement("div");
+        nameList.className = "ncg-name-list";
+        nameList.innerHTML = `<b>Names:</b> ${round.nameChoices.map(getName).join(", ")}`;
+        header.appendChild(nameList);
+
+        if (!round.answered) {
+          const submit = document.createElement("button");
+          submit.type = "button";
+          submit.className = "ncg-submit-inline";
+          submit.textContent = "Submit";
+
+          submit.addEventListener("click", () => {
+            const allAnswered = round.curveOrder.every((_, pos) =>
+              round.assignments[String(pos)] !== undefined
+            );
+
+            if (!allAnswered) {
+              showFeedback("neutral", "Choose a name for each curve before submitting.");
+              return;
+            }
+
+            round.answered = true;
+            render();
+          });
+
+          header.appendChild(submit);
+        } else {
+          renderNavigationButtons(header);
+        }
+
+        answerArea.appendChild(header);
+
+        if (isMapView(state.view) && round.curveOrder.length >= 4) {
+          const note = document.createElement("div");
+          note.className = "ncg-note";
+          note.style.margin = "0 0 7px 0";
+          note.innerHTML = "Balance maps are available for 3 or fewer names. Split map shows one percentage map per name.";
+          answerArea.appendChild(note);
+        }
+
+        const grid = document.createElement("div");
+        grid.className = "ncg-match-grid";
+
+        round.curveOrder.forEach((idx, pos) => {
+          const card = document.createElement("div");
+          card.className = "ncg-match-card";
+
+          const label = document.createElement("div");
+          label.className = "ncg-match-label";
+
+          const swatch = document.createElement("span");
+          swatch.className = "ncg-swatch";
+          swatch.style.background = getMultiLineColor(pos);
+
+          const labelText = document.createElement("span");
+          labelText.textContent = `Name ${pos + 1}`;
+
+          label.appendChild(swatch);
+          label.appendChild(labelText);
+
+          const select = document.createElement("select");
+          select.disabled = round.answered;
+
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.textContent = "Choose name...";
+          select.appendChild(placeholder);
+
+          round.nameChoices.forEach(nameIdx => {
+            const opt = document.createElement("option");
+            opt.value = String(nameIdx);
+            opt.textContent = getName(nameIdx);
+            select.appendChild(opt);
+          });
+
+          if (round.assignments[String(pos)] !== undefined) {
+            select.value = String(round.assignments[String(pos)]);
+          }
+
+          select.addEventListener("change", () => {
+            if (select.value === "") {
+              delete round.assignments[String(pos)];
+            } else {
+              round.assignments[String(pos)] = Number(select.value);
+            }
+          });
+
+          card.appendChild(label);
+          card.appendChild(select);
+
+          if (round.answered) {
+            const chosen = round.assignments[String(pos)];
+            const correct = chosen === idx;
+
+            const checkline = document.createElement("div");
+            checkline.className = "ncg-checkline";
+
+            if (correct) {
+              checkline.innerHTML = `✓ Correct: <b>${getName(idx)}</b>`;
+              checkline.style.color = "#2E8B57";
+            } else {
+              const chosenText = chosen === undefined ? "nothing" : getName(chosen);
+              checkline.innerHTML = `✗ You chose ${chosenText}. Correct: <b>${getName(idx)}</b>`;
+              checkline.style.color = "#D62728";
+            }
+
+            card.appendChild(checkline);
+          }
+
+          grid.appendChild(card);
+        });
+
+        answerArea.appendChild(grid);
+
+        if (round.answered) {
+          const score = round.curveOrder.reduce((acc, idx, pos) => {
+            return acc + (round.assignments[String(pos)] === idx ? 1 : 0);
+          }, 0);
+
+          const total = round.curveOrder.length;
+
+          showFeedback(
+            score === total ? "correct" : "incorrect",
+            `<b>Score: ${score}/${total}.</b> The curves are now labeled with their names.`
+          );
+        }
+      }
+
+      async function nextRound() {
+        if (state.roundIndex < state.rounds.length - 1) {
+          state.roundIndex += 1;
+          resetInspectionDefaults();
+          roundStatus.innerHTML = "<strong>Loading round…</strong>";
+
+          try {
+            await ensureRoundNational(currentRound());
+            render();
+          } catch (error) {
+            console.error(error);
+            showFeedback("neutral", escapeHtml(error?.message || String(error)));
+          }
+        }
+      }
+
+      function renderNavigationButtons(parentEl=answerArea) {
+        const nav = document.createElement("div");
+        nav.className = "ncg-nav-row";
+
+        if (state.mode !== "custom" && state.roundIndex < state.rounds.length - 1) {
+          const next = document.createElement("button");
+          next.type = "button";
+          next.textContent = "Next";
+          next.addEventListener("click", nextRound);
+          nav.appendChild(next);
+        }
+
+        if (state.mode !== "custom" && state.roundIndex === state.rounds.length - 1) {
+          const restart = document.createElement("button");
+          restart.type = "button";
+          restart.textContent = "New";
+          restart.addEventListener("click", startNewGame);
+          nav.appendChild(restart);
+        }
+
+        if (state.mode === "custom") {
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.textContent = "Reset";
+          retry.addEventListener("click", () => {
+            const round = currentRound();
+            if (!round) return;
+            round.answered = false;
+            round.assignments = {};
+            resetInspectionDefaults();
+            render();
+          });
+          nav.appendChild(retry);
+        }
+
+        parentEl.appendChild(nav);
+      }
+
+      function renderAnswerArea() {
+        const round = currentRound();
+
+        answerArea.innerHTML = "";
+        clearFeedback();
+
+        if (!round) {
+          const note = document.createElement("div");
+          note.className = "ncg-note";
+
+          if (state.mode === "custom") {
+            note.textContent = "Enter 2–6 names above to start a custom matching challenge.";
+          } else {
+            note.textContent = "Click New to begin.";
+          }
+
+          answerArea.appendChild(note);
+          return;
+        }
+
+        if (round.type === "single") {
+          renderSingleChoice(round);
+        } else {
+          renderMatchRound(round);
+        }
+      }
+
+      function renderVisualization() {
+        syncInspectionControlsForView();
+
+        state.view = viewSelect.value;
+        state.sex = sexSelect.value;
+        state.metric = metricSelect.value;
+        state.scale = scaleSelect.value;
+        state.periodIndex = Number(periodSlider.value || 0);
+
+        periodLabelEl.textContent = periodText(state.periodIndex);
+
+        const mapVisible = isMapView(state.view);
+
+        canvas.style.display = mapVisible ? "none" : "block";
+        mapDiv.style.display = mapVisible ? "block" : "none";
+        mapSliderBox.style.display = mapVisible ? "block" : "none";
+
+        if (mapVisible) {
+          window.requestAnimationFrame(() => {
+            drawMap();
+          });
+        } else {
+          drawLinePlot();
+        }
+      }
+
+      function render() {
+        state.mode = modeSelect.value;
+        customBox.classList.toggle("visible", state.mode === "custom");
+
+        syncViewOptionsForRound();
+        renderRoundStatus();
+        renderVisualization();
+        renderAnswerArea();
+      }
+
+      function makeSingleRoundFromEntry(base) {
+        return {
+          type: "single",
+          level: Number(base.level),
+          answer: Number(base.answer),
+          choices: shuffle(base.choices.slice()),
+          theme: base.theme || null,
+          themeCategory: base.themeCategory || null,
+          themeSourceLine: base.themeSourceLine || null,
+          selected: null,
+          answered: false
+        };
+      }
+
+      function makeMultiRoundFromEntry(base) {
+        const names = base.names.slice();
+
+        return {
+          type: "multi",
+          level: Number(base.level),
+          indices: names.slice(),
+          curveOrder: shuffle(names.slice()),
+          nameChoices: shuffle(names.slice()),
+          theme: base.theme || null,
+          themeCategory: base.themeCategory || null,
+          themeSourceLine: base.themeSourceLine || null,
+          assignments: {},
+          answered: false
+        };
+      }
+
+      function makeGameFromBank(mode) {
+        const bank = PAYLOAD.roundBanks[mode];
+
+        if (!Array.isArray(bank) || bank.length === 0) {
+          throw new Error(`No ${mode} no-repeat game sequences found in PAYLOAD.roundBanks.`);
+        }
+
+        const sequence = randomChoice(bank);
+
+        if (!Array.isArray(sequence) || sequence.length === 0) {
+          throw new Error(`Invalid ${mode} game sequence in PAYLOAD.roundBanks.`);
+        }
+
+        if (mode === "single") {
+          return sequence.map(makeSingleRoundFromEntry);
+        }
+
+        return sequence.map(makeMultiRoundFromEntry);
+      }
+
+      async function startNewGame() {
+        state.mode = modeSelect.value;
+        state.roundIndex = 0;
+
+        resetInspectionDefaults();
+
+        if (state.mode === "custom") {
+          state.rounds = [];
+          render();
+          return;
+        }
+
+        state.rounds = makeGameFromBank(state.mode);
+        roundStatus.innerHTML = "<strong>Loading round…</strong>";
+        answerArea.innerHTML = '<div class="ncg-note">Loading name data…</div>';
+        clearFeedback();
+
+        try {
+          await ensureRoundNational(currentRound());
+          render();
+        } catch (error) {
+          console.error(error);
+          state.rounds = [];
+          render();
+          showFeedback("neutral", escapeHtml(error?.message || String(error)));
+        }
+      }
+
+      async function startCustomRound() {
+        const rawNames = customNamesInput.value
+          .split(/[,;\n]/)
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        const cleaned = [];
+        const displayRaw = [];
+
+        rawNames.forEach(raw => {
+          const c = cleanNameInput(raw);
+          if (!cleaned.includes(c)) {
+            cleaned.push(c);
+            displayRaw.push(raw);
+          }
+        });
+
+        if (cleaned.length < 2 || cleaned.length > 6) {
+          state.rounds = [];
+          render();
+          showFeedback("neutral", "Enter between 2 and 6 distinct names.");
+          return;
+        }
+
+        startCustomButton.disabled = true;
+        roundStatus.innerHTML = "<strong>Loading custom challenge…</strong>";
+        clearFeedback();
+
+        try {
+          const resolved = await Promise.all(
+            displayRaw.map(async raw => ({
+              raw,
+              idx: await resolveCustomName(raw)
+            }))
+          );
+
+          const missing = resolved
+            .filter(item => item.idx === null)
+            .map(item => item.raw);
+
+          if (missing.length) {
+            state.rounds = [];
+            render();
+            showFeedback(
+              "neutral",
+              `No national baby-name packet was found for: <b>${missing.map(escapeHtml).join(", ")}</b>.`
+            );
+            return;
+          }
+
+          const indices = resolved.map(item => item.idx);
+
+          state.mode = "custom";
+          modeSelect.value = "custom";
+          state.roundIndex = 0;
+          resetInspectionDefaults();
+
+          state.rounds = [{
+            type: "custom",
+            level: null,
+            indices: indices.slice(),
+            curveOrder: shuffle(indices.slice()),
+            nameChoices: shuffle(indices.slice()),
+            assignments: {},
+            answered: false
+          }];
+
+          render();
+        } catch (error) {
+          console.error(error);
+          state.rounds = [];
+          render();
+          showFeedback("neutral", escapeHtml(error?.message || String(error)));
+        } finally {
+          startCustomButton.disabled = false;
+        }
+      }
+
+      modeSelect.addEventListener("change", startNewGame);
+
+      viewSelect.addEventListener("change", async () => {
+        state.hover = null;
+        cancelAxisAnimation();
+
+        if (isMapView(viewSelect.value)) {
+          viewSelect.disabled = true;
+          try {
+            await ensureRoundState(currentRound());
+          } catch (error) {
+            console.error(error);
+            showFeedback("neutral", escapeHtml(error?.message || String(error)));
+            viewSelect.value = "line";
+          } finally {
+            viewSelect.disabled = false;
+          }
+        }
+
+        render();
+      });
+
+      sexSelect.addEventListener("change", () => {
+        state.hover = null;
+        cancelAxisAnimation();
+        saveFreeSettingsFromControls();
+        render();
+      });
+
+      metricSelect.addEventListener("change", () => {
+        state.hover = null;
+        cancelAxisAnimation();
+
+        if (!isMapView(viewSelect.value)) {
+          const previousMetric = state.freeSettings.metric;
+          const nextMetric = metricSelect.value;
+
+          if (previousMetric !== "rank" && scaleSelect.value !== "log") {
+            state.lastNonRankScale = scaleSelect.value;
+          }
+
+          state.freeSettings.metric = nextMetric;
+
+          if (nextMetric === "rank") {
+            state.freeSettings.scale = "log";
+            scaleSelect.value = "log";
+          } else {
+            if (previousMetric === "rank") {
+              scaleSelect.value = state.lastNonRankScale || "linear";
+            }
+            state.freeSettings.scale = scaleSelect.value;
+          }
+        }
+
+        render();
+      });
+
+      scaleSelect.addEventListener("change", () => {
+        state.hover = null;
+        cancelAxisAnimation();
+
+        if (!isMapView(viewSelect.value)) {
+          if (metricSelect.value === "rank") {
+            state.freeSettings.metric = "rank";
+            state.freeSettings.scale = "log";
+            scaleSelect.value = "log";
+          } else {
+            state.freeSettings.scale = scaleSelect.value;
+            state.lastNonRankScale = scaleSelect.value;
+          }
+        }
+
+        render();
+      });
+
+      periodSlider.addEventListener("input", render);
+
+      newGameButton.addEventListener("click", startNewGame);
+      startCustomButton.addEventListener("click", startCustomRound);
+
+      canvas.addEventListener("mousemove", evt => {
+        if (state.view !== "line") return;
+
+        const round = currentRound();
+        const series = getSeriesForRound(round);
+        const box = plotBox();
+        const range = displayRangeForSeries(series);
+        const pos = pointerPosition(evt);
+
+        state.hover = findNearestPoint(series, box, range, pos);
+        drawLinePlot();
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        state.hover = null;
+        drawLinePlot();
+      });
+
+      let redrawQueued = false;
+
+      function redrawForContainerChange() {
+        if (redrawQueued) return;
+        redrawQueued = true;
+
+        window.requestAnimationFrame(() => {
+          redrawQueued = false;
+
+          if (isMapView(state.view)) {
+            if (mapDiv._fullLayout) Plotly.Plots.resize(mapDiv);
+            drawMap();
+          } else {
+            drawLinePlot();
+          }
+        });
+      }
+
+      window.addEventListener("resize", redrawForContainerChange);
+
+      if (window.ResizeObserver) {
+        const plotWrap = root.querySelector(".ncg-plot-wrap");
+        const ro = new ResizeObserver(redrawForContainerChange);
+        ro.observe(plotWrap);
+      }
+
+      setSexOptionsForCurrentMode();
+      await startNewGame();
+    })();
+  </script>
+</div>
+
+</body>
+</html>
