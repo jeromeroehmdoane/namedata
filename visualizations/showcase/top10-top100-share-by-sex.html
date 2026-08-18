@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1050, initial-scale=1" />
+  <title>Top 10 and Top 100 Names Over Time</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: white;
+      color: rgba(0,0,0,0.88);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1050px;
+      overflow-x: hidden;
+    }
+
+    #status {
+      min-height: 22px;
+      padding: 4px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1050px;
+      height: 620px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="status" aria-live="polite"></div>
+  <div id="plot"></div>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const FIG_WIDTH_PX = 1050;
+    const FIG_HEIGHT_PX = 620;
+
+    const LINEWIDTH = 2.6;
+    const TITLE = "Share of Births with a Top 10 or Top 100 Name";
+    const X_LABEL = "Year";
+    const Y_LABEL = "Percentage of births";
+
+    const TOP_LABEL_YEAR = 1900;
+    const SEX_LABEL_YEAR = 1960;
+
+    const TOP_LABEL_FONTSIZE = 17;
+    const SEX_LABEL_FONTSIZE = 17;
+    const SEX_LABEL_OFFSET_PIXELS = 15;
+
+    const TITLE_FONT_SIZE = 22;
+    const BASE_FONT_SIZE = 16;
+    const AXIS_TITLE_FONT_SIZE = 18;
+    const AXIS_TICK_FONT_SIZE = 16;
+    const HOVER_FONT_SIZE = 15;
+
+    const PERCENT_DECIMALS = 2;
+
+    const SEX_COLORS = {
+      M: "#4C78A8",
+      F: "#E4577E"
+    };
+
+    const SEX_LABELS = {
+      M: "Male",
+      F: "Female"
+    };
+
+    const LINESTYLES = {
+      10: "solid",
+      100: "dash"
+    };
+
+    const GRID_COLOR = "rgba(0,0,0,0.16)";
+    const TEXT_COLOR = "rgba(0,0,0,0.88)";
+    const AXIS_COLOR = "rgba(0,0,0,0.72)";
+
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function nearestYear(years, target) {
+      if (!years.length) return null;
+
+      let best = years[0];
+      let bestDistance = Math.abs(years[0] - target);
+
+      for (let i = 1; i < years.length; i += 1) {
+        const distance = Math.abs(years[i] - target);
+
+        if (distance < bestDistance) {
+          best = years[i];
+          bestDistance = distance;
+        }
+      }
+
+      return best;
+    }
+
+    function hoverNameBlock(row, topN) {
+      if (topN === 10) {
+        return (
+          "<b>Top 10 names</b><br>"
+          + String(row.top10_names_html || "")
+        );
+      }
+
+      const top5 = String(row.top5_names_html || "");
+      const bottom = String(row.rank96_100_names_html || "");
+
+      if (bottom) {
+        return (
+          "<b>Top 5 names</b><br>"
+          + top5
+          + "<br><br><b>Names ranked 96–100</b><br>"
+          + bottom
+        );
+      }
+
+      return "<b>Top 5 names</b><br>" + top5;
+    }
+
+    function rowByYear(rows, year) {
+      return rows.find(row => Number(row.year) === Number(year));
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+
+      return NameData.loadGlobalTable("topNamesOverTime");
+    }
+
+    function buildFigure(records) {
+      const bySex = {
+        M: records
+          .filter(row => row.sex === "M")
+          .sort((a, b) => Number(a.year) - Number(b.year)),
+        F: records
+          .filter(row => row.sex === "F")
+          .sort((a, b) => Number(a.year) - Number(b.year))
+      };
+
+      const years = Array.from(
+        new Set(
+          records.map(row => Number(row.year))
+        )
+      ).sort((a, b) => a - b);
+
+      if (!years.length) {
+        throw new Error("The Top Names Over Time table contains no years.");
+      }
+
+      const yearMin = years[0];
+      const yearMax = years[years.length - 1];
+
+      const topLabelYearUsed = nearestYear(years, TOP_LABEL_YEAR);
+      const sexLabelYearUsed = nearestYear(years, SEX_LABEL_YEAR);
+
+      const traces = [];
+
+      for (const sex of ["M", "F"]) {
+        for (const topN of [10, 100]) {
+          const shareKey =
+            topN === 10
+              ? "top10_share"
+              : "top100_share";
+
+          const rows = bySex[sex];
+
+          const x = rows.map(row => Number(row.year));
+          const y = rows.map(row => 100 * Number(row[shareKey]));
+
+          const customdata = rows.map(row => [
+            SEX_LABELS[sex],
+            topN,
+            `${(100 * Number(row[shareKey])).toFixed(PERCENT_DECIMALS)}%`,
+            hoverNameBlock(row, topN)
+          ]);
+
+          traces.push({
+            type: "scatter",
+            mode: "lines",
+            x,
+            y,
+            line: {
+              color: SEX_COLORS[sex],
+              width: LINEWIDTH,
+              dash: LINESTYLES[topN]
+            },
+            customdata,
+            hovertemplate:
+              "<b>%{customdata[0]} — Top %{customdata[1]}</b><br>"
+              + "Year: %{x}<br>"
+              + "Percentage of births: %{customdata[2]}"
+              + "<br><br>%{customdata[3]}"
+              + "<extra></extra>",
+            showlegend: false
+          });
+        }
+      }
+
+      const annotations = [];
+
+      for (const topN of [10, 100]) {
+        const shareKey =
+          topN === 10
+            ? "top10_share"
+            : "top100_share";
+
+        const maleRow = rowByYear(
+          bySex.M,
+          topLabelYearUsed
+        );
+
+        const femaleRow = rowByYear(
+          bySex.F,
+          topLabelYearUsed
+        );
+
+        if (maleRow && femaleRow) {
+          const averageValue =
+            50 * (
+              Number(maleRow[shareKey])
+              + Number(femaleRow[shareKey])
+            );
+
+          annotations.push({
+            x: topLabelYearUsed,
+            y: averageValue,
+            text: `Top ${topN}`,
+            showarrow: false,
+            font: {
+              size: TOP_LABEL_FONTSIZE,
+              color: "black"
+            },
+            xanchor: "center",
+            yanchor: "middle"
+          });
+        }
+      }
+
+      for (const topN of [10, 100]) {
+        const shareKey =
+          topN === 10
+            ? "top10_share"
+            : "top100_share";
+
+        for (const sex of ["M", "F"]) {
+          const row = rowByYear(
+            bySex[sex],
+            sexLabelYearUsed
+          );
+
+          if (!row) continue;
+
+          const yValue =
+            100 * Number(row[shareKey]);
+
+          const yshift =
+            sex === "M"
+              ? SEX_LABEL_OFFSET_PIXELS
+              : -SEX_LABEL_OFFSET_PIXELS;
+
+          annotations.push({
+            x: sexLabelYearUsed,
+            y: yValue,
+            text: SEX_LABELS[sex],
+            showarrow: false,
+            font: {
+              size: SEX_LABEL_FONTSIZE,
+              color: SEX_COLORS[sex]
+            },
+            xanchor: "center",
+            yanchor:
+              sex === "M"
+                ? "bottom"
+                : "top",
+            yshift
+          });
+        }
+      }
+
+      const layout = {
+        title: {
+          text: TITLE,
+          x: 0.02,
+          xanchor: "left",
+          y: 0.965,
+          yanchor: "top",
+          font: {
+            size: TITLE_FONT_SIZE,
+            color: TEXT_COLOR
+          }
+        },
+
+        width: FIG_WIDTH_PX,
+        height: FIG_HEIGHT_PX,
+        template: "plotly_white",
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        margin: {
+          l: 90,
+          r: 40,
+          t: 72,
+          b: 72
+        },
+
+        font: {
+          family: "Arial, sans-serif",
+          size: BASE_FONT_SIZE,
+          color: TEXT_COLOR
+        },
+
+        hovermode: "closest",
+
+        hoverlabel: {
+          font: {
+            size: HOVER_FONT_SIZE,
+            family: "Arial, sans-serif"
+          },
+          align: "left"
+        },
+
+        annotations,
+
+        xaxis: {
+          title: {
+            text: X_LABEL,
+            font: {
+              size: AXIS_TITLE_FONT_SIZE
+            }
+          },
+          range: [
+            yearMin,
+            yearMax
+          ],
+          showgrid: true,
+          gridcolor: GRID_COLOR,
+          zeroline: false,
+          linecolor: AXIS_COLOR,
+          tickmode: "linear",
+          dtick: 20,
+          tickfont: {
+            size: AXIS_TICK_FONT_SIZE
+          }
+        },
+
+        yaxis: {
+          title: {
+            text: Y_LABEL,
+            font: {
+              size: AXIS_TITLE_FONT_SIZE
+            }
+          },
+          ticksuffix: "%",
+          showgrid: true,
+          gridcolor: GRID_COLOR,
+          zeroline: false,
+          linecolor: AXIS_COLOR,
+          tickfont: {
+            size: AXIS_TICK_FONT_SIZE
+          }
+        }
+      };
+
+      return {
+        traces,
+        layout
+      };
+    }
+
+    try {
+      setStatus("Loading…");
+
+      const table = await configureLatestData();
+
+      if (!table || !Array.isArray(table.records)) {
+        throw new Error(
+          "The topNamesOverTime global table could not be read."
+        );
+      }
+
+      const figure = buildFigure(table.records);
+
+      await Plotly.newPlot(
+        plotEl,
+        figure.traces,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          responsive: true,
+          toImageButtonOptions: {
+            format: "png",
+            filename: "top10_top100_share_by_sex",
+            height: FIG_HEIGHT_PX,
+            width: FIG_WIDTH_PX,
+            scale: 4
+          }
+        }
+      );
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        error?.message || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
