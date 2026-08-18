@@ -294,48 +294,44 @@ export const visualizations = [
     ]
   },
   {
-    id: "cumulative-name-bar-race",
-    title: "Most Popular Names Over Time",
-    shortTitle: "Cumulative name race",
+    id: "top-names-over-time",
+    title: "Top Names Over Time",
+    shortTitle: "Top names over time",
     category: "Overall Patterns",
     description:
-      "Watch the ten names with the highest cumulative recorded births change as the U.S. baby-name record advances from 1880 through 2025.",
+      "Explore how dominant the most popular names have been, from the changing cumulative leaders to the yearly share captured by the Top 10 and Top 100 and the overall concentration of the name distribution.",
     instructions:
-      "Use Play/Pause to animate through the historical record, step one year at a time with the year buttons, or drag the year slider directly.",
+      "Choose a view above the visualization. Cumulative Top 10 is an animated bar race through the historical record. Top 10 / Top 100 shows the yearly share of male and female births captured by the most popular names. Name concentration shows how cumulative share and individual-name frequency fall as all-time rank increases.",
     methodology:
-      "For each displayed year, the bars show cumulative recorded births from 1880 through that year with male and female usage combined. The ten leading names are displayed; bar color indicates which recorded sex accounts for more of that name's cumulative births at that point.",
+      "The three views summarize different aspects of name concentration. The cumulative race ranks names by recorded births accumulated from 1880 through each year. The Top 10 / Top 100 view ranks names separately within each year and sex and divides the selected names' births by all recorded births for that year/sex. The concentration view ranks names by all-time recorded frequency and shows cumulative share together with the frequency at each rank.",
     dataThrough: 2025,
     iframeHeight: 750,
     embedMode: "scale",
     embedWidth: 1100,
     variants: [
       {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/cumulative-name-bar-race.html"
-      }
-    ]
-  },
-  {
-    id: "name-concentration",
-    title: "Name Concentration",
-    shortTitle: "Name concentration",
-    category: "Overall Patterns",
-    description:
-      "See how quickly the most common names account for the overall baby-name distribution, and how sharply name frequency falls as rank increases.",
-    instructions:
-      "Hover over a line to inspect rank, name, cumulative share, or frequency. Use the legend to compare Combined, Male, and Female distributions; solid lines show cumulative percentage and dashed lines show the frequency of the name at each rank.",
-    methodology:
-      "Names are ordered by all-time recorded frequency. Solid curves show the cumulative percentage accounted for by the top X names, while dashed curves use the logarithmic right axis to show the frequency of the Xth-ranked name. Combined, male, and female distributions are shown separately.",
-    dataThrough: 2025,
-    iframeHeight: 650,
-    embedMode: "scale",
-    embedWidth: 1050,
-    variants: [
+        id: "cumulative",
+        label: "Cumulative Top 10",
+        path: "../visualizations/showcase/cumulative-name-bar-race.html",
+        iframeHeight: 750,
+        embedMode: "scale",
+        embedWidth: 1100
+      },
       {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/name-concentration.html"
+        id: "top-share",
+        label: "Top 10 / Top 100",
+        path: "../visualizations/showcase/top10-top100-share-by-sex.html",
+        iframeHeight: 650,
+        embedMode: "scale",
+        embedWidth: 1050
+      },
+      {
+        id: "concentration",
+        label: "Name concentration",
+        path: "../visualizations/showcase/name-concentration.html",
+        iframeHeight: 650,
+        embedMode: "scale",
+        embedWidth: 1050
       }
     ]
   },
