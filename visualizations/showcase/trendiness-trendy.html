@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200, initial-scale=1" />
+  <title>Trendy Names</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1200px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: end;
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .control-main {
+      min-width: 0;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      padding: 8px 10px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      font: 14px/1.35 Arial, Helvetica, sans-serif;
+    }
+
+    .help {
+      margin-top: 4px;
+      color: #666;
+      font-size: 11px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+      padding-bottom: 1px;
+    }
+
+    button {
+      min-height: 38px;
+      padding: 7px 13px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #f7f7f7;
+      font: 14px Arial, Helvetica, sans-serif;
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: #6d8eff;
+      background: #dfe8ff;
+      color: #243b7a;
+      font-weight: 700;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .check input {
+      margin: 0;
+    }
+
+    .status {
+      min-height: 24px;
+      padding: 5px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1200px;
+      height: 675px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div class="control-main">
+        <label for="pairs_input">Names to compare</label>
+        <textarea id="pairs_input" spellcheck="false">Shaquille, M
+Kehlani, F
+Krystle, F
+Pam, F
+Woodrow, M
+Paulette, F
+Rihanna, F
+Jase, M
+Maude, F</textarea>
+        <div class="help">
+          One name/sex pair per line. Accepted forms include
+          <b>Joseph, M</b>, <b>Elizabeth (F)</b>, or <b>Kehlani F</b>.
+          Up to 10 pairs.
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="update_button" class="primary" type="button">
+          Update Names
+        </button>
+
+        <label class="check">
+          <input id="threshold_check" type="checkbox" checked />
+          Require ≥ 5,000 all-time births
+        </label>
+      </div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const VIEW_TITLE = "Trendy Names";
+    const SUBTITLE = "Best 10-year windows";
+    const WINDOW_SIZE = 10;
+    const MIN_ALL_TIME_FREQUENCY = 5000;
+
+    const COLOR_SEQUENCE = [
+      "#88CCEE",
+      "#CC6677",
+      "#DDCC77",
+      "#117733",
+      "#332288",
+      "#AA4499",
+      "#44AA99",
+      "#999933",
+      "#882255",
+      "#661100"
+    ];
+
+    const pairsInput = document.getElementById("pairs_input");
+    const updateButton = document.getElementById("update_button");
+    const thresholdCheck = document.getElementById("threshold_check");
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    let manifest = null;
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function rgba(hex, alpha) {
+      const cleaned = String(hex).replace("#", "");
+      const r = parseInt(cleaned.slice(0, 2), 16);
+      const g = parseInt(cleaned.slice(2, 4), 16);
+      const b = parseInt(cleaned.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    function parsePairLine(line) {
+      const raw = String(line || "").trim();
+      if (!raw) return null;
+
+      let match = raw.match(/^(.+?)[,|]\s*([FM])$/i);
+      if (!match) {
+        match = raw.match(/^(.+?)\s*\(([FM])\)$/i);
+      }
+      if (!match) {
+        match = raw.match(/^(.+?)\s+([FM])$/i);
+      }
+
+      if (!match) {
+        throw new Error(
+          `Could not read "${raw}". Add M or F after the name.`
+        );
+      }
+
+      return {
+        name: match[1].trim(),
+        sex: match[2].toUpperCase()
+      };
+    }
+
+    function parsePairs() {
+      const parsed = pairsInput.value
+        .split(/\n|;/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(parsePairLine);
+
+      const seen = new Set();
+      const pairs = [];
+
+      for (const pair of parsed) {
+        const key = `${pair.name.toLowerCase()}|${pair.sex}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          pairs.push(pair);
+        }
+      }
+
+      if (!pairs.length) {
+        throw new Error("Enter at least one name/sex pair.");
+      }
+
+      if (pairs.length > 10) {
+        throw new Error("Use no more than 10 name/sex pairs at once.");
+      }
+
+      return pairs;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+      manifest = await NameData.loadManifest();
+    }
+
+    function fullYears() {
+      const [yearMin, yearMax] = manifest.yearRanges.national;
+      return Array.from(
+        { length: yearMax - yearMin + 1 },
+        (_, i) => yearMin + i
+      );
+    }
+
+    function sexField(sex, stem) {
+      return `${stem}_${sex.toLowerCase()}`;
+    }
+
+    function frequencyCurve(packet, sex, years) {
+      const field = sexField(sex, "frequency");
+
+      const lookup = new Map(
+        (packet?.yearly || []).map(row => [
+          Number(row.year),
+          Number(row[field]) || 0
+        ])
+      );
+
+      return years.map(year => Number(lookup.get(year)) || 0);
+    }
+
+    function bestWindow(values, years) {
+      if (values.length < WINDOW_SIZE) {
+        throw new Error("The data span is shorter than 10 years.");
+      }
+
+      let current = 0;
+      for (let i = 0; i < WINDOW_SIZE; i += 1) {
+        current += values[i];
+      }
+
+      let bestSum = current;
+      let bestIndex = 0;
+
+      for (
+        let start = 1;
+        start <= values.length - WINDOW_SIZE;
+        start += 1
+      ) {
+        current += values[start + WINDOW_SIZE - 1] - values[start - 1];
+
+        // Strictly greater preserves earliest exact tie.
+        if (current > bestSum) {
+          bestSum = current;
+          bestIndex = start;
+        }
+      }
+
+      return {
+        births: bestSum,
+        startIndex: bestIndex,
+        startYear: years[bestIndex],
+        endYear: years[bestIndex + WINDOW_SIZE - 1]
+      };
+    }
+
+    function earliestPeak(values, years) {
+      let bestIndex = 0;
+      let bestValue = values[0] || 0;
+
+      for (let i = 1; i < values.length; i += 1) {
+        if (values[i] > bestValue) {
+          bestValue = values[i];
+          bestIndex = i;
+        }
+      }
+
+      return {
+        index: bestIndex,
+        year: years[bestIndex],
+        value: bestValue
+      };
+    }
+
+    async function loadPair(pair, years) {
+      const packet = await NameData.getNationalName(pair.name);
+
+      if (!packet) {
+        return {
+          ...pair,
+          error: "name not found"
+        };
+      }
+
+      const values = frequencyCurve(packet, pair.sex, years);
+      const allTimeFrequency = values.reduce((sum, value) => sum + value, 0);
+
+      if (!(allTimeFrequency > 0)) {
+        return {
+          ...pair,
+          error: `no recorded ${pair.sex} births`
+        };
+      }
+
+      if (
+        thresholdCheck.checked
+        && allTimeFrequency < MIN_ALL_TIME_FREQUENCY
+      ) {
+        return {
+          ...pair,
+          allTimeFrequency,
+          error: "below 5,000 births"
+        };
+      }
+
+      const window = bestWindow(values, years);
+      const peak = earliestPeak(values, years);
+
+      return {
+        name: packet.displayName || pair.name,
+        sex: pair.sex,
+        values,
+        allTimeFrequency,
+        window,
+        peak,
+        trendinessPct:
+          100 * window.births / allTimeFrequency
+      };
+    }
+
+    function buildFigure(items, years) {
+      const traces = [];
+      const annotations = [];
+
+      const globalYMax = Math.max(
+        0,
+        ...items.flatMap(item => item.values)
+      );
+
+      const nameCounts = new Map();
+      for (const item of items) {
+        nameCounts.set(
+          item.name,
+          (nameCounts.get(item.name) || 0) + 1
+        );
+      }
+
+      items.forEach((item, index) => {
+        const color = COLOR_SEQUENCE[index % COLOR_SEQUENCE.length];
+        const displayName =
+          nameCounts.get(item.name) > 1
+            ? `${item.name} (${item.sex})`
+            : item.name;
+
+        const startIndex = item.window.startIndex;
+        const endIndex = startIndex + WINDOW_SIZE;
+
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: years.slice(startIndex, endIndex),
+          y: item.values.slice(startIndex, endIndex),
+          line: {
+            color,
+            width: 0.5
+          },
+          fill: "tozeroy",
+          fillcolor: rgba(color, 0.20),
+          hoverinfo: "skip",
+          showlegend: false,
+          name: `${item.name} window`
+        });
+
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: years,
+          y: item.values,
+          line: {
+            color,
+            width: 3
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          name: displayName
+        });
+
+        traces.push({
+          type: "scatter",
+          mode: "text",
+          x: [item.peak.year],
+          y: [item.peak.value * 1.025],
+          text: [displayName],
+          textposition: "top center",
+          textfont: {
+            size: 13,
+            color
+          },
+          hoverinfo: "skip",
+          showlegend: false
+        });
+
+        const pctX =
+          item.window.startYear
+          + (WINDOW_SIZE - 1) / 2;
+
+        const pctY = Math.max(
+          item.peak.value * 0.50,
+          globalYMax * 0.015,
+          1
+        );
+
+        annotations.push({
+          x: pctX,
+          y: pctY,
+          text: `${item.trendinessPct.toFixed(1)}%`,
+          showarrow: false,
+          font: {
+            size: 12,
+            color
+          },
+          bgcolor: "rgba(255,255,255,0.75)",
+          bordercolor: color,
+          borderwidth: 1,
+          xanchor: "center",
+          yanchor: "middle"
+        });
+      });
+
+      annotations.push({
+        x: 0,
+        y: -0.17,
+        xref: "paper",
+        yref: "paper",
+        xanchor: "left",
+        yanchor: "top",
+        align: "left",
+        showarrow: false,
+        font: {
+          size: 11,
+          color: "gray"
+        },
+        text:
+          "Missing name-year combinations are filled with 0 for display "
+          + "and for the best 10-year window calculation."
+      });
+
+      const layout = {
+        title: {
+          text: `<b>${VIEW_TITLE}</b><br><sup>${SUBTITLE}</sup>`,
+          x: 0.5,
+          xanchor: "center",
+          y: 0.93
+        },
+        width: 1200,
+        height: 675,
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        hovermode: false,
+        showlegend: false,
+        margin: {
+          l: 75,
+          r: 30,
+          t: 110,
+          b: 85
+        },
+        font: {
+          size: 14
+        },
+        annotations,
+        xaxis: {
+          title: "Year",
+          range: [years[0], years[years.length - 1]],
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          tickmode: "auto"
+        },
+        yaxis: {
+          title: "Births",
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          rangemode: "tozero",
+          range: [
+            0,
+            globalYMax > 0
+              ? globalYMax * 1.12
+              : 1
+          ]
+        }
+      };
+
+      return { traces, layout };
+    }
+
+    async function renderNames() {
+      const pairs = parsePairs();
+      const years = fullYears();
+
+      updateButton.disabled = true;
+      setStatus("Loading names…");
+
+      try {
+        const loaded = await Promise.all(
+          pairs.map(pair => loadPair(pair, years))
+        );
+
+        const valid = loaded.filter(item => !item.error);
+        const omitted = loaded.filter(item => item.error);
+
+        if (!valid.length) {
+          const details = omitted
+            .map(item => `${item.name} (${item.sex}): ${item.error}`)
+            .join("; ");
+
+          throw new Error(
+            "No requested name/sex pairs can be plotted. " + details
+          );
+        }
+
+        const figure = buildFigure(valid, years);
+
+        await Plotly.react(
+          plotEl,
+          figure.traces,
+          figure.layout,
+          {
+            scrollZoom: false,
+            displayModeBar: true,
+            displaylogo: false,
+            doubleClick: false,
+            responsive: false,
+            toImageButtonOptions: {
+              format: "png",
+              filename: "trendiness-trendy",
+              scale: 3
+            }
+          }
+        );
+
+        if (omitted.length) {
+          setStatus(
+            "Omitted: "
+            + omitted
+              .map(item => `${item.name} (${item.sex}) — ${item.error}`)
+              .join("; ")
+          );
+        } else {
+          setStatus("");
+        }
+
+      } finally {
+        updateButton.disabled = false;
+      }
+    }
+
+    updateButton.addEventListener("click", () => {
+      renderNames().catch(error => {
+        console.error(error);
+        setStatus(error?.message || String(error), true);
+      });
+    });
+
+    pairsInput.addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        updateButton.click();
+      }
+    });
+
+    try {
+      await configureLatestData();
+      await renderNames();
+
+    } catch (error) {
+      console.error(error);
+      setStatus(error?.message || String(error), true);
+    }
+  </script>
+</body>
+</html>

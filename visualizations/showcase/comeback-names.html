@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200, initial-scale=1" />
+  <title>Comeback Names</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1200px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1200px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
+      gap: 12px;
+      align-items: end;
+      padding: 12px 18px 10px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      padding: 8px 10px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      font: 14px/1.35 Arial, Helvetica, sans-serif;
+    }
+
+    select, input[type="number"] {
+      min-height: 38px;
+      padding: 6px 8px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    button {
+      min-height: 38px;
+      padding: 7px 13px;
+      border: 1px solid #6d8eff;
+      border-radius: 7px;
+      background: #dfe8ff;
+      color: #243b7a;
+      font: 700 14px Arial, Helvetica, sans-serif;
+      cursor: pointer;
+    }
+
+    .help {
+      margin-top: 4px;
+      color: #666;
+      font-size: 11px;
+    }
+
+    .right-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .check {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .check input {
+      margin: 0;
+    }
+
+    .status {
+      min-height: 24px;
+      padding: 5px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    .status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1200px;
+      height: 675px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div>
+        <label for="pairs_input">Names to compare</label>
+        <textarea id="pairs_input" spellcheck="false">Otto, M
+August, M
+Millie, F
+Will, M
+Olive, F
+Cora, F</textarea>
+        <div class="help">
+          One name/sex pair per line. Accepted forms include
+          <b>Otto, M</b>, <b>Olive (F)</b>, or <b>Cora F</b>.
+          Up to 10 pairs.
+        </div>
+      </div>
+
+      <div>
+        <label for="metric_select">Y metric</label>
+        <select id="metric_select">
+          <option value="frequency" selected>Frequency</option>
+          <option value="percentage">Percentage</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="split_year">Split year</label>
+        <input
+          id="split_year"
+          type="number"
+          value="1960"
+          min="1881"
+          max="2025"
+          step="1"
+        />
+      </div>
+
+      <div class="right-controls">
+        <button id="update_button" type="button">Update Names</button>
+        <label class="check">
+          <input id="threshold_check" type="checkbox" checked />
+          Require &gt; 5,000 all-time births
+        </label>
+      </div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const MIN_ALL_TIME_FREQUENCY = 5000;
+
+    const COLOR_SEQUENCE = [
+      "#88CCEE",
+      "#CC6677",
+      "#DDCC77",
+      "#117733",
+      "#332288",
+      "#AA4499",
+      "#44AA99",
+      "#999933",
+      "#882255",
+      "#661100"
+    ];
+
+    const pairsInput = document.getElementById("pairs_input");
+    const metricSelect = document.getElementById("metric_select");
+    const splitYearInput = document.getElementById("split_year");
+    const thresholdCheck = document.getElementById("threshold_check");
+    const updateButton = document.getElementById("update_button");
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    let manifest = null;
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function parsePairLine(line) {
+      const raw = String(line || "").trim();
+      if (!raw) return null;
+
+      let match = raw.match(/^(.+?)[,|]\s*([FM])$/i);
+      if (!match) match = raw.match(/^(.+?)\s*\(([FM])\)$/i);
+      if (!match) match = raw.match(/^(.+?)\s+([FM])$/i);
+
+      if (!match) {
+        throw new Error(
+          `Could not read "${raw}". Add M or F after the name.`
+        );
+      }
+
+      return {
+        name: match[1].trim(),
+        sex: match[2].toUpperCase()
+      };
+    }
+
+    function parsePairs() {
+      const raw = pairsInput.value
+        .split(/\n|;/)
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(parsePairLine);
+
+      const seen = new Set();
+      const pairs = [];
+
+      for (const pair of raw) {
+        const key = `${pair.name.toLowerCase()}|${pair.sex}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          pairs.push(pair);
+        }
+      }
+
+      if (!pairs.length) {
+        throw new Error("Enter at least one name/sex pair.");
+      }
+
+      if (pairs.length > 10) {
+        throw new Error("Use no more than 10 name/sex pairs at once.");
+      }
+
+      return pairs;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+      manifest = await NameData.loadManifest();
+
+      splitYearInput.max = String(manifest.yearRanges.national[1]);
+      splitYearInput.min = String(manifest.yearRanges.national[0] + 1);
+    }
+
+    function years() {
+      const [yearMin, yearMax] = manifest.yearRanges.national;
+
+      return Array.from(
+        { length: yearMax - yearMin + 1 },
+        (_, i) => yearMin + i
+      );
+    }
+
+    function field(stem, sex) {
+      return `${stem}_${sex.toLowerCase()}`;
+    }
+
+    function curvesFromPacket(packet, sex, allYears) {
+      const frequencyField = field("frequency", sex);
+      const proportionField = field("proportion", sex);
+
+      const rows = new Map(
+        (packet?.yearly || []).map(row => [
+          Number(row.year),
+          row
+        ])
+      );
+
+      const frequency = allYears.map(year => {
+        const row = rows.get(year);
+        return row ? (Number(row[frequencyField]) || 0) : 0;
+      });
+
+      const percentage = allYears.map(year => {
+        const row = rows.get(year);
+        return row
+          ? 100 * (Number(row[proportionField]) || 0)
+          : 0;
+      });
+
+      return { frequency, percentage };
+    }
+
+    function weightedStats(frequency, allYears) {
+      const total = frequency.reduce((sum, value) => sum + value, 0);
+
+      if (!(total > 0)) {
+        return {
+          total: 0,
+          mean: NaN,
+          sd: NaN
+        };
+      }
+
+      let weighted = 0;
+      let weightedSq = 0;
+
+      for (let i = 0; i < allYears.length; i += 1) {
+        const f = frequency[i];
+        const y = allYears[i];
+
+        weighted += f * y;
+        weightedSq += f * y * y;
+      }
+
+      const mean = weighted / total;
+      const variance = Math.max(
+        0,
+        weightedSq / total - mean * mean
+      );
+
+      return {
+        total,
+        mean,
+        sd: Math.sqrt(variance)
+      };
+    }
+
+    function findPeak(values, allYears, predicate) {
+      let bestIndex = null;
+      let bestValue = 0;
+
+      for (let i = 0; i < values.length; i += 1) {
+        if (!predicate(allYears[i])) continue;
+
+        if (
+          bestIndex === null
+          || values[i] > bestValue
+        ) {
+          bestIndex = i;
+          bestValue = values[i];
+        }
+      }
+
+      if (bestIndex === null || !(bestValue > 0)) {
+        return {
+          year: null,
+          value: 0
+        };
+      }
+
+      return {
+        year: allYears[bestIndex],
+        value: bestValue
+      };
+    }
+
+    async function loadPair(pair, allYears, splitYear) {
+      const packet = await NameData.getNationalName(pair.name);
+
+      if (!packet) {
+        return {
+          ...pair,
+          error: "name not found"
+        };
+      }
+
+      const curves = curvesFromPacket(
+        packet,
+        pair.sex,
+        allYears
+      );
+
+      const stats = weightedStats(
+        curves.frequency,
+        allYears
+      );
+
+      if (!(stats.total > 0)) {
+        return {
+          ...pair,
+          error: `no recorded ${pair.sex} births`
+        };
+      }
+
+      if (
+        thresholdCheck.checked
+        && stats.total <= MIN_ALL_TIME_FREQUENCY
+      ) {
+        return {
+          ...pair,
+          allTimeFrequency: stats.total,
+          error: "not more than 5,000 births"
+        };
+      }
+
+      const metric = metricSelect.value;
+      const plotValues =
+        metric === "percentage"
+          ? curves.percentage
+          : curves.frequency;
+
+      return {
+        name: packet.displayName || pair.name,
+        sex: pair.sex,
+        frequency: curves.frequency,
+        percentage: curves.percentage,
+        plotValues,
+        allTimeFrequency: stats.total,
+        meanBirthYear: stats.mean,
+        birthYearSd: stats.sd,
+        prePeak: findPeak(
+          plotValues,
+          allYears,
+          year => year < splitYear
+        ),
+        postPeak: findPeak(
+          plotValues,
+          allYears,
+          year => year >= splitYear
+        )
+      };
+    }
+
+    function buildFigure(items, allYears, splitYear) {
+      const metric = metricSelect.value;
+
+      const nameCounts = new Map();
+      for (const item of items) {
+        nameCounts.set(
+          item.name,
+          (nameCounts.get(item.name) || 0) + 1
+        );
+      }
+
+      const traces = [];
+      const annotations = [];
+
+      const globalYMax = Math.max(
+        0,
+        ...items.flatMap(item => item.plotValues)
+      );
+
+      items.forEach((item, index) => {
+        const color = COLOR_SEQUENCE[index % COLOR_SEQUENCE.length];
+
+        const displayName =
+          nameCounts.get(item.name) > 1
+            ? `${item.name} (${item.sex})`
+            : item.name;
+
+        item.color = color;
+        item.displayName = displayName;
+
+        traces.push({
+          type: "scatter",
+          mode: "lines",
+          x: allYears,
+          y: item.plotValues,
+          line: {
+            color,
+            width: 3
+          },
+          hoverinfo: "skip",
+          showlegend: false,
+          name: `${item.name} (${item.sex})`
+        });
+
+        if (item.prePeak.year !== null) {
+          traces.push({
+            type: "scatter",
+            mode: "text",
+            x: [item.prePeak.year],
+            y: [item.prePeak.value * 1.025],
+            text: [displayName],
+            textposition: "top center",
+            textfont: {
+              size: 13,
+              color
+            },
+            hoverinfo: "skip",
+            showlegend: false
+          });
+        }
+
+        if (item.postPeak.year !== null) {
+          traces.push({
+            type: "scatter",
+            mode: "text",
+            x: [item.postPeak.year],
+            y: [item.postPeak.value * 1.025],
+            text: [displayName],
+            textposition: "top center",
+            textfont: {
+              size: 13,
+              color
+            },
+            hoverinfo: "skip",
+            showlegend: false
+          });
+        }
+      });
+
+      // Center legend, preserving the original source style.
+      const legendItems = [...items]
+        .sort((a, b) => b.birthYearSd - a.birthYearSd);
+
+      const centerX = 0.60;
+      const centerY = 0.62;
+      const legendWidth = 0.25;
+      const lineSpacing = 0.052;
+      const legendHeight = lineSpacing * (legendItems.length + 1.4);
+
+      const x0 = centerX - legendWidth / 2;
+      const x1 = centerX + legendWidth / 2;
+      const y0 = centerY - legendHeight / 2;
+      const y1 = centerY + legendHeight / 2;
+      const textX = x0 + 0.018;
+
+      const shapes = [
+        {
+          type: "rect",
+          xref: "paper",
+          yref: "paper",
+          x0,
+          x1,
+          y0,
+          y1,
+          fillcolor: "rgba(255,255,255,0.78)",
+          line: {
+            color: "rgba(0,0,0,0.20)",
+            width: 1
+          },
+          layer: "above"
+        }
+      ];
+
+      annotations.push({
+        x: textX,
+        y: y1 - lineSpacing * 0.55,
+        xref: "paper",
+        yref: "paper",
+        text: "<b>Weighted SD of birth year</b>",
+        showarrow: false,
+        font: {
+          size: 13,
+          color: "black"
+        },
+        xanchor: "left",
+        yanchor: "middle",
+        align: "left"
+      });
+
+      legendItems.forEach((item, j) => {
+        annotations.push({
+          x: textX,
+          y: y1 - lineSpacing * (1.45 + j),
+          xref: "paper",
+          yref: "paper",
+          text:
+            `${item.name} (${item.sex}): `
+            + `SD = ${item.birthYearSd.toFixed(1)} years`,
+          showarrow: false,
+          font: {
+            size: 13,
+            color: item.color
+          },
+          xanchor: "left",
+          yanchor: "middle",
+          align: "left"
+        });
+      });
+
+      const noteText =
+        metric === "percentage"
+          ? (
+              "Missing name-year combinations are filled with 0 for display. "
+              + "Percentages use all observed births for that sex/year as the denominator. "
+              + "Standard deviations use observed SSA frequencies as birth-year weights."
+            )
+          : (
+              "Missing name-year combinations are filled with 0 for display. "
+              + "Standard deviations use observed SSA frequencies as birth-year weights."
+            );
+
+      annotations.push({
+        x: 0,
+        y: -0.17,
+        xref: "paper",
+        yref: "paper",
+        xanchor: "left",
+        yanchor: "top",
+        align: "left",
+        showarrow: false,
+        font: {
+          size: 11,
+          color: "gray"
+        },
+        text: noteText
+      });
+
+      const subtitle =
+        `Pre-${splitYear} and post-${splitYear} peaks`;
+
+      const layout = {
+        title: {
+          text:
+            `<b>Comeback Names</b><br><sup>${subtitle}</sup>`,
+          x: 0.5,
+          xanchor: "center",
+          y: 0.93
+        },
+        width: 1200,
+        height: 675,
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+        hovermode: false,
+        showlegend: false,
+        margin: {
+          l: 75,
+          r: 30,
+          t: 110,
+          b: 85
+        },
+        font: {
+          size: 14
+        },
+        annotations,
+        shapes,
+        xaxis: {
+          title: "Year",
+          range: [
+            allYears[0],
+            allYears[allYears.length - 1]
+          ],
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          tickmode: "auto"
+        },
+        yaxis: {
+          title:
+            metric === "percentage"
+              ? "Percent of births that year"
+              : "Births",
+          ticksuffix:
+            metric === "percentage"
+              ? "%"
+              : "",
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          rangemode: "tozero",
+          range: [
+            0,
+            globalYMax > 0
+              ? globalYMax * 1.12
+              : 1
+          ]
+        }
+      };
+
+      return { traces, layout };
+    }
+
+    async function renderNames() {
+      const pairs = parsePairs();
+      const allYears = years();
+      const splitYear = Number(splitYearInput.value);
+
+      if (
+        !Number.isInteger(splitYear)
+        || splitYear <= allYears[0]
+        || splitYear > allYears[allYears.length - 1]
+      ) {
+        throw new Error(
+          `Split year must be between ${allYears[0] + 1} `
+          + `and ${allYears[allYears.length - 1]}.`
+        );
+      }
+
+      updateButton.disabled = true;
+      setStatus("Loading names…");
+
+      try {
+        const loaded = await Promise.all(
+          pairs.map(
+            pair => loadPair(
+              pair,
+              allYears,
+              splitYear
+            )
+          )
+        );
+
+        const valid = loaded.filter(item => !item.error);
+        const omitted = loaded.filter(item => item.error);
+
+        if (!valid.length) {
+          throw new Error(
+            "No requested name/sex pairs can be plotted. "
+            + omitted
+              .map(
+                item =>
+                  `${item.name} (${item.sex}): ${item.error}`
+              )
+              .join("; ")
+          );
+        }
+
+        const figure = buildFigure(
+          valid,
+          allYears,
+          splitYear
+        );
+
+        await Plotly.react(
+          plotEl,
+          figure.traces,
+          figure.layout,
+          {
+            scrollZoom: false,
+            displayModeBar: true,
+            displaylogo: false,
+            doubleClick: false,
+            responsive: false,
+            toImageButtonOptions: {
+              format: "png",
+              filename: "comeback_name_curves",
+              scale: 3
+            }
+          }
+        );
+
+        if (omitted.length) {
+          setStatus(
+            "Omitted: "
+            + omitted
+              .map(
+                item =>
+                  `${item.name} (${item.sex}) — ${item.error}`
+              )
+              .join("; ")
+          );
+        } else {
+          setStatus("");
+        }
+
+      } finally {
+        updateButton.disabled = false;
+      }
+    }
+
+    for (const control of [
+      updateButton,
+      metricSelect,
+      splitYearInput
+    ]) {
+      control.addEventListener(
+        control === updateButton ? "click" : "change",
+        () => {
+          renderNames().catch(error => {
+            console.error(error);
+            setStatus(error?.message || String(error), true);
+          });
+        }
+      );
+    }
+
+    try {
+      await configureLatestData();
+      await renderNames();
+
+    } catch (error) {
+      console.error(error);
+      setStatus(error?.message || String(error), true);
+    }
+  </script>
+</body>
+</html>

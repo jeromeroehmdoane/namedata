@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comeback Names Table</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      min-width: 760px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 16px 18px;
+    }
+
+    h1 {
+      margin: 2px 0 4px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns:
+        minmax(180px, 1.5fr)
+        minmax(115px, 0.65fr)
+        minmax(150px, 0.85fr)
+        minmax(185px, 1fr)
+        auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input, select, button {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    button {
+      width: auto;
+      min-width: 86px;
+      cursor: pointer;
+      background: #f4f4f4;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin: 11px 2px 7px;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      max-height: 610px;
+      overflow: auto;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 10px 10px;
+      border-bottom: 1px solid #ccc;
+      background: #f3f5f8;
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    thead th:hover {
+      background: #e9edf3;
+    }
+
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfbfb;
+    }
+
+    tbody tr:hover {
+      background: #f2f6ff;
+    }
+
+    td.numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sex-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .sex-pill.m {
+      background: rgba(76,120,168,0.14);
+      color: #315b87;
+    }
+
+    .sex-pill.f {
+      background: rgba(228,87,126,0.14);
+      color: #aa3457;
+    }
+
+    .percentile-pill {
+      display: inline-block;
+      min-width: 59px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-align: right;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      background: #edf1f7;
+    }
+
+    .sort-mark {
+      display: inline-block;
+      margin-left: 5px;
+      min-width: 10px;
+      color: #506784;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pagination button {
+      min-width: 74px;
+      width: auto;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .page-label {
+      min-width: 105px;
+      text-align: center;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .error {
+      margin: 14px 0;
+      color: #a61b1b;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .filters {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <h1>Comeback Names Table</h1>
+    <p class="subtitle">Comeback score is weighted population SD of birth year. Percentiles are computed within sex among name/sex pairs with at least 5,000 observed all-time births.</p>
+
+    <section class="filters">
+      <div>
+        <label for="search_input">Find a name</label>
+        <input
+          id="search_input"
+          type="search"
+          placeholder="e.g., Joseph"
+          autocomplete="off"
+        />
+      </div>
+
+      <div>
+        <label for="sex_select">Sex</label>
+        <select id="sex_select">
+          <option value="all">All</option>
+          <option value="F">Female</option>
+          <option value="M">Male</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="births_input">More than all-time births</label>
+        <input
+          id="births_input"
+          type="number"
+          value="5000"
+          min="5000"
+          step="1000"
+        />
+      </div>
+
+      <div>
+        <label for="category_select">Comeback category</label>
+        <select id="category_select">
+          <option value="all">All percentiles</option>
+<option value="top10">Top 10% comeback score</option>
+<option value="top25">Top 25% comeback score</option>
+<option value="middle50">Middle 50%</option>
+<option value="bottom25">Bottom 25%</option>
+<option value="bottom10">Bottom 10%</option>
+        </select>
+      </div>
+
+      <button id="reset_button" type="button">Reset</button>
+    </section>
+
+    <div id="error" class="error" hidden></div>
+
+    <div class="summary-row">
+      <div id="result_summary"></div>
+      <div>
+        Rows per page:
+        <select id="page_size" style="width:auto; min-height:30px; padding:3px 6px;">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="name" data-type="text" tabindex="0">Name<span class="sort-mark"></span></th>
+<th data-key="sex" data-type="text" tabindex="0">Sex<span class="sort-mark"></span></th>
+<th data-key="all_time_frequency" data-type="integer" tabindex="0">All-time births<span class="sort-mark"></span></th>
+<th data-key="birth_year_sd" data-type="years" tabindex="0">Birth-year SD<span class="sort-mark"></span></th>
+<th data-key="comeback_percentile" data-type="percentile" tabindex="0">Comeback percentile<span class="sort-mark"></span></th>
+<th data-key="mean_birth_year" data-type="year1" tabindex="0">Mean birth year<span class="sort-mark"></span></th>
+<th data-key="peak_year" data-type="integer" tabindex="0">Peak year<span class="sort-mark"></span></th>
+<th data-key="observed_year_span" data-type="years0" tabindex="0">Observed span<span class="sort-mark"></span></th>
+          </tr>
+        </thead>
+        <tbody id="table_body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prev_button" type="button">Previous</button>
+      <span id="page_label" class="page-label"></span>
+      <button id="next_button" type="button">Next</button>
+    </div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const KIND = "comeback";
+    const PERCENTILE_FIELD = "comeback_percentile";
+    const THRESHOLD_OPERATOR = ">";
+    const DEFAULT_SORT_KEY = "birth_year_sd";
+    const COLUMNS = [{"key": "name", "label": "Name", "type": "text"}, {"key": "sex", "label": "Sex", "type": "text"}, {"key": "all_time_frequency", "label": "All-time births", "type": "integer"}, {"key": "birth_year_sd", "label": "Birth-year SD", "type": "years"}, {"key": "comeback_percentile", "label": "Comeback percentile", "type": "percentile"}, {"key": "mean_birth_year", "label": "Mean birth year", "type": "year1"}, {"key": "peak_year", "label": "Peak year", "type": "integer"}, {"key": "observed_year_span", "label": "Observed span", "type": "years0"}];
+
+    const searchInput = document.getElementById("search_input");
+    const sexSelect = document.getElementById("sex_select");
+    const birthsInput = document.getElementById("births_input");
+    const categorySelect = document.getElementById("category_select");
+    const resetButton = document.getElementById("reset_button");
+    const pageSizeSelect = document.getElementById("page_size");
+    const tableBody = document.getElementById("table_body");
+    const resultSummary = document.getElementById("result_summary");
+    const prevButton = document.getElementById("prev_button");
+    const nextButton = document.getElementById("next_button");
+    const pageLabel = document.getElementById("page_label");
+    const errorEl = document.getElementById("error");
+
+    let records = [];
+    let currentPage = 1;
+    let sortKey = DEFAULT_SORT_KEY;
+    let sortDirection = "desc";
+
+    function showError(message) {
+      errorEl.textContent = message || "";
+      errorEl.hidden = !message;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+
+      const table = await NameData.loadGlobalTable(
+        "trendinessComebackSummary"
+      );
+
+      return table.records || [];
+    }
+
+    function percentileMatches(value, category) {
+      const p = Number(value);
+
+      if (!Number.isFinite(p)) return false;
+
+      switch (category) {
+        case "top10":
+          return p >= 90;
+        case "top25":
+          return p >= 75;
+        case "middle50":
+          return p >= 25 && p <= 75;
+        case "bottom25":
+          return p <= 25;
+        case "bottom10":
+          return p <= 10;
+        default:
+          return true;
+      }
+    }
+
+    function compareValues(a, b, key) {
+      const av = a[key];
+      const bv = b[key];
+
+      const an = Number(av);
+      const bn = Number(bv);
+
+      let result;
+
+      if (
+        Number.isFinite(an)
+        && Number.isFinite(bn)
+        && typeof av !== "string"
+        && typeof bv !== "string"
+      ) {
+        result = an - bn;
+      } else {
+        result = String(av ?? "")
+          .localeCompare(
+            String(bv ?? ""),
+            undefined,
+            {
+              numeric: true,
+              sensitivity: "base"
+            }
+          );
+      }
+
+      if (result === 0) {
+        result = String(a.name ?? "")
+          .localeCompare(String(b.name ?? ""));
+      }
+
+      return sortDirection === "asc"
+        ? result
+        : -result;
+    }
+
+    function filteredSorted() {
+      const query = searchInput.value.trim().toLowerCase();
+      const sex = sexSelect.value;
+      const threshold = Math.max(
+        5000,
+        Number(birthsInput.value) || 5000
+      );
+      const category = categorySelect.value;
+
+      const filtered = records.filter(row => {
+        const frequency = Number(row.all_time_frequency) || 0;
+
+        const frequencyPass =
+          THRESHOLD_OPERATOR === ">"
+            ? frequency > threshold
+            : frequency >= threshold;
+
+        return (
+          frequencyPass
+          && (sex === "all" || row.sex === sex)
+          && (
+            !query
+            || String(row.name || "")
+              .toLowerCase()
+              .includes(query)
+          )
+          && percentileMatches(
+            row[PERCENTILE_FIELD],
+            category
+          )
+        );
+      });
+
+      filtered.sort(
+        (a, b) => compareValues(a, b, sortKey)
+      );
+
+      return filtered;
+    }
+
+    function formatValue(value, type) {
+      if (type === "integer") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? Math.round(n).toLocaleString()
+          : "";
+      }
+
+      if (type === "percent") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? `${n.toFixed(1)}%`
+          : "";
+      }
+
+      if (type === "percentile") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? `${n.toFixed(1)}`
+          : "";
+      }
+
+      if (type === "years") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? `${n.toFixed(1)} yrs`
+          : "";
+      }
+
+      if (type === "years0") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? `${Math.round(n)} yrs`
+          : "";
+      }
+
+      if (type === "year1") {
+        const n = Number(value);
+        return Number.isFinite(n)
+          ? n.toFixed(1)
+          : "";
+      }
+
+      return String(value ?? "");
+    }
+
+    function cellHtml(row, column) {
+      if (column.key === "sex") {
+        const sex = String(row.sex || "");
+        const cls = sex.toLowerCase();
+        return `<span class="sex-pill ${cls}">${sex}</span>`;
+      }
+
+      if (column.type === "percentile") {
+        return (
+          `<span class="percentile-pill">`
+          + `${formatValue(row[column.key], column.type)}`
+          + `</span>`
+        );
+      }
+
+      return formatValue(
+        row[column.key],
+        column.type
+      );
+    }
+
+    function renderHeaderSort() {
+      document
+        .querySelectorAll("th[data-key]")
+        .forEach(th => {
+          const mark = th.querySelector(".sort-mark");
+
+          if (th.dataset.key === sortKey) {
+            mark.textContent =
+              sortDirection === "asc"
+                ? "▲"
+                : "▼";
+          } else {
+            mark.textContent = "";
+          }
+        });
+    }
+
+    function render() {
+      showError("");
+
+      const rows = filteredSorted();
+      const pageSize = Number(pageSizeSelect.value) || 50;
+      const pageCount = Math.max(
+        1,
+        Math.ceil(rows.length / pageSize)
+      );
+
+      currentPage = Math.min(
+        Math.max(1, currentPage),
+        pageCount
+      );
+
+      const start = (currentPage - 1) * pageSize;
+      const pageRows = rows.slice(
+        start,
+        start + pageSize
+      );
+
+      tableBody.innerHTML = pageRows
+        .map(row => {
+          const cells = COLUMNS.map(column => {
+            const numeric =
+              column.type !== "text"
+              && column.key !== "sex";
+
+            return (
+              `<td class="${numeric ? "numeric" : ""}">`
+              + cellHtml(row, column)
+              + `</td>`
+            );
+          }).join("");
+
+          return `<tr>${cells}</tr>`;
+        })
+        .join("");
+
+      resultSummary.textContent =
+        `${rows.length.toLocaleString()} qualifying name/sex rows`;
+
+      pageLabel.textContent =
+        `Page ${currentPage.toLocaleString()} of ${pageCount.toLocaleString()}`;
+
+      prevButton.disabled = currentPage <= 1;
+      nextButton.disabled = currentPage >= pageCount;
+
+      renderHeaderSort();
+    }
+
+    function resetFilters() {
+      searchInput.value = "";
+      sexSelect.value = "all";
+      birthsInput.value = "5000";
+      categorySelect.value = "all";
+      pageSizeSelect.value = "50";
+      currentPage = 1;
+      sortKey = DEFAULT_SORT_KEY;
+      sortDirection = "desc";
+      render();
+    }
+
+    for (const control of [
+      searchInput,
+      sexSelect,
+      birthsInput,
+      categorySelect,
+      pageSizeSelect
+    ]) {
+      control.addEventListener(
+        control === searchInput ? "input" : "change",
+        () => {
+          currentPage = 1;
+          render();
+        }
+      );
+    }
+
+    resetButton.addEventListener("click", resetFilters);
+
+    prevButton.addEventListener("click", () => {
+      currentPage -= 1;
+      render();
+    });
+
+    nextButton.addEventListener("click", () => {
+      currentPage += 1;
+      render();
+    });
+
+    document
+      .querySelectorAll("th[data-key]")
+      .forEach(th => {
+        function applySort() {
+          const key = th.dataset.key;
+
+          if (sortKey === key) {
+            sortDirection =
+              sortDirection === "asc"
+                ? "desc"
+                : "asc";
+          } else {
+            sortKey = key;
+            sortDirection =
+              key === "name" || key === "sex"
+                ? "asc"
+                : "desc";
+          }
+
+          currentPage = 1;
+          render();
+        }
+
+        th.addEventListener("click", applySort);
+
+        th.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            applySort();
+          }
+        });
+      });
+
+    try {
+      records = await configureLatestData();
+      render();
+
+    } catch (error) {
+      console.error(error);
+      showError(error?.message || String(error));
+    }
+  </script>
+</body>
+</html>
