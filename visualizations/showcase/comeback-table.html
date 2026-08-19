@@ -16,9 +16,7 @@
       font-family: Arial, Helvetica, sans-serif;
     }
 
-    body {
-      min-width: 760px;
-    }
+    body { min-width: 760px; }
 
     .app {
       width: 100%;
@@ -43,10 +41,10 @@
     .filters {
       display: grid;
       grid-template-columns:
-        minmax(180px, 1.5fr)
-        minmax(115px, 0.65fr)
-        minmax(150px, 0.85fr)
-        minmax(185px, 1fr)
+        minmax(190px, 1.5fr)
+        minmax(110px, 0.60fr)
+        minmax(165px, 0.82fr)
+        minmax(175px, 0.90fr)
         auto;
       gap: 10px;
       align-items: end;
@@ -103,6 +101,7 @@
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
+      table-layout: auto;
       font-size: 13px;
     }
 
@@ -110,13 +109,13 @@
       position: sticky;
       top: 0;
       z-index: 2;
-      padding: 10px 10px;
+      padding: 10px 14px;
       border-bottom: 1px solid #ccc;
       background: #f3f5f8;
-      text-align: left;
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
+      vertical-align: middle;
     }
 
     thead th:hover {
@@ -124,7 +123,7 @@
     }
 
     tbody td {
-      padding: 9px 10px;
+      padding: 9px 14px;
       border-bottom: 1px solid #eee;
       vertical-align: middle;
       white-space: nowrap;
@@ -138,10 +137,22 @@
       background: #f2f6ff;
     }
 
-    td.numeric {
+    .align-left { text-align: left; }
+    .align-center { text-align: center; }
+    .align-right {
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+
+    .col-name { min-width: 120px; }
+    .col-sex { min-width: 64px; }
+    .col-births { min-width: 125px; }
+    .col-window { min-width: 155px; }
+    .col-share { min-width: 135px; }
+    .col-percentile { min-width: 150px; }
+    .col-sd { min-width: 110px; }
+    .col-year { min-width: 100px; }
+    .col-span { min-width: 105px; }
 
     .sex-pill {
       display: inline-flex;
@@ -258,14 +269,10 @@
       </div>
 
       <div>
-        <label for="category_select">Comeback category</label>
+        <label for="category_select">Comeback order</label>
         <select id="category_select">
-          <option value="all">All percentiles</option>
-<option value="top10">Top 10% comeback score</option>
-<option value="top25">Top 25% comeback score</option>
-<option value="middle50">Middle 50%</option>
-<option value="bottom25">Bottom 25%</option>
-<option value="bottom10">Bottom 10%</option>
+          <option value="desc">Strongest comeback</option>
+<option value="asc">Weakest comeback</option>
         </select>
       </div>
 
@@ -278,7 +285,10 @@
       <div id="result_summary"></div>
       <div>
         Rows per page:
-        <select id="page_size" style="width:auto; min-height:30px; padding:3px 6px;">
+        <select
+          id="page_size"
+          style="width:auto; min-height:30px; padding:3px 6px;"
+        >
           <option value="25">25</option>
           <option value="50" selected>50</option>
           <option value="100">100</option>
@@ -290,14 +300,14 @@
       <table>
         <thead>
           <tr>
-            <th data-key="name" data-type="text" tabindex="0">Name<span class="sort-mark"></span></th>
-<th data-key="sex" data-type="text" tabindex="0">Sex<span class="sort-mark"></span></th>
-<th data-key="all_time_frequency" data-type="integer" tabindex="0">All-time births<span class="sort-mark"></span></th>
-<th data-key="birth_year_sd" data-type="years" tabindex="0">Birth-year SD<span class="sort-mark"></span></th>
-<th data-key="comeback_percentile" data-type="percentile" tabindex="0">Comeback percentile<span class="sort-mark"></span></th>
-<th data-key="mean_birth_year" data-type="year1" tabindex="0">Mean birth year<span class="sort-mark"></span></th>
-<th data-key="peak_year" data-type="integer" tabindex="0">Peak year<span class="sort-mark"></span></th>
-<th data-key="observed_year_span" data-type="years0" tabindex="0">Observed span<span class="sort-mark"></span></th>
+            <th class="align-left col-name" data-key="name" data-type="text" tabindex="0">Name<span class="sort-mark"></span></th>
+<th class="align-center col-sex" data-key="sex" data-type="text" tabindex="0">Sex<span class="sort-mark"></span></th>
+<th class="align-right col-births" data-key="all_time_frequency" data-type="integer" tabindex="0">All-time births<span class="sort-mark"></span></th>
+<th class="align-right col-sd" data-key="birth_year_sd" data-type="years" tabindex="0">Birth-year SD<span class="sort-mark"></span></th>
+<th class="align-right col-percentile" data-key="comeback_percentile" data-type="percentile" tabindex="0">Comeback percentile<span class="sort-mark"></span></th>
+<th class="align-right col-year" data-key="mean_birth_year" data-type="year" tabindex="0">Mean birth year<span class="sort-mark"></span></th>
+<th class="align-right col-year" data-key="peak_year" data-type="year" tabindex="0">Peak year<span class="sort-mark"></span></th>
+<th class="align-right col-span" data-key="observed_year_span" data-type="years0" tabindex="0">Observed span<span class="sort-mark"></span></th>
           </tr>
         </thead>
         <tbody id="table_body"></tbody>
@@ -314,11 +324,10 @@
   <script type="module">
     import NameData from "../../assets/js/name-data-loader.js";
 
-    const KIND = "comeback";
     const PERCENTILE_FIELD = "comeback_percentile";
     const THRESHOLD_OPERATOR = ">";
     const DEFAULT_SORT_KEY = "birth_year_sd";
-    const COLUMNS = [{"key": "name", "label": "Name", "type": "text"}, {"key": "sex", "label": "Sex", "type": "text"}, {"key": "all_time_frequency", "label": "All-time births", "type": "integer"}, {"key": "birth_year_sd", "label": "Birth-year SD", "type": "years"}, {"key": "comeback_percentile", "label": "Comeback percentile", "type": "percentile"}, {"key": "mean_birth_year", "label": "Mean birth year", "type": "year1"}, {"key": "peak_year", "label": "Peak year", "type": "integer"}, {"key": "observed_year_span", "label": "Observed span", "type": "years0"}];
+    const COLUMNS = [{"key": "name", "label": "Name", "type": "text", "align": "left", "className": "col-name"}, {"key": "sex", "label": "Sex", "type": "text", "align": "center", "className": "col-sex"}, {"key": "all_time_frequency", "label": "All-time births", "type": "integer", "align": "right", "className": "col-births"}, {"key": "birth_year_sd", "label": "Birth-year SD", "type": "years", "align": "right", "className": "col-sd"}, {"key": "comeback_percentile", "label": "Comeback percentile", "type": "percentile", "align": "right", "className": "col-percentile"}, {"key": "mean_birth_year", "label": "Mean birth year", "type": "year", "align": "right", "className": "col-year"}, {"key": "peak_year", "label": "Peak year", "type": "year", "align": "right", "className": "col-year"}, {"key": "observed_year_span", "label": "Observed span", "type": "years0", "align": "right", "className": "col-span"}];
 
     const searchInput = document.getElementById("search_input");
     const sexSelect = document.getElementById("sex_select");
@@ -381,25 +390,16 @@
       return table.records || [];
     }
 
-    function percentileMatches(value, category) {
-      const p = Number(value);
+    function normalizeBirthThreshold() {
+      const entered = Number(birthsInput.value);
 
-      if (!Number.isFinite(p)) return false;
+      const threshold =
+        Number.isFinite(entered)
+          ? Math.max(5000, Math.round(entered))
+          : 5000;
 
-      switch (category) {
-        case "top10":
-          return p >= 90;
-        case "top25":
-          return p >= 75;
-        case "middle50":
-          return p >= 25 && p <= 75;
-        case "bottom25":
-          return p <= 25;
-        case "bottom10":
-          return p <= 10;
-        default:
-          return true;
-      }
+      birthsInput.value = String(threshold);
+      return threshold;
     }
 
     function compareValues(a, b, key) {
@@ -432,7 +432,9 @@
 
       if (result === 0) {
         result = String(a.name ?? "")
-          .localeCompare(String(b.name ?? ""));
+          .localeCompare(
+            String(b.name ?? "")
+          );
       }
 
       return sortDirection === "asc"
@@ -441,16 +443,17 @@
     }
 
     function filteredSorted() {
-      const query = searchInput.value.trim().toLowerCase();
+      const query =
+        searchInput.value
+        .trim()
+        .toLowerCase();
+
       const sex = sexSelect.value;
-      const threshold = Math.max(
-        5000,
-        Number(birthsInput.value) || 5000
-      );
-      const category = categorySelect.value;
+      const threshold = normalizeBirthThreshold();
 
       const filtered = records.filter(row => {
-        const frequency = Number(row.all_time_frequency) || 0;
+        const frequency =
+          Number(row.all_time_frequency) || 0;
 
         const frequencyPass =
           THRESHOLD_OPERATOR === ">"
@@ -459,22 +462,26 @@
 
         return (
           frequencyPass
-          && (sex === "all" || row.sex === sex)
+          && (
+            sex === "all"
+            || row.sex === sex
+          )
           && (
             !query
             || String(row.name || "")
               .toLowerCase()
               .includes(query)
           )
-          && percentileMatches(
-            row[PERCENTILE_FIELD],
-            category
-          )
         );
       });
 
       filtered.sort(
-        (a, b) => compareValues(a, b, sortKey)
+        (a, b) =>
+          compareValues(
+            a,
+            b,
+            sortKey
+          )
       );
 
       return filtered;
@@ -483,13 +490,23 @@
     function formatValue(value, type) {
       if (type === "integer") {
         const n = Number(value);
+
         return Number.isFinite(n)
           ? Math.round(n).toLocaleString()
           : "";
       }
 
+      if (type === "year") {
+        const n = Number(value);
+
+        return Number.isFinite(n)
+          ? String(Math.round(n))
+          : "";
+      }
+
       if (type === "percent") {
         const n = Number(value);
+
         return Number.isFinite(n)
           ? `${n.toFixed(1)}%`
           : "";
@@ -497,13 +514,15 @@
 
       if (type === "percentile") {
         const n = Number(value);
+
         return Number.isFinite(n)
-          ? `${n.toFixed(1)}`
+          ? n.toFixed(1)
           : "";
       }
 
       if (type === "years") {
         const n = Number(value);
+
         return Number.isFinite(n)
           ? `${n.toFixed(1)} yrs`
           : "";
@@ -511,15 +530,9 @@
 
       if (type === "years0") {
         const n = Number(value);
+
         return Number.isFinite(n)
           ? `${Math.round(n)} yrs`
-          : "";
-      }
-
-      if (type === "year1") {
-        const n = Number(value);
-        return Number.isFinite(n)
-          ? n.toFixed(1)
           : "";
       }
 
@@ -530,7 +543,12 @@
       if (column.key === "sex") {
         const sex = String(row.sex || "");
         const cls = sex.toLowerCase();
-        return `<span class="sex-pill ${cls}">${sex}</span>`;
+
+        return (
+          `<span class="sex-pill ${cls}">`
+          + `${sex}`
+          + `</span>`
+        );
       }
 
       if (column.type === "percentile") {
@@ -551,7 +569,8 @@
       document
         .querySelectorAll("th[data-key]")
         .forEach(th => {
-          const mark = th.querySelector(".sort-mark");
+          const mark =
+            th.querySelector(".sort-mark");
 
           if (th.dataset.key === sortKey) {
             mark.textContent =
@@ -568,18 +587,28 @@
       showError("");
 
       const rows = filteredSorted();
-      const pageSize = Number(pageSizeSelect.value) || 50;
+      const pageSize =
+        Number(pageSizeSelect.value) || 50;
+
       const pageCount = Math.max(
         1,
-        Math.ceil(rows.length / pageSize)
+        Math.ceil(
+          rows.length / pageSize
+        )
       );
 
       currentPage = Math.min(
-        Math.max(1, currentPage),
+        Math.max(
+          1,
+          currentPage
+        ),
         pageCount
       );
 
-      const start = (currentPage - 1) * pageSize;
+      const start =
+        (currentPage - 1)
+        * pageSize;
+
       const pageRows = rows.slice(
         start,
         start + pageSize
@@ -587,17 +616,18 @@
 
       tableBody.innerHTML = pageRows
         .map(row => {
-          const cells = COLUMNS.map(column => {
-            const numeric =
-              column.type !== "text"
-              && column.key !== "sex";
-
-            return (
-              `<td class="${numeric ? "numeric" : ""}">`
-              + cellHtml(row, column)
-              + `</td>`
-            );
-          }).join("");
+          const cells = COLUMNS
+            .map(column => {
+              return (
+                `<td class="align-${column.align} ${column.className}">`
+                + cellHtml(
+                    row,
+                    column
+                  )
+                + `</td>`
+              );
+            })
+            .join("");
 
           return `<tr>${cells}</tr>`;
         })
@@ -607,19 +637,33 @@
         `${rows.length.toLocaleString()} qualifying name/sex rows`;
 
       pageLabel.textContent =
-        `Page ${currentPage.toLocaleString()} of ${pageCount.toLocaleString()}`;
+        `Page ${currentPage.toLocaleString()} `
+        + `of ${pageCount.toLocaleString()}`;
 
-      prevButton.disabled = currentPage <= 1;
-      nextButton.disabled = currentPage >= pageCount;
+      prevButton.disabled =
+        currentPage <= 1;
+
+      nextButton.disabled =
+        currentPage >= pageCount;
 
       renderHeaderSort();
+    }
+
+    function applyQuickOrder() {
+      sortKey = PERCENTILE_FIELD;
+      sortDirection =
+        categorySelect.value === "asc"
+          ? "asc"
+          : "desc";
+      currentPage = 1;
+      render();
     }
 
     function resetFilters() {
       searchInput.value = "";
       sexSelect.value = "all";
       birthsInput.value = "5000";
-      categorySelect.value = "all";
+      categorySelect.value = "desc";
       pageSizeSelect.value = "50";
       currentPage = 1;
       sortKey = DEFAULT_SORT_KEY;
@@ -627,33 +671,71 @@
       render();
     }
 
-    for (const control of [
-      searchInput,
-      sexSelect,
-      birthsInput,
-      categorySelect,
-      pageSizeSelect
-    ]) {
-      control.addEventListener(
-        control === searchInput ? "input" : "change",
-        () => {
-          currentPage = 1;
-          render();
-        }
-      );
-    }
+    searchInput.addEventListener(
+      "input",
+      () => {
+        currentPage = 1;
+        render();
+      }
+    );
 
-    resetButton.addEventListener("click", resetFilters);
+    sexSelect.addEventListener(
+      "change",
+      () => {
+        currentPage = 1;
+        render();
+      }
+    );
 
-    prevButton.addEventListener("click", () => {
-      currentPage -= 1;
-      render();
-    });
+    birthsInput.addEventListener(
+      "change",
+      () => {
+        normalizeBirthThreshold();
+        currentPage = 1;
+        render();
+      }
+    );
 
-    nextButton.addEventListener("click", () => {
-      currentPage += 1;
-      render();
-    });
+    birthsInput.addEventListener(
+      "blur",
+      () => {
+        normalizeBirthThreshold();
+      }
+    );
+
+    categorySelect.addEventListener(
+      "change",
+      applyQuickOrder
+    );
+
+    pageSizeSelect.addEventListener(
+      "change",
+      () => {
+        currentPage = 1;
+        render();
+      }
+    );
+
+    resetButton.addEventListener(
+      "click",
+      resetFilters
+    );
+
+    prevButton.addEventListener(
+      "click",
+      () => {
+        currentPage -= 1;
+        render();
+      }
+    );
+
+    nextButton.addEventListener(
+      "click",
+      () => {
+        currentPage += 1;
+        render();
+      }
+    );
 
     document
       .querySelectorAll("th[data-key]")
@@ -669,7 +751,15 @@
           } else {
             sortKey = key;
             sortDirection =
-              key === "name" || key === "sex"
+              key === "name"
+              || key === "sex"
+                ? "asc"
+                : "desc";
+          }
+
+          if (sortKey === PERCENTILE_FIELD) {
+            categorySelect.value =
+              sortDirection === "asc"
                 ? "asc"
                 : "desc";
           }
@@ -678,14 +768,23 @@
           render();
         }
 
-        th.addEventListener("click", applySort);
+        th.addEventListener(
+          "click",
+          applySort
+        );
 
-        th.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            applySort();
+        th.addEventListener(
+          "keydown",
+          event => {
+            if (
+              event.key === "Enter"
+              || event.key === " "
+            ) {
+              event.preventDefault();
+              applySort();
+            }
           }
-        });
+        );
       });
 
     try {
@@ -694,7 +793,10 @@
 
     } catch (error) {
       console.error(error);
-      showError(error?.message || String(error));
+      showError(
+        error?.message
+        || String(error)
+      );
     }
   </script>
 </body>

@@ -140,10 +140,6 @@ Elizabeth, F</textarea>
           Update Names
         </button>
 
-        <label class="check">
-          <input id="threshold_check" type="checkbox" checked />
-          Require ≥ 5,000 all-time births
-        </label>
       </div>
     </section>
 
@@ -157,7 +153,6 @@ Elizabeth, F</textarea>
     const VIEW_TITLE = "Timeless Names";
     const SUBTITLE = "Best 10-year windows";
     const WINDOW_SIZE = 10;
-    const MIN_ALL_TIME_FREQUENCY = 5000;
 
     const COLOR_SEQUENCE = [
       "#88CCEE",
@@ -174,7 +169,6 @@ Elizabeth, F</textarea>
 
     const pairsInput = document.getElementById("pairs_input");
     const updateButton = document.getElementById("update_button");
-    const thresholdCheck = document.getElementById("threshold_check");
     const statusEl = document.getElementById("status");
     const plotEl = document.getElementById("plot");
 
@@ -357,6 +351,180 @@ Elizabeth, F</textarea>
       };
     }
 
+
+    function placePeakLabels(labels, years, globalYMax) {
+      if (!labels.length) {
+        return {
+          labels: [],
+          yMax: globalYMax > 0 ? globalYMax * 1.12 : 1
+        };
+      }
+
+      const xMin = years[0];
+      const xMax = years[years.length - 1];
+      const xSpan = Math.max(1, xMax - xMin);
+
+      // Approximate drawable Plotly area after margins.
+      const plotWidthPx = 1095;
+      const plotHeightPx = 480;
+
+      const baseYMax =
+        globalYMax > 0
+          ? globalYMax * 1.12
+          : 1;
+
+      const xOffsets = [0, 2, -2, 4, -4, 6, -6];
+      const yOffsets = [0, 0.025, 0.050, 0.075, 0.100];
+
+      const placed = [];
+
+      function widthPx(text) {
+        // Approximate a bold 13px Arial label.
+        return Math.max(
+          38,
+          8 + String(text).length * 7.0
+        );
+      }
+
+      function clampX(x, halfWidthPx) {
+        const safeYears =
+          1.25
+          + (
+              halfWidthPx
+              / plotWidthPx
+            ) * xSpan;
+
+        return Math.max(
+          xMin + safeYears,
+          Math.min(
+            xMax - safeYears,
+            x
+          )
+        );
+      }
+
+      function xToPx(x) {
+        return (
+          (x - xMin)
+          / xSpan
+          * plotWidthPx
+        );
+      }
+
+      function yToPx(y) {
+        return (
+          y
+          / baseYMax
+          * plotHeightPx
+        );
+      }
+
+      const ordered = [...labels].sort(
+        (a, b) =>
+          b.peakValue - a.peakValue
+          || a.peakYear - b.peakYear
+      );
+
+      for (const label of ordered) {
+        const labelWidth = widthPx(label.text);
+        const halfWidth = labelWidth / 2;
+
+        const baseX = clampX(
+          label.peakYear,
+          halfWidth
+        );
+
+        const baseY =
+          label.peakValue
+          + Math.max(
+              globalYMax * 0.014,
+              1
+            );
+
+        let chosen = null;
+
+        outer:
+        for (const dyFrac of yOffsets) {
+          for (const dxYears of xOffsets) {
+            const candidateX = clampX(
+              baseX + dxYears,
+              halfWidth
+            );
+
+            const candidateY =
+              baseY
+              + globalYMax * dyFrac;
+
+            const collision = placed.some(
+              other => {
+                const horizontalGap =
+                  Math.abs(
+                    xToPx(candidateX)
+                    - xToPx(other.x)
+                  );
+
+                const verticalGap =
+                  Math.abs(
+                    yToPx(candidateY)
+                    - yToPx(other.y)
+                  );
+
+                return (
+                  horizontalGap
+                  < (
+                      halfWidth
+                      + other.halfWidth
+                      + 8
+                    )
+                  && verticalGap < 19
+                );
+              }
+            );
+
+            if (!collision) {
+              chosen = {
+                ...label,
+                x: candidateX,
+                y: candidateY,
+                halfWidth
+              };
+              break outer;
+            }
+          }
+        }
+
+        if (!chosen) {
+          chosen = {
+            ...label,
+            x: baseX,
+            y:
+              baseY
+              + globalYMax * 0.12,
+            halfWidth
+          };
+        }
+
+        placed.push(chosen);
+      }
+
+      const labelYMax = Math.max(
+        baseYMax,
+        ...placed.map(
+          label =>
+            label.y
+            + Math.max(
+                globalYMax * 0.035,
+                1
+              )
+        )
+      );
+
+      return {
+        labels: placed,
+        yMax: labelYMax
+      };
+    }
+
     async function loadPair(pair, years) {
       const packet = await NameData.getNationalName(pair.name);
 
@@ -377,16 +545,6 @@ Elizabeth, F</textarea>
         };
       }
 
-      if (
-        thresholdCheck.checked
-        && allTimeFrequency < MIN_ALL_TIME_FREQUENCY
-      ) {
-        return {
-          ...pair,
-          allTimeFrequency,
-          error: "below 5,000 births"
-        };
-      }
 
       const window = bestWindow(values, years);
       const peak = earliestPeak(values, years);
@@ -406,6 +564,7 @@ Elizabeth, F</textarea>
     function buildFigure(items, years) {
       const traces = [];
       const annotations = [];
+      const peakLabels = [];
 
       const globalYMax = Math.max(
         0,
@@ -460,19 +619,11 @@ Elizabeth, F</textarea>
           name: displayName
         });
 
-        traces.push({
-          type: "scatter",
-          mode: "text",
-          x: [item.peak.year],
-          y: [item.peak.value * 1.025],
-          text: [displayName],
-          textposition: "top center",
-          textfont: {
-            size: 13,
-            color
-          },
-          hoverinfo: "skip",
-          showlegend: false
+        peakLabels.push({
+          text: displayName,
+          color,
+          peakYear: item.peak.year,
+          peakValue: item.peak.value
         });
 
         const pctX =
@@ -501,6 +652,27 @@ Elizabeth, F</textarea>
           yanchor: "middle"
         });
       });
+
+      const peakLabelLayout = placePeakLabels(
+        peakLabels,
+        years,
+        globalYMax
+      );
+
+      for (const label of peakLabelLayout.labels) {
+        annotations.push({
+          x: label.x,
+          y: label.y,
+          text: `<b>${label.text}</b>`,
+          showarrow: false,
+          font: {
+            size: 13,
+            color: label.color
+          },
+          xanchor: "center",
+          yanchor: "bottom"
+        });
+      }
 
       annotations.push({
         x: 0,
@@ -559,9 +731,7 @@ Elizabeth, F</textarea>
           rangemode: "tozero",
           range: [
             0,
-            globalYMax > 0
-              ? globalYMax * 1.12
-              : 1
+            peakLabelLayout.yMax
           ]
         }
       };

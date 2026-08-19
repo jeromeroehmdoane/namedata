@@ -158,10 +158,6 @@ Cora, F</textarea>
 
       <div class="right-controls">
         <button id="update_button" type="button">Update Names</button>
-        <label class="check">
-          <input id="threshold_check" type="checkbox" checked />
-          Require &gt; 5,000 all-time births
-        </label>
       </div>
     </section>
 
@@ -172,7 +168,6 @@ Cora, F</textarea>
   <script type="module">
     import NameData from "../../assets/js/name-data-loader.js";
 
-    const MIN_ALL_TIME_FREQUENCY = 5000;
 
     const COLOR_SEQUENCE = [
       "#88CCEE",
@@ -190,7 +185,6 @@ Cora, F</textarea>
     const pairsInput = document.getElementById("pairs_input");
     const metricSelect = document.getElementById("metric_select");
     const splitYearInput = document.getElementById("split_year");
-    const thresholdCheck = document.getElementById("threshold_check");
     const updateButton = document.getElementById("update_button");
     const statusEl = document.getElementById("status");
     const plotEl = document.getElementById("plot");
@@ -390,6 +384,180 @@ Cora, F</textarea>
       };
     }
 
+
+    function placePeakLabels(labels, allYears, globalYMax) {
+      if (!labels.length) {
+        return {
+          labels: [],
+          yMax: globalYMax > 0 ? globalYMax * 1.12 : 1
+        };
+      }
+
+      const xMin = allYears[0];
+      const xMax = allYears[allYears.length - 1];
+      const xSpan = Math.max(1, xMax - xMin);
+
+      // Approximate drawable Plotly area after margins.
+      const plotWidthPx = 1095;
+      const plotHeightPx = 480;
+
+      const baseYMax =
+        globalYMax > 0
+          ? globalYMax * 1.12
+          : 1;
+
+      const xOffsets = [0, 2, -2, 4, -4, 6, -6];
+      const yOffsets = [0, 0.025, 0.050, 0.075, 0.100];
+
+      const placed = [];
+
+      function widthPx(text) {
+        // Approximate a bold 13px Arial label.
+        return Math.max(
+          38,
+          8 + String(text).length * 7.0
+        );
+      }
+
+      function clampX(x, halfWidthPx) {
+        const safeYears =
+          1.25
+          + (
+              halfWidthPx
+              / plotWidthPx
+            ) * xSpan;
+
+        return Math.max(
+          xMin + safeYears,
+          Math.min(
+            xMax - safeYears,
+            x
+          )
+        );
+      }
+
+      function xToPx(x) {
+        return (
+          (x - xMin)
+          / xSpan
+          * plotWidthPx
+        );
+      }
+
+      function yToPx(y) {
+        return (
+          y
+          / baseYMax
+          * plotHeightPx
+        );
+      }
+
+      const ordered = [...labels].sort(
+        (a, b) =>
+          b.peakValue - a.peakValue
+          || a.peakYear - b.peakYear
+      );
+
+      for (const label of ordered) {
+        const labelWidth = widthPx(label.text);
+        const halfWidth = labelWidth / 2;
+
+        const baseX = clampX(
+          label.peakYear,
+          halfWidth
+        );
+
+        const baseY =
+          label.peakValue
+          + Math.max(
+              globalYMax * 0.014,
+              1
+            );
+
+        let chosen = null;
+
+        outer:
+        for (const dyFrac of yOffsets) {
+          for (const dxYears of xOffsets) {
+            const candidateX = clampX(
+              baseX + dxYears,
+              halfWidth
+            );
+
+            const candidateY =
+              baseY
+              + globalYMax * dyFrac;
+
+            const collision = placed.some(
+              other => {
+                const horizontalGap =
+                  Math.abs(
+                    xToPx(candidateX)
+                    - xToPx(other.x)
+                  );
+
+                const verticalGap =
+                  Math.abs(
+                    yToPx(candidateY)
+                    - yToPx(other.y)
+                  );
+
+                return (
+                  horizontalGap
+                  < (
+                      halfWidth
+                      + other.halfWidth
+                      + 8
+                    )
+                  && verticalGap < 19
+                );
+              }
+            );
+
+            if (!collision) {
+              chosen = {
+                ...label,
+                x: candidateX,
+                y: candidateY,
+                halfWidth
+              };
+              break outer;
+            }
+          }
+        }
+
+        if (!chosen) {
+          chosen = {
+            ...label,
+            x: baseX,
+            y:
+              baseY
+              + globalYMax * 0.12,
+            halfWidth
+          };
+        }
+
+        placed.push(chosen);
+      }
+
+      const labelYMax = Math.max(
+        baseYMax,
+        ...placed.map(
+          label =>
+            label.y
+            + Math.max(
+                globalYMax * 0.035,
+                1
+              )
+        )
+      );
+
+      return {
+        labels: placed,
+        yMax: labelYMax
+      };
+    }
+
     async function loadPair(pair, allYears, splitYear) {
       const packet = await NameData.getNationalName(pair.name);
 
@@ -418,16 +586,6 @@ Cora, F</textarea>
         };
       }
 
-      if (
-        thresholdCheck.checked
-        && stats.total <= MIN_ALL_TIME_FREQUENCY
-      ) {
-        return {
-          ...pair,
-          allTimeFrequency: stats.total,
-          error: "not more than 5,000 births"
-        };
-      }
 
       const metric = metricSelect.value;
       const plotValues =
@@ -470,6 +628,7 @@ Cora, F</textarea>
 
       const traces = [];
       const annotations = [];
+      const peakLabels = [];
 
       const globalYMax = Math.max(
         0,
@@ -502,39 +661,44 @@ Cora, F</textarea>
         });
 
         if (item.prePeak.year !== null) {
-          traces.push({
-            type: "scatter",
-            mode: "text",
-            x: [item.prePeak.year],
-            y: [item.prePeak.value * 1.025],
-            text: [displayName],
-            textposition: "top center",
-            textfont: {
-              size: 13,
-              color
-            },
-            hoverinfo: "skip",
-            showlegend: false
+          peakLabels.push({
+            text: displayName,
+            color,
+            peakYear: item.prePeak.year,
+            peakValue: item.prePeak.value
           });
         }
 
         if (item.postPeak.year !== null) {
-          traces.push({
-            type: "scatter",
-            mode: "text",
-            x: [item.postPeak.year],
-            y: [item.postPeak.value * 1.025],
-            text: [displayName],
-            textposition: "top center",
-            textfont: {
-              size: 13,
-              color
-            },
-            hoverinfo: "skip",
-            showlegend: false
+          peakLabels.push({
+            text: displayName,
+            color,
+            peakYear: item.postPeak.year,
+            peakValue: item.postPeak.value
           });
         }
       });
+
+      const peakLabelLayout = placePeakLabels(
+        peakLabels,
+        allYears,
+        globalYMax
+      );
+
+      for (const label of peakLabelLayout.labels) {
+        annotations.push({
+          x: label.x,
+          y: label.y,
+          text: `<b>${label.text}</b>`,
+          showarrow: false,
+          font: {
+            size: 13,
+            color: label.color
+          },
+          xanchor: "center",
+          yanchor: "bottom"
+        });
+      }
 
       // Center legend, preserving the original source style.
       const legendItems = [...items]
@@ -688,9 +852,7 @@ Cora, F</textarea>
           rangemode: "tozero",
           range: [
             0,
-            globalYMax > 0
-              ? globalYMax * 1.12
-              : 1
+            peakLabelLayout.yMax
           ]
         }
       };
