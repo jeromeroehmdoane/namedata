@@ -469,10 +469,7 @@ Cora, F</textarea>
 
         const baseY =
           label.peakValue
-          + Math.max(
-              globalYMax * 0.014,
-              1
-            );
+          + globalYMax * 0.014;
 
         let chosen = null;
 
@@ -545,10 +542,7 @@ Cora, F</textarea>
         ...placed.map(
           label =>
             label.y
-            + Math.max(
-                globalYMax * 0.035,
-                1
-              )
+            + globalYMax * 0.035
         )
       );
 
