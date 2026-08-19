@@ -1,15 +1,56 @@
 export const visualizations = [
   {
-    id: "cultural-name-waves",
-    title: "Cultural Name Waves",
-    shortTitle: "Cultural waves",
-    category: "Names over time",
+    id: "trendy-vs-timeless",
+    title: "Trendy vs. Timeless",
+    shortTitle: "Trendy vs. timeless",
+    category: "Trendiness",
     description:
-      "Explore how selected groups of culturally connected names rose and fell across U.S. birth years.",
+      "Compare names whose popularity is concentrated in a short burst with names whose usage is spread more evenly across generations.",
+    instructions:
+      "Choose Trendy Names or Timeless Names for the curve illustration and enter your own name/sex pairs above the chart if desired. The Table view lets you search, filter, classify, and sort all name/sex pairs with at least 5,000 observed all-time births.",
+    methodology:
+      "Trendiness is measured separately by sex as the percentage of a name's observed all-time births that occurred during its strongest consecutive 10-year window. Missing name-years are treated as zero and exact window ties use the earliest window. Table percentiles are computed within sex among name/sex pairs with at least 5,000 observed births.",
+    dataThrough: 2025,
+    iframeHeight: 835,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
+        id: "trendy",
+        label: "Trendy Names",
+        path: "../visualizations/showcase/trendiness-trendy.html",
+        iframeHeight: 835,
+        embedMode: "scale",
+        embedWidth: 1200
+      },
+      {
+        id: "timeless",
+        label: "Timeless Names",
+        path: "../visualizations/showcase/trendiness-timeless.html",
+        iframeHeight: 835,
+        embedMode: "scale",
+        embedWidth: 1200
+      },
+      {
+        id: "table",
+        label: "Table",
+        path: "../visualizations/showcase/trendiness-table.html",
+        iframeHeight: 850,
+        embedMode: "fluid"
+      }
+    ]
+  },
+  {
+    id: "cultural-name-waves",
+    title: "Cultural Influence",
+    shortTitle: "Cultural influence",
+    category: "Trendiness",
+    description:
+      "See how cultural moments and associations can create distinctive waves in the popularity of selected names.",
     instructions:
       "Use the controls in the visualization to change the displayed group or view. Hover over the heatmap for the underlying year and value.",
     methodology:
-      "The figure uses U.S. Social Security Administration baby-name records through 2025. The displayed names are curated examples rather than a complete classification of every name.",
+      "The figure uses U.S. Social Security Administration baby-name records through 2025. The displayed names are curated cultural examples rather than a complete classification of every name.",
     dataThrough: 2025,
     iframeHeight: 930,
     embedMode: "scale",
@@ -19,6 +60,39 @@ export const visualizations = [
         id: "default",
         label: "Open visualization",
         path: "../visualizations/showcase/cultural-name-waves.html"
+      }
+    ]
+  },
+  {
+    id: "comeback-names",
+    title: "Comeback Names",
+    shortTitle: "Comeback names",
+    category: "Trendiness",
+    description:
+      "Find names whose recorded births are spread broadly across time, often reflecting durability or multiple waves of popularity.",
+    instructions:
+      "Comeback Names starts with the source example and lets you enter your own name/sex pairs, switch between Frequency and Percentage, and adjust the pre/post split year. The Table view supports searching, threshold filters, percentile categories, and sorting.",
+    methodology:
+      "The comeback score is the weighted population standard deviation of birth year, using observed SSA frequency as the weight and computed separately by sex. Larger values indicate births spread more broadly across time; this can reflect long durability or multiple popularity waves. The default illustration marks peaks before and after 1960.",
+    dataThrough: 2025,
+    iframeHeight: 835,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
+        id: "comeback",
+        label: "Comeback Names",
+        path: "../visualizations/showcase/comeback-names.html",
+        iframeHeight: 835,
+        embedMode: "scale",
+        embedWidth: 1200
+      },
+      {
+        id: "table",
+        label: "Table",
+        path: "../visualizations/showcase/comeback-table.html",
+        iframeHeight: 850,
+        embedMode: "fluid"
       }
     ]
   },
