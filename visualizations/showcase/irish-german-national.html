@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200, initial-scale=1" />
+  <title>Irish and German Names: Share of All Births</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1200px;
+      overflow-x: hidden;
+    }
+
+    #status {
+      min-height: 24px;
+      padding: 5px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1200px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="status" aria-live="polite"></div>
+  <div id="plot"></div>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const PAGE_TITLE = "Irish and German Names: Share of All Births";
+    const LEFT_LABEL = "German Names";
+    const RIGHT_LABEL = "Irish Names";
+
+    const LEFT_FIELD = "german_share";
+    const RIGHT_FIELD = "irish_share";
+
+    const LEFT_COLOR = "#222222";
+    const RIGHT_COLOR = "#2E7D32";
+
+    const LEFT_AXIS_TITLE = "German names share";
+    const RIGHT_AXIS_TITLE = "Irish names share";
+
+    const LEFT_LABEL_YEAR = 1901;
+    const RIGHT_LABEL_YEAR = 1985;
+
+    const LEFT_X_OFFSET = 1;
+    const RIGHT_X_OFFSET = 1;
+
+    const LEFT_ANCHOR = "left";
+    const RIGHT_ANCHOR = "left";
+
+    const LEFT_YSHIFT = 0;
+    const RIGHT_YSHIFT = 0;
+
+    const LINE_WIDTH = 3;
+    const LABEL_FONT_SIZE = 14;
+
+    const statusEl = document.getElementById("status");
+    const plotEl = document.getElementById("plot");
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function nearestAvailableYear(targetYear, years) {
+      let best = years[0];
+      let bestDistance = Math.abs(best - targetYear);
+
+      for (let i = 1; i < years.length; i += 1) {
+        const distance = Math.abs(years[i] - targetYear);
+
+        if (distance < bestDistance) {
+          best = years[i];
+          bestDistance = distance;
+        }
+      }
+
+      return best;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: {
+            Accept: "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot = new URL(
+        String(pointer.dataRoot ?? `${version}/`),
+        dataBase
+      );
+
+      NameData.configure({ dataRoot });
+
+      return NameData.loadGlobalTable(
+        "globalInfluenceShares"
+      );
+    }
+
+    function buildFigure(records) {
+      const rows = [...records].sort(
+        (a, b) => Number(a.year) - Number(b.year)
+      );
+
+      const years = rows.map(
+        row => Number(row.year)
+      );
+
+      if (!years.length) {
+        throw new Error(
+          "The Global Influence table contains no years."
+        );
+      }
+
+      const leftValues = rows.map(
+        row => 100 * (Number(row[LEFT_FIELD]) || 0)
+      );
+
+      const rightValues = rows.map(
+        row => 100 * (Number(row[RIGHT_FIELD]) || 0)
+      );
+
+      const leftLabelYear =
+        nearestAvailableYear(
+          LEFT_LABEL_YEAR,
+          years
+        );
+
+      const rightLabelYear =
+        nearestAvailableYear(
+          RIGHT_LABEL_YEAR,
+          years
+        );
+
+      const leftIndex =
+        years.indexOf(leftLabelYear);
+
+      const rightIndex =
+        years.indexOf(rightLabelYear);
+
+      const traces = [
+        {
+          type: "scatter",
+          mode: "lines",
+          x: years,
+          y: leftValues,
+          line: {
+            color: LEFT_COLOR,
+            width: LINE_WIDTH
+          },
+          name: LEFT_LABEL,
+          yaxis: "y",
+          hoverinfo: "skip",
+          showlegend: false
+        },
+        {
+          type: "scatter",
+          mode: "lines",
+          x: years,
+          y: rightValues,
+          line: {
+            color: RIGHT_COLOR,
+            width: LINE_WIDTH
+          },
+          name: RIGHT_LABEL,
+          yaxis: "y2",
+          hoverinfo: "skip",
+          showlegend: false
+        }
+      ];
+
+      const annotations = [
+        {
+          x: leftLabelYear + LEFT_X_OFFSET,
+          y: leftValues[leftIndex],
+          xref: "x",
+          yref: "y",
+          text: LEFT_LABEL,
+          showarrow: false,
+          xanchor: LEFT_ANCHOR,
+          yanchor:
+            LEFT_YSHIFT < 0
+              ? "top"
+              : "middle",
+          yshift: LEFT_YSHIFT,
+          font: {
+            size: LABEL_FONT_SIZE,
+            color: LEFT_COLOR
+          }
+        },
+        {
+          x: rightLabelYear + RIGHT_X_OFFSET,
+          y: rightValues[rightIndex],
+          xref: "x",
+          yref: "y2",
+          text: RIGHT_LABEL,
+          showarrow: false,
+          xanchor: RIGHT_ANCHOR,
+          yanchor: "middle",
+          yshift: RIGHT_YSHIFT,
+          font: {
+            size: LABEL_FONT_SIZE,
+            color: RIGHT_COLOR
+          }
+        },
+        {
+          x: 0,
+          y: -0.18,
+          xref: "paper",
+          yref: "paper",
+          xanchor: "left",
+          yanchor: "top",
+          align: "left",
+          showarrow: false,
+          font: {
+            size: 11,
+            color: "gray"
+          },
+          text: "Percentages use all observed national births in each year as the denominator. Irish and German groups use curated name lists and combine M/F frequencies."
+        }
+      ];
+
+      const layout = {
+        title: {
+          text:
+            `<b>${PAGE_TITLE}</b>`
+            + "<br><sup>(dual axis)</sup>",
+          x: 0.5,
+          xanchor: "center",
+          y: 0.94
+        },
+
+        width: 1200,
+        height: 650,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 85,
+          r: 85,
+          t: 100,
+          b: 90
+        },
+
+        font: {
+          size: 14
+        },
+
+        hovermode: false,
+        showlegend: false,
+
+        annotations,
+
+        xaxis: {
+          title: "Year",
+          range: [
+            years[0],
+            years[years.length - 1]
+          ],
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false
+        },
+
+        yaxis: {
+          title: {
+            text: LEFT_AXIS_TITLE,
+            font: {
+              color: LEFT_COLOR
+            }
+          },
+          tickfont: {
+            color: LEFT_COLOR
+          },
+          ticksuffix: "%",
+          showgrid: true,
+          gridcolor: "rgba(0,0,0,0.10)",
+          zeroline: false,
+          rangemode: "tozero"
+        },
+
+        yaxis2: {
+          title: {
+            text: RIGHT_AXIS_TITLE,
+            font: {
+              color: RIGHT_COLOR
+            }
+          },
+          tickfont: {
+            color: RIGHT_COLOR
+          },
+          ticksuffix: "%",
+          overlaying: "y",
+          side: "right",
+          showgrid: false,
+          zeroline: false,
+          rangemode: "tozero"
+        }
+      };
+
+      return {
+        traces,
+        layout
+      };
+    }
+
+    try {
+      setStatus("Loading…");
+
+      const table =
+        await configureLatestData();
+
+      if (
+        !table
+        || !Array.isArray(table.records)
+      ) {
+        throw new Error(
+          "The globalInfluenceShares table could not be read."
+        );
+      }
+
+      const figure =
+        buildFigure(table.records);
+
+      await Plotly.newPlot(
+        plotEl,
+        figure.traces,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename: "irish-german-national",
+            scale: 3
+          }
+        }
+      );
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
