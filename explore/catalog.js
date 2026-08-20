@@ -97,6 +97,71 @@ export const visualizations = [
     ]
   },
   {
+    id: "christian-muslim-state-maps",
+    title: "Religion",
+    shortTitle: "Religion",
+    category: "Global Influence",
+    description:
+      "Compare broad national and state patterns in the recorded use of selected Christian/Biblical-associated and Muslim-associated names.",
+    instructions:
+      "Choose the National view for the two time-series curves or the State view for the animated maps. <b>The National graph uses dual y-axes:</b> read the Christian-name scale on the left and the Muslim-name scale on the right. In the State view, use the year slider or play controls and hover over states for details.",
+    instructionsHtml:
+      "Choose the National view for the two time-series curves or the State view for the animated maps. <b>The National graph uses dual y-axes:</b> read the Christian-name scale on the left and the Muslim-name scale on the right. In the State view, use the year slider or play controls and hover over states for details.",
+    methodology:
+      "These visualizations use curated Christian/Biblical and Muslim name lists. A person's name does not determine their religion, and these unofficial lists are likely incomplete. They were pieced together from religious texts and historical writings with the help of AI.",
+    methodologyHtml:
+      "These visualizations use curated <a href=\"./global-influence-name-lists.html#christian\" target=\"_blank\" rel=\"noopener\">Christian/Biblical</a> and <a href=\"./global-influence-name-lists.html#muslim\" target=\"_blank\" rel=\"noopener\">Muslim</a> name lists. A person's name does not determine their religion, and these unofficial lists are likely incomplete. The lists were pieced together from religious texts and historical writings with the help of AI. National percentages use all observed U.S. births in each year as the denominator and combine male and female frequencies.",
+    dataThrough: 2025,
+    iframeHeight: 760,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
+        id: "national",
+        label: "Christian and Muslim National",
+        path: "../visualizations/showcase/christian-muslim-national.html",
+        iframeHeight: 700,
+        embedMode: "scale",
+        embedWidth: 1200
+      },
+      {
+        id: "state",
+        label: "Christian and Muslim by State",
+        path: "../visualizations/showcase/christian-muslim-state-maps.html",
+        iframeHeight: 780,
+        embedMode: "scale",
+        embedWidth: 1250
+      }
+    ]
+  },
+  {
+    id: "migration-global-influence",
+    title: "Migration",
+    shortTitle: "Migration",
+    category: "Global Influence",
+    description:
+      "Compare how the recorded share of selected German-associated and Irish-associated names has changed across U.S. birth years.",
+    instructions:
+      "<b>This graph uses dual y-axes:</b> read the German-name scale on the left and the Irish-name scale on the right. The curves are directly labeled; use the Plotly toolbar if you want to save a high-resolution image.",
+    instructionsHtml:
+      "<b>This graph uses dual y-axes:</b> read the German-name scale on the left and the Irish-name scale on the right. The curves are directly labeled; use the Plotly toolbar if you want to save a high-resolution image.",
+    methodology:
+      "This visualization uses curated Irish and German name lists. A person's name does not determine ancestry, nationality, or migration history, and these unofficial lists are likely incomplete. The lists were assembled from historical naming references with the help of AI.",
+    methodologyHtml:
+      "This visualization uses curated <a href=\"./global-influence-name-lists.html#irish\" target=\"_blank\" rel=\"noopener\">Irish</a> and <a href=\"./global-influence-name-lists.html#german\" target=\"_blank\" rel=\"noopener\">German</a> name lists. A person's name does not determine ancestry, nationality, or migration history, and these unofficial lists are likely incomplete. The lists were assembled from historical naming references with the help of AI. Percentages use all observed U.S. births in each year as the denominator and combine male and female frequencies.",
+    dataThrough: 2025,
+    iframeHeight: 700,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
+        id: "national",
+        label: "Irish and German National",
+        path: "../visualizations/showcase/irish-german-national.html"
+      }
+    ]
+  },
+  {
     id: "unisex-name-evolution",
     title: "Unisex Name Evolution",
     shortTitle: "Unisex evolution",
@@ -162,29 +227,6 @@ export const visualizations = [
         id: "default",
         label: "Open visualization",
         path: "../visualizations/showcase/sex-balance-name-structure.html"
-      }
-    ]
-  },
-  {
-    id: "christian-muslim-state-maps",
-    title: "Christian and Muslim Names by State",
-    shortTitle: "Religious name patterns",
-    category: "States and geography",
-    description:
-      "Compare the recorded share of selected Christian-associated and Muslim-associated names across states and years.",
-    instructions:
-      "Use the year slider or play controls to move through time. Hover over either map to inspect the state and displayed share.",
-    methodology:
-      "The maps use curated lists of names associated with Christian and Muslim traditions. They describe aggregate naming patterns and do not identify any individual person's religion or fully classify every culturally shared name.",
-    dataThrough: 2025,
-    iframeHeight: 780,
-    embedMode: "scale",
-    embedWidth: 1250,
-    variants: [
-      {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/christian-muslim-state-maps.html"
       }
     ]
   },
