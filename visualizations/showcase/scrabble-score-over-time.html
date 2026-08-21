@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1200, initial-scale=1" />
+  <title>Average Scrabble Score of Names</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1200px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1200px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      padding: 12px 18px 9px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .control {
+      width: 235px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    .help {
+      max-width: 640px;
+      padding-bottom: 7px;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    #status {
+      min-height: 23px;
+      padding: 4px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1200px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div class="control">
+        <label for="minimum_births">
+          Minimum births in selected year for hover
+        </label>
+
+        <input
+          id="minimum_births"
+          type="number"
+          min="0"
+          step="100"
+          value="500"
+        />
+      </div>
+
+      <div class="help">
+        The threshold applies to births in the hovered year and affects only
+        the five names listed in the hover. The three average-score curves
+        always use all observed births.
+      </div>
+    </section>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const COLORS = {
+      combined: "#7A5195",
+      M: "#4C78A8",
+      F: "#E4577E"
+    };
+
+    const SERIES = [
+      {
+        key: "combined",
+        label: "All",
+        field: "avg_combined"
+      },
+      {
+        key: "M",
+        label: "Male",
+        field: "avg_M"
+      },
+      {
+        key: "F",
+        label: "Female",
+        field: "avg_F"
+      }
+    ];
+
+    const LABEL_YEAR = 1900;
+    const LINE_WIDTH = 2.6;
+
+    const minimumBirthsInput =
+      document.getElementById(
+        "minimum_births"
+      );
+
+    const statusEl =
+      document.getElementById(
+        "status"
+      );
+
+    const plotEl =
+      document.getElementById(
+        "plot"
+      );
+
+    let yearlyRecords = [];
+    let candidateLookup = new Map();
+
+    function setStatus(
+      message,
+      isError=false
+    ) {
+      statusEl.textContent =
+        message || "";
+
+      statusEl.classList.toggle(
+        "error",
+        Boolean(isError)
+      );
+    }
+
+    function normalizeThreshold() {
+      const entered =
+        Number(
+          minimumBirthsInput.value
+        );
+
+      const threshold =
+        Number.isFinite(entered)
+          ? Math.max(
+              0,
+              Math.round(entered)
+            )
+          : 500;
+
+      minimumBirthsInput.value =
+        String(threshold);
+
+      return threshold;
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      const [
+        yearly,
+        candidates
+      ] = await Promise.all([
+        NameData.loadGlobalTable(
+          "scrabbleYearly"
+        ),
+        NameData.loadGlobalTable(
+          "scrabbleHoverCandidates"
+        )
+      ]);
+
+      yearlyRecords =
+        (yearly.records || [])
+        .slice()
+        .sort(
+          (a, b) =>
+            Number(a.year)
+            - Number(b.year)
+        );
+
+      candidateLookup =
+        new Map();
+
+      for (
+        const row
+        of candidates.records || []
+      ) {
+        const key =
+          `${row.series}|${row.year}`;
+
+        if (
+          !candidateLookup.has(key)
+        ) {
+          candidateLookup.set(
+            key,
+            []
+          );
+        }
+
+        candidateLookup
+          .get(key)
+          .push(row);
+      }
+    }
+
+    function topNamesHtml(
+      seriesKey,
+      year,
+      threshold
+    ) {
+      const rows = (
+        candidateLookup.get(
+          `${seriesKey}|${year}`
+        )
+        || []
+      )
+        .filter(
+          row =>
+            Number(
+              row.year_frequency
+            ) >= threshold
+        )
+        .sort(
+          (a, b) =>
+            Number(
+              b.scrabble_score
+            )
+            - Number(
+                a.scrabble_score
+              )
+            || Number(
+                b.year_frequency
+              )
+              - Number(
+                  a.year_frequency
+                )
+            || String(a.name)
+              .localeCompare(
+                String(b.name)
+              )
+        )
+        .slice(
+          0,
+          5
+        );
+
+      if (!rows.length) {
+        return (
+          "No names meet this threshold."
+        );
+      }
+
+      return rows
+        .map(
+          (row, index) =>
+            `${index + 1}. `
+            + `<b>${row.name}</b>`
+            + ` — ${Number(row.scrabble_score)} pts`
+        )
+        .join("<br>");
+    }
+
+    function thresholdDescription(
+      seriesKey,
+      year,
+      threshold
+    ) {
+      const seriesText =
+        seriesKey === "combined"
+          ? "combined births"
+          : (
+              seriesKey === "M"
+                ? "male births"
+                : "female births"
+            );
+
+      return (
+        `Highest Scrabble scores among names `
+        + `with at least `
+        + `${threshold.toLocaleString()} `
+        + `${seriesText} in ${year}`
+      );
+    }
+
+    function nearestYear(
+      target,
+      years
+    ) {
+      let best =
+        years[0];
+
+      let bestDistance =
+        Math.abs(
+          best - target
+        );
+
+      for (
+        let i = 1;
+        i < years.length;
+        i += 1
+      ) {
+        const distance =
+          Math.abs(
+            years[i] - target
+          );
+
+        if (
+          distance < bestDistance
+        ) {
+          best = years[i];
+          bestDistance = distance;
+        }
+      }
+
+      return best;
+    }
+
+    function buildFigure() {
+      const threshold =
+        normalizeThreshold();
+
+      const years =
+        yearlyRecords.map(
+          row => Number(row.year)
+        );
+
+      if (!years.length) {
+        throw new Error(
+          "The Scrabble yearly table contains no years."
+        );
+      }
+
+      const traces =
+        SERIES.map(series => {
+          const y =
+            yearlyRecords.map(
+              row =>
+                Number(
+                  row[series.field]
+                )
+            );
+
+          const customdata =
+            years.map(year => [
+              thresholdDescription(
+                series.key,
+                year,
+                threshold
+              ),
+              topNamesHtml(
+                series.key,
+                year,
+                threshold
+              )
+            ]);
+
+          return {
+            type: "scatter",
+            mode: "lines",
+            x: years,
+            y,
+            line: {
+              color:
+                COLORS[series.key],
+              width: LINE_WIDTH
+            },
+            name: series.label,
+            customdata,
+            hovertemplate:
+              `<b>${series.label}</b><br>`
+              + "Year: %{x}<br>"
+              + "Average Scrabble score: %{y:.2f}"
+              + "<br><br>"
+              + "<b>%{customdata[0]}</b><br>"
+              + "%{customdata[1]}"
+              + "<extra></extra>",
+            showlegend: false
+          };
+        });
+
+      const labelYear =
+        nearestYear(
+          LABEL_YEAR,
+          years
+        );
+
+      const annotations = [];
+
+      const labelValues =
+        SERIES.map(
+          series => {
+            const row =
+              yearlyRecords.find(
+                item =>
+                  Number(item.year)
+                  === labelYear
+              );
+
+            return {
+              ...series,
+              y:
+                Number(
+                  row[series.field]
+                )
+            };
+          }
+        )
+        .sort(
+          (a, b) =>
+            a.y - b.y
+        );
+
+      const shifts = [
+        -10,
+        6,
+        22
+      ];
+
+      labelValues.forEach(
+        (series, index) => {
+          annotations.push({
+            x: labelYear,
+            y: series.y,
+            text: series.label,
+            showarrow: false,
+            xanchor: "right",
+            yanchor: "middle",
+            xshift: -7,
+            yshift:
+              shifts[index],
+            font: {
+              size: 14,
+              color:
+                COLORS[
+                  series.key
+                ]
+            }
+          });
+        }
+      );
+
+      const layout = {
+        title: {
+          text:
+            "<b>Average Scrabble Score of Names</b>",
+          x: 0.5,
+          xanchor: "center",
+          y: 0.95
+        },
+
+        width: 1200,
+        height: 650,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 82,
+          r: 35,
+          t: 82,
+          b: 72
+        },
+
+        font: {
+          size: 14
+        },
+
+        hovermode: "closest",
+        showlegend: false,
+
+        annotations,
+
+        xaxis: {
+          title: "Year",
+          range: [
+            years[0],
+            years[
+              years.length - 1
+            ]
+          ],
+          showgrid: true,
+          gridcolor:
+            "rgba(0,0,0,0.13)",
+          zeroline: false
+        },
+
+        yaxis: {
+          title:
+            "Average Scrabble score",
+          tickformat: ".1f",
+          showgrid: true,
+          gridcolor:
+            "rgba(0,0,0,0.13)",
+          zeroline: false
+        }
+      };
+
+      return {
+        traces,
+        layout
+      };
+    }
+
+    async function render() {
+      const figure =
+        buildFigure();
+
+      await Plotly.react(
+        plotEl,
+        figure.traces,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename:
+              "average_scrabble_score_by_year",
+            scale: 3
+          }
+        }
+      );
+    }
+
+    minimumBirthsInput
+      .addEventListener(
+        "change",
+        () => {
+          render().catch(
+            error => {
+              console.error(error);
+              setStatus(
+                error?.message
+                || String(error),
+                true
+              );
+            }
+          );
+        }
+      );
+
+    minimumBirthsInput
+      .addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+
+            render().catch(
+              error => {
+                console.error(error);
+                setStatus(
+                  error?.message
+                  || String(error),
+                  true
+                );
+              }
+            );
+          }
+        }
+      );
+
+    try {
+      setStatus("Loading…");
+
+      await configureLatestData();
+      await render();
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message
+        || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
