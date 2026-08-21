@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unisex Name Evolution Table</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      min-width: 760px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 16px 18px;
+    }
+
+    h1 {
+      margin: 2px 0 5px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 0 0 14px;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns:
+        minmax(190px, 1.1fr)
+        minmax(165px, 0.8fr)
+        minmax(330px, 2fr)
+        auto;
+      gap: 12px;
+      align-items: end;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    input[type="search"],
+    input[type="number"],
+    select,
+    button {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    button {
+      width: auto;
+      min-width: 86px;
+      cursor: pointer;
+      background: #f4f4f4;
+    }
+
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 3px;
+    }
+
+    .target-value {
+      color: #555;
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 2px 0 0;
+    }
+
+    .slider-labels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      margin-top: 1px;
+      color: #666;
+      font-size: 10px;
+    }
+
+    .slider-labels span:nth-child(2) {
+      text-align: center;
+    }
+
+    .slider-labels span:nth-child(3) {
+      text-align: right;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 11px 2px 7px;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      max-height: 610px;
+      overflow: auto;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
+      font-size: 13px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 10px 14px;
+      border-bottom: 1px solid #ccc;
+      background: #f3f5f8;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    thead th:hover {
+      background: #e9edf3;
+    }
+
+    tbody td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #eee;
+      white-space: nowrap;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfbfb;
+    }
+
+    tbody tr:hover {
+      background: #f2f6ff;
+    }
+
+    .left {
+      text-align: left;
+    }
+
+    .right {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .col-name {
+      min-width: 140px;
+    }
+
+    .col-births {
+      min-width: 135px;
+    }
+
+    .col-pct {
+      min-width: 145px;
+    }
+
+    .sort-mark {
+      display: inline-block;
+      margin-left: 5px;
+      min-width: 10px;
+      color: #506784;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pagination button {
+      min-width: 74px;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .page-label {
+      min-width: 110px;
+      text-align: center;
+      color: #555;
+      font-size: 12px;
+    }
+
+    .error {
+      margin: 12px 0;
+      color: #a61b1b;
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .filters {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <h1>Unisex Name Evolution Table</h1>
+
+    <p class="subtitle">
+      Sort names by how closely their all-time recorded male share
+      matches any target from 0% male (all female) to 100% male
+      (all male). The default target is 50/50.
+    </p>
+
+    <section class="filters">
+      <div>
+        <label for="search_input">
+          Find a name
+        </label>
+
+        <input
+          id="search_input"
+          type="search"
+          placeholder="e.g., Taylor"
+          autocomplete="off"
+        />
+      </div>
+
+      <div>
+        <label for="minimum_births">
+          Minimum all-time births
+        </label>
+
+        <input
+          id="minimum_births"
+          type="number"
+          min="0"
+          step="1000"
+          value="5000"
+        />
+      </div>
+
+      <div>
+        <div class="slider-head">
+          <label
+            for="balance_slider"
+            style="margin-bottom:0;"
+          >
+            Table order
+          </label>
+
+          <span
+            id="target_value"
+            class="target-value"
+          >
+            Target: 50% male / 50% female
+          </span>
+        </div>
+
+        <input
+          id="balance_slider"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          value="50"
+          aria-label="Target male percentage for table ordering"
+        />
+
+        <div class="slider-labels">
+          <span>All Female</span>
+          <span>50 / 50</span>
+          <span>All Male</span>
+        </div>
+      </div>
+
+      <button
+        id="reset_button"
+        type="button"
+      >
+        Reset
+      </button>
+    </section>
+
+    <div
+      id="error"
+      class="error"
+      hidden
+    ></div>
+
+    <div class="summary-row">
+      <div id="result_summary">
+        Loading…
+      </div>
+
+      <div>
+        Rows per page:
+        <select
+          id="page_size"
+          style="width:auto; min-height:30px; padding:3px 6px;"
+        >
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th
+              class="left col-name"
+              data-key="name"
+              data-type="text"
+              tabindex="0"
+            >
+              Name<span class="sort-mark"></span>
+            </th>
+
+            <th
+              class="right col-births"
+              data-key="all_time_births"
+              data-type="number"
+              tabindex="0"
+            >
+              All-time births<span class="sort-mark"></span>
+            </th>
+
+            <th
+              class="right col-births"
+              data-key="male_all_time_births"
+              data-type="number"
+              tabindex="0"
+            >
+              Male all-time births<span class="sort-mark"></span>
+            </th>
+
+            <th
+              class="right col-births"
+              data-key="female_all_time_births"
+              data-type="number"
+              tabindex="0"
+            >
+              Female all-time births<span class="sort-mark"></span>
+            </th>
+
+            <th
+              class="right col-pct"
+              data-key="male_all_time_percentage"
+              data-type="number"
+              tabindex="0"
+            >
+              Male all-time %<span class="sort-mark"></span>
+            </th>
+
+            <th
+              class="right col-pct"
+              data-key="female_all_time_percentage"
+              data-type="number"
+              tabindex="0"
+            >
+              Female all-time %<span class="sort-mark"></span>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody id="table_body"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button
+        id="prev_button"
+        type="button"
+      >
+        Previous
+      </button>
+
+      <span
+        id="page_label"
+        class="page-label"
+      ></span>
+
+      <button
+        id="next_button"
+        type="button"
+      >
+        Next
+      </button>
+    </div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const searchInput =
+      document.getElementById(
+        "search_input"
+      );
+
+    const minimumBirthsInput =
+      document.getElementById(
+        "minimum_births"
+      );
+
+    const balanceSlider =
+      document.getElementById(
+        "balance_slider"
+      );
+
+    const targetValue =
+      document.getElementById(
+        "target_value"
+      );
+
+    const resetButton =
+      document.getElementById(
+        "reset_button"
+      );
+
+    const pageSizeSelect =
+      document.getElementById(
+        "page_size"
+      );
+
+    const tableBody =
+      document.getElementById(
+        "table_body"
+      );
+
+    const resultSummary =
+      document.getElementById(
+        "result_summary"
+      );
+
+    const prevButton =
+      document.getElementById(
+        "prev_button"
+      );
+
+    const nextButton =
+      document.getElementById(
+        "next_button"
+      );
+
+    const pageLabel =
+      document.getElementById(
+        "page_label"
+      );
+
+    const errorEl =
+      document.getElementById(
+        "error"
+      );
+
+    let records = [];
+    let currentPage = 1;
+
+    // "target" means sort by distance from the slider's male share.
+    let sortKey = "target";
+    let sortDirection = "asc";
+
+    let searchTimer = null;
+
+    function showError(message) {
+      errorEl.textContent =
+        message || "";
+
+      errorEl.hidden =
+        !message;
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      const table =
+        await NameData.loadGlobalTable(
+          "unisexAllTimeSummary"
+        );
+
+      return table.records || [];
+    }
+
+    function normalizeMinimumBirths() {
+      const entered =
+        Number(
+          minimumBirthsInput.value
+        );
+
+      const threshold =
+        Number.isFinite(entered)
+          ? Math.max(
+              0,
+              Math.round(entered)
+            )
+          : 5000;
+
+      minimumBirthsInput.value =
+        String(threshold);
+
+      return threshold;
+    }
+
+    function targetMalePercentage() {
+      return Number(
+        balanceSlider.value
+      );
+    }
+
+    function updateTargetLabel() {
+      const male =
+        targetMalePercentage();
+
+      const female =
+        100 - male;
+
+      targetValue.textContent =
+        `Target: ${male}% male / ${female}% female`;
+    }
+
+    function compareText(a, b) {
+      return String(a ?? "")
+        .localeCompare(
+          String(b ?? ""),
+          undefined,
+          {
+            numeric: true,
+            sensitivity: "base"
+          }
+        );
+    }
+
+    function compareRows(
+      a,
+      b
+    ) {
+      if (sortKey === "target") {
+        const target =
+          targetMalePercentage();
+
+        const aDistance =
+          Math.abs(
+            Number(
+              a.male_all_time_percentage
+            )
+            - target
+          );
+
+        const bDistance =
+          Math.abs(
+            Number(
+              b.male_all_time_percentage
+            )
+            - target
+          );
+
+        if (
+          aDistance !== bDistance
+        ) {
+          return (
+            aDistance
+            - bDistance
+          );
+        }
+
+        const birthDifference =
+          Number(
+            b.all_time_births
+          )
+          - Number(
+              a.all_time_births
+            );
+
+        if (birthDifference) {
+          return birthDifference;
+        }
+
+        return compareText(
+          a.name,
+          b.name
+        );
+      }
+
+      const av =
+        a[sortKey];
+
+      const bv =
+        b[sortKey];
+
+      let result;
+
+      if (
+        typeof av === "number"
+        || typeof bv === "number"
+      ) {
+        result =
+          Number(av)
+          - Number(bv);
+      } else {
+        result =
+          compareText(
+            av,
+            bv
+          );
+      }
+
+      if (result === 0) {
+        result =
+          compareText(
+            a.name,
+            b.name
+          );
+      }
+
+      return (
+        sortDirection === "asc"
+          ? result
+          : -result
+      );
+    }
+
+    function filteredSorted() {
+      const query =
+        searchInput.value
+        .trim()
+        .toLowerCase();
+
+      const threshold =
+        normalizeMinimumBirths();
+
+      const filtered =
+        records.filter(
+          row =>
+            Number(
+              row.all_time_births
+            ) >= threshold
+            && (
+              !query
+              || String(
+                  row.name || ""
+                )
+                .toLowerCase()
+                .includes(query)
+            )
+        );
+
+      filtered.sort(
+        compareRows
+      );
+
+      return filtered;
+    }
+
+    function formatInteger(value) {
+      const n =
+        Number(value);
+
+      return (
+        Number.isFinite(n)
+          ? Math.round(n)
+            .toLocaleString()
+          : ""
+      );
+    }
+
+    function formatPercentage(value) {
+      const n =
+        Number(value);
+
+      return (
+        Number.isFinite(n)
+          ? `${n.toFixed(1)}%`
+          : ""
+      );
+    }
+
+    function renderHeaderSort() {
+      document
+        .querySelectorAll(
+          "th[data-key]"
+        )
+        .forEach(th => {
+          const mark =
+            th.querySelector(
+              ".sort-mark"
+            );
+
+          if (
+            sortKey === "target"
+          ) {
+            mark.textContent = "";
+            return;
+          }
+
+          if (
+            th.dataset.key
+            === sortKey
+          ) {
+            mark.textContent =
+              sortDirection
+              === "asc"
+                ? "▲"
+                : "▼";
+          } else {
+            mark.textContent = "";
+          }
+        });
+    }
+
+    function render() {
+      showError("");
+
+      updateTargetLabel();
+
+      const rows =
+        filteredSorted();
+
+      const pageSize =
+        Number(
+          pageSizeSelect.value
+        ) || 50;
+
+      const pageCount =
+        Math.max(
+          1,
+          Math.ceil(
+            rows.length
+            / pageSize
+          )
+        );
+
+      currentPage =
+        Math.min(
+          Math.max(
+            currentPage,
+            1
+          ),
+          pageCount
+        );
+
+      const start =
+        (
+          currentPage - 1
+        )
+        * pageSize;
+
+      const pageRows =
+        rows.slice(
+          start,
+          start + pageSize
+        );
+
+      tableBody.innerHTML =
+        pageRows
+        .map(
+          row => `
+            <tr>
+              <td class="left col-name">
+                ${row.name}
+              </td>
+
+              <td class="right col-births">
+                ${formatInteger(row.all_time_births)}
+              </td>
+
+              <td class="right col-births">
+                ${formatInteger(row.male_all_time_births)}
+              </td>
+
+              <td class="right col-births">
+                ${formatInteger(row.female_all_time_births)}
+              </td>
+
+              <td class="right col-pct">
+                ${formatPercentage(row.male_all_time_percentage)}
+              </td>
+
+              <td class="right col-pct">
+                ${formatPercentage(row.female_all_time_percentage)}
+              </td>
+            </tr>
+          `
+        )
+        .join("");
+
+      resultSummary.textContent =
+        `${rows.length.toLocaleString()} qualifying names`;
+
+      pageLabel.textContent =
+        `Page ${currentPage.toLocaleString()} `
+        + `of ${pageCount.toLocaleString()}`;
+
+      prevButton.disabled =
+        currentPage <= 1;
+
+      nextButton.disabled =
+        currentPage >= pageCount;
+
+      renderHeaderSort();
+    }
+
+    function activateTargetSort() {
+      sortKey = "target";
+      sortDirection = "asc";
+      currentPage = 1;
+      render();
+    }
+
+    balanceSlider
+      .addEventListener(
+        "input",
+        activateTargetSort
+      );
+
+    minimumBirthsInput
+      .addEventListener(
+        "change",
+        () => {
+          currentPage = 1;
+          render();
+        }
+      );
+
+    pageSizeSelect
+      .addEventListener(
+        "change",
+        () => {
+          currentPage = 1;
+          render();
+        }
+      );
+
+    searchInput
+      .addEventListener(
+        "input",
+        () => {
+          clearTimeout(
+            searchTimer
+          );
+
+          searchTimer =
+            setTimeout(
+              () => {
+                currentPage = 1;
+                render();
+              },
+              120
+            );
+        }
+      );
+
+    resetButton
+      .addEventListener(
+        "click",
+        () => {
+          searchInput.value = "";
+          minimumBirthsInput.value =
+            "5000";
+          balanceSlider.value =
+            "50";
+          pageSizeSelect.value =
+            "50";
+          currentPage = 1;
+          sortKey = "target";
+          sortDirection = "asc";
+          render();
+        }
+      );
+
+    prevButton
+      .addEventListener(
+        "click",
+        () => {
+          currentPage -= 1;
+          render();
+        }
+      );
+
+    nextButton
+      .addEventListener(
+        "click",
+        () => {
+          currentPage += 1;
+          render();
+        }
+      );
+
+    document
+      .querySelectorAll(
+        "th[data-key]"
+      )
+      .forEach(th => {
+        function applySort() {
+          const key =
+            th.dataset.key;
+
+          if (
+            sortKey === key
+          ) {
+            sortDirection =
+              sortDirection === "asc"
+                ? "desc"
+                : "asc";
+          } else {
+            sortKey = key;
+            sortDirection =
+              key === "name"
+                ? "asc"
+                : "desc";
+          }
+
+          currentPage = 1;
+          render();
+        }
+
+        th.addEventListener(
+          "click",
+          applySort
+        );
+
+        th.addEventListener(
+          "keydown",
+          event => {
+            if (
+              event.key === "Enter"
+              || event.key === " "
+            ) {
+              event.preventDefault();
+              applySort();
+            }
+          }
+        );
+      });
+
+    try {
+      records =
+        await configureLatestData();
+
+      render();
+
+    } catch (error) {
+      console.error(error);
+
+      resultSummary.textContent =
+        "";
+
+      showError(
+        error?.message
+        || String(error)
+      );
+    }
+  </script>
+</body>
+</html>
