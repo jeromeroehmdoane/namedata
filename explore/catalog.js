@@ -162,71 +162,92 @@ export const visualizations = [
     ]
   },
   {
-    id: "unisex-name-evolution",
-    title: "Unisex Name Evolution",
-    shortTitle: "Unisex evolution",
-    category: "Names over time",
-    description:
-      "Follow how prominent unisex names move between male- and female-leaning usage across generations.",
-    instructions:
-      "Use the generation control to move through time. Hover over a point to identify the name and compare its male and female birth frequencies.",
-    methodology:
-      "Each point represents a selected unisex name. Position compares male and female birth frequencies on logarithmic axes using U.S. Social Security Administration records through 2025.",
-    dataThrough: 2025,
-    iframeHeight: 840,
-    embedMode: "scale",
-    embedWidth: 760,
-    variants: [
-      {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/unisex-name-evolution.html"
-      }
-    ]
-  },
-  {
     id: "first-letter-patterns",
-    title: "First-Letter Patterns",
-    shortTitle: "First-letter patterns",
-    category: "Name structure",
+    title: "First and Last Letters",
+    shortTitle: "First and last letters",
+    category: "Structural Patterns",
     description:
-      "Compare how the first letters of male and female baby names are distributed across the alphabet.",
+      "Explore how first and last letters are distributed across names and how strongly different letter patterns lean female or male.",
     instructions:
-      "Hover over a heatmap cell to see the letter and percentage. Compare the male and female panels for concentrations and contrasts.",
+      "First letter popularity compares the share of male and female births beginning with each letter across time; hover over a cell to see the five leading names for that sex, letter, and period. Sex Balance compares female and male usage for both first and last letters.",
     methodology:
-      "Percentages are based on recorded U.S. Social Security Administration births through 2025 and summarize the distribution of name initials separately by sex.",
-    dataThrough: 2025,
-    iframeHeight: 690,
-    embedMode: "scale",
-    embedWidth: 1150,
-    variants: [
-      {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/first-letter-patterns.html"
-      }
-    ]
-  },
-  {
-    id: "sex-balance-name-structure",
-    title: "Sex Balance by Name Structure",
-    shortTitle: "Sex balance by structure",
-    category: "Name structure",
-    description:
-      "See which first and last letters are most strongly associated with female or male name usage.",
-    instructions:
-      "Hover over a cell to inspect the letter and sex balance. Compare the first-letter and last-letter panels.",
-    methodology:
-      "The color scale compares female and male shares among recorded births for names beginning or ending with each letter in U.S. Social Security Administration data through 2025.",
+      "The first-letter heatmap summarizes recorded SSA births separately by sex and period. Its hover lists show the five highest-frequency names for the selected first letter, with each name's share of all births for that sex and period. The Sex Balance view compares female and male shares among recorded births for names beginning or ending with each letter.",
     dataThrough: 2025,
     iframeHeight: 700,
     embedMode: "scale",
     embedWidth: 1200,
     variants: [
       {
+        id: "first-letter",
+        label: "First letter popularity",
+        path: "../visualizations/showcase/first-letter-patterns.html",
+        iframeHeight: 690,
+        embedMode: "scale",
+        embedWidth: 1150
+      },
+      {
+        id: "sex-balance",
+        label: "Sex Balance",
+        path: "../visualizations/showcase/sex-balance-name-structure.html",
+        iframeHeight: 700,
+        embedMode: "scale",
+        embedWidth: 1200
+      }
+    ]
+  },
+  {
+    id: "scrabble-score",
+    title: "Scrabble Score",
+    shortTitle: "Scrabble score",
+    category: "Structural Patterns",
+    description:
+      "See how the frequency-weighted average Scrabble score of U.S. baby names has changed over time for all births, male births, and female births.",
+    instructions:
+      "Hover over any curve and year to see the five highest-Scrabble-score names with at least the selected number of births in that specific year. The minimum-birth input affects only those hover names; the plotted average curves always include all observed births.",
+    methodology:
+      "Each name receives the standard English-language Scrabble letter score, ignoring non-letter characters. Annual averages weight each name's score by its recorded birth frequency. Combined, Male, and Female are calculated separately. The hover threshold uses births in the hovered year: Combined uses combined births that year, Male uses male births that year, and Female uses female births that year.",
+    dataThrough: 2025,
+    iframeHeight: 725,
+    embedMode: "scale",
+    embedWidth: 1200,
+    variants: [
+      {
         id: "default",
         label: "Open visualization",
-        path: "../visualizations/showcase/sex-balance-name-structure.html"
+        path: "../visualizations/showcase/scrabble-score-over-time.html"
+      }
+    ]
+  },
+  {
+    id: "unisex-name-evolution",
+    title: "Unisex Name Evolution",
+    shortTitle: "Unisex evolution",
+    category: "Structural Patterns",
+    description:
+      "Explore how names move between female- and male-leaning usage over time, then search and rank the complete all-time name distribution by sex balance.",
+    instructions:
+      "Evolution uses the existing generation control and hover behavior. In the Table view, search for a name, set a minimum all-time-birth threshold, and move the Table order slider from All Female to All Male. At 50/50, the table ranks names by closeness to an even male/female split; moving the slider changes that target in one-percentage-point increments.",
+    methodology:
+      "The Evolution view compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Table view uses all names in the national SSA data and sums observed male and female births across all years. Percentages are based on each name's observed combined all-time total; SSA-suppressed counts below five are not present in the source files.",
+    dataThrough: 2025,
+    iframeHeight: 850,
+    embedMode: "scale",
+    embedWidth: 1000,
+    variants: [
+      {
+        id: "evolution",
+        label: "Evolution",
+        path: "../visualizations/showcase/unisex-name-evolution.html",
+        iframeHeight: 840,
+        embedMode: "scale",
+        embedWidth: 760
+      },
+      {
+        id: "table",
+        label: "Table",
+        path: "../visualizations/showcase/unisex-name-evolution-table.html",
+        iframeHeight: 850,
+        embedMode: "fluid"
       }
     ]
   },
