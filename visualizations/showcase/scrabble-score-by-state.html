@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1050, initial-scale=1" />
+  <title>Average Scrabble Score by State</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1050px;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1050px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      align-items: end;
+      gap: 14px;
+      padding: 12px 18px 8px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .control {
+      width: 180px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    #status {
+      min-height: 23px;
+      padding: 4px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1050px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div class="control">
+        <label for="sex_select">
+          Sex
+        </label>
+
+        <select id="sex_select">
+          <option value="combined" selected>
+            Combined
+          </option>
+          <option value="M">
+            Male
+          </option>
+          <option value="F">
+            Female
+          </option>
+        </select>
+      </div>
+    </section>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const sexSelect =
+      document.getElementById(
+        "sex_select"
+      );
+
+    const statusEl =
+      document.getElementById(
+        "status"
+      );
+
+    const plotEl =
+      document.getElementById(
+        "plot"
+      );
+
+    const SEX_INFO = {
+      combined: {
+        label: "Combined",
+        field: "avg_combined"
+      },
+      M: {
+        label: "Male",
+        field: "avg_M"
+      },
+      F: {
+        label: "Female",
+        field: "avg_F"
+      }
+    };
+
+    let records = [];
+
+    function setStatus(
+      message,
+      isError=false
+    ) {
+      statusEl.textContent =
+        message || "";
+
+      statusEl.classList.toggle(
+        "error",
+        Boolean(isError)
+      );
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      const table =
+        await NameData.loadGlobalTable(
+          "scrabbleStateAverages"
+        );
+
+      records =
+        table.records || [];
+    }
+
+    function periods() {
+      const years =
+        Array.from(
+          new Set(
+            records
+            .map(
+              row => Number(row.year)
+            )
+            .filter(
+              year => year > 0
+            )
+          )
+        )
+        .sort(
+          (a, b) =>
+            a - b
+        );
+
+      return [
+        {
+          year: 0,
+          label: "All time"
+        },
+        ...years.map(
+          year => ({
+            year,
+            label: String(year)
+          })
+        )
+      ];
+    }
+
+    function periodRows(year) {
+      return records
+        .filter(
+          row =>
+            Number(row.year)
+            === Number(year)
+        )
+        .sort(
+          (a, b) =>
+            String(a.state)
+            .localeCompare(
+              String(b.state)
+            )
+        );
+    }
+
+    function colorRange(
+      field
+    ) {
+      const values =
+        records
+        .map(
+          row => Number(row[field])
+        )
+        .filter(
+          Number.isFinite
+        );
+
+      if (!values.length) {
+        return {
+          min: 0,
+          max: 1
+        };
+      }
+
+      return {
+        min:
+          Math.min(...values),
+        max:
+          Math.max(...values)
+      };
+    }
+
+    function traceForPeriod(
+      year,
+      field
+    ) {
+      const rows =
+        periodRows(year);
+
+      const periodLabel =
+        year === 0
+          ? "All time"
+          : String(year);
+
+      return {
+        type: "choropleth",
+        locationmode: "USA-states",
+        locations:
+          rows.map(
+            row => row.state
+          ),
+        z:
+          rows.map(
+            row => Number(row[field])
+          ),
+        customdata:
+          rows.map(
+            row => [
+              row.state,
+              periodLabel,
+              Number(row[field])
+            ]
+          ),
+        colorscale: "Viridis",
+        marker: {
+          line: {
+            color: "white",
+            width: 0.6
+          }
+        },
+        hovertemplate:
+          "<b>%{customdata[0]}</b><br>"
+          + "Period: %{customdata[1]}<br>"
+          + "Average Scrabble score: "
+          + "%{customdata[2]:.2f}"
+          + "<extra></extra>",
+        colorbar: {
+          title: {
+            text:
+              "Average<br>score"
+          },
+          thickness: 15,
+          len: 0.70,
+          y: 0.54
+        },
+        showscale: true
+      };
+    }
+
+    function buildFigure() {
+      const sex =
+        sexSelect.value;
+
+      const info =
+        SEX_INFO[sex];
+
+      const field =
+        info.field;
+
+      const allPeriods =
+        periods();
+
+      const activeIndex = 0;
+
+      const range =
+        colorRange(field);
+
+      const firstTrace =
+        traceForPeriod(
+          allPeriods[
+            activeIndex
+          ].year,
+          field
+        );
+
+      firstTrace.zmin =
+        range.min;
+
+      firstTrace.zmax =
+        range.max;
+
+      const steps =
+        allPeriods.map(
+          period => {
+            const trace =
+              traceForPeriod(
+                period.year,
+                field
+              );
+
+            return {
+              label:
+                period.label,
+              method:
+                "restyle",
+              args: [
+                {
+                  locations: [
+                    trace.locations
+                  ],
+                  z: [
+                    trace.z
+                  ],
+                  customdata: [
+                    trace.customdata
+                  ]
+                },
+                [0]
+              ]
+            };
+          }
+        );
+
+      const layout = {
+        title: {
+          text:
+            `<b>Average Scrabble Score by State</b>`
+            + `<br><sup>${info.label}</sup>`,
+          x: 0.5,
+          xanchor: "center",
+          y: 0.98
+        },
+
+        width: 1050,
+        height: 650,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 12,
+          r: 45,
+          t: 75,
+          b: 100
+        },
+
+        dragmode: false,
+
+        geo: {
+          scope: "usa",
+          projection: {
+            type:
+              "albers usa"
+          },
+          bgcolor: "white"
+        },
+
+        sliders: [
+          {
+            active:
+              activeIndex,
+            x: 0.03,
+            y: 0.01,
+            xanchor: "left",
+            len: 0.94,
+            pad: {
+              t: 20,
+              b: 0
+            },
+            currentvalue: {
+              prefix: "Year: ",
+              visible: true,
+              xanchor: "right"
+            },
+            steps
+          }
+        ]
+      };
+
+      return {
+        data: [
+          firstTrace
+        ],
+        layout
+      };
+    }
+
+    async function render() {
+      const figure =
+        buildFigure();
+
+      await Plotly.react(
+        plotEl,
+        figure.data,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename:
+              "average_scrabble_score_by_state",
+            scale: 3
+          }
+        }
+      );
+    }
+
+    sexSelect.addEventListener(
+      "change",
+      () => {
+        render().catch(
+          error => {
+            console.error(error);
+
+            setStatus(
+              error?.message
+              || String(error),
+              true
+            );
+          }
+        );
+      }
+    );
+
+    try {
+      setStatus("Loading…");
+
+      await configureLatestData();
+      await render();
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message
+        || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>

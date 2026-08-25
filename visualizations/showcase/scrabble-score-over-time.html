@@ -92,7 +92,7 @@
     <section class="controls">
       <div class="control">
         <label for="minimum_births">
-          Minimum births in selected year for hover
+          Minimum births for hover
         </label>
 
         <input
@@ -313,7 +313,7 @@
           row =>
             Number(
               row.year_frequency
-            ) >= threshold
+            ) > threshold
         )
         .sort(
           (a, b) =>
@@ -356,24 +356,11 @@
     }
 
     function thresholdDescription(
-      seriesKey,
-      year,
       threshold
     ) {
-      const seriesText =
-        seriesKey === "combined"
-          ? "combined births"
-          : (
-              seriesKey === "M"
-                ? "male births"
-                : "female births"
-            );
-
       return (
-        `Highest Scrabble scores among names `
-        + `with at least `
-        + `${threshold.toLocaleString()} `
-        + `${seriesText} in ${year}`
+        `Highest scoring names (>`
+        + `${threshold.toLocaleString()} births)`
       );
     }
 
@@ -438,8 +425,6 @@
           const customdata =
             years.map(year => [
               thresholdDescription(
-                series.key,
-                year,
                 threshold
               ),
               topNamesHtml(
@@ -522,7 +507,12 @@
             yanchor: "middle",
             xshift: -7,
             yshift:
-              shifts[index],
+              shifts[index]
+              + (
+                  series.key === "F"
+                    ? 18
+                    : 0
+                ),
             font: {
               size: 14,
               color:

@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Distribution of Births by Name Sex Balance</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1100px;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    #status {
+      min-height: 24px;
+      padding: 5px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1100px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="status" aria-live="polite"></div>
+  <div id="plot"></div>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const BIN_WIDTH = 2;
+    const statusEl =
+      document.getElementById("status");
+    const plotEl =
+      document.getElementById("plot");
+
+    function setStatus(
+      message,
+      isError=false
+    ) {
+      statusEl.textContent =
+        message || "";
+
+      statusEl.classList.toggle(
+        "error",
+        Boolean(isError)
+      );
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      return NameData.loadGlobalTable(
+        "unisexAllTimeSummary"
+      );
+    }
+
+    function buildBins(records) {
+      const binCount =
+        Math.ceil(
+          100 / BIN_WIDTH
+        );
+
+      const births =
+        Array(binCount).fill(0);
+
+      for (const row of records) {
+        const malePct =
+          Number(
+            row.male_all_time_percentage
+          );
+
+        const allBirths =
+          Number(
+            row.all_time_births
+          );
+
+        if (
+          !Number.isFinite(malePct)
+          || !Number.isFinite(allBirths)
+          || allBirths <= 0
+        ) {
+          continue;
+        }
+
+        const safePct =
+          Math.max(
+            0,
+            Math.min(
+              100,
+              malePct
+            )
+          );
+
+        const binIndex =
+          safePct >= 100
+            ? binCount - 1
+            : Math.floor(
+                safePct
+                / BIN_WIDTH
+              );
+
+        births[binIndex] +=
+          allBirths;
+      }
+
+      return births.map(
+        (birthCount, index) => {
+          const start =
+            index * BIN_WIDTH;
+
+          const end =
+            index === binCount - 1
+              ? 100
+              : (
+                  start
+                  + BIN_WIDTH
+                  - 1
+                );
+
+          return {
+            start,
+            end,
+            center:
+              start
+              + BIN_WIDTH / 2,
+            label:
+              `${start}–${end}%`,
+            births:
+              birthCount
+          };
+        }
+      );
+    }
+
+    function buildFigure(records) {
+      const bins =
+        buildBins(records);
+
+      const trace = {
+        type: "bar",
+        x:
+          bins.map(
+            bin => bin.center
+          ),
+        y:
+          bins.map(
+            bin => bin.births
+          ),
+        width:
+          bins.map(
+            () => BIN_WIDTH * 0.92
+          ),
+        marker: {
+          color:
+            bins.map(
+              bin => bin.center
+            ),
+          colorscale: "RdBu",
+          cmin: 0,
+          cmax: 100,
+          showscale: false,
+          line: {
+            color: "rgba(0,0,0,0.16)",
+            width: 0.5
+          }
+        },
+        customdata:
+          bins.map(
+            bin => [
+              bin.label,
+              bin.births.toLocaleString()
+            ]
+          ),
+        hovertemplate:
+          "<b>%{customdata[0]} male</b><br>"
+          + "%{customdata[1]} births have names "
+          + "in this male-share range"
+          + "<extra></extra>",
+        showlegend: false
+      };
+
+      const layout = {
+        title: {
+          text:
+            "<b>Distribution of Births by Name Sex Balance</b>"
+            + "<br><sup>2-percentage-point bins</sup>",
+          x: 0.5,
+          xanchor: "center",
+          y: 0.95
+        },
+
+        width: 1100,
+        height: 650,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 92,
+          r: 35,
+          t: 90,
+          b: 78
+        },
+
+        font: {
+          size: 14
+        },
+
+        bargap: 0.04,
+
+        xaxis: {
+          title:
+            "Male share of all-time births for the name",
+          range: [
+            0,
+            100
+          ],
+          tickmode: "linear",
+          dtick: 10,
+          ticksuffix: "%",
+          showgrid: false,
+          zeroline: false
+        },
+
+        yaxis: {
+          title:
+            "Births",
+          tickformat: ",~s",
+          showgrid: true,
+          gridcolor:
+            "rgba(0,0,0,0.12)",
+          zeroline: false,
+          rangemode: "tozero"
+        },
+
+        hoverlabel: {
+          align: "left"
+        }
+      };
+
+      return {
+        data: [trace],
+        layout
+      };
+    }
+
+    try {
+      setStatus("Loading…");
+
+      const table =
+        await configureLatestData();
+
+      const records =
+        table?.records || [];
+
+      if (!records.length) {
+        throw new Error(
+          "The Unisex all-time summary contains no rows."
+        );
+      }
+
+      const figure =
+        buildFigure(records);
+
+      await Plotly.newPlot(
+        plotEl,
+        figure.data,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename:
+              "unisex_birth_distribution",
+            scale: 3
+          }
+        }
+      );
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message
+        || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
