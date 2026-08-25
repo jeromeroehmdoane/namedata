@@ -93,7 +93,7 @@
 
         <select id="sex_select">
           <option value="combined" selected>
-            All
+            All Sexes
           </option>
           <option value="M">
             Male
@@ -111,28 +111,28 @@
 
         <select id="generation_select">
           <option value="all" selected>
-            All time
+            All time (1910–2025)
           </option>
           <option value="greatest_gen">
-            Greatest Gen
+            Greatest Gen (1910–1927)
           </option>
           <option value="silent_gen">
-            Silent Gen
+            Silent Gen (1928–1945)
           </option>
           <option value="baby_boomers">
-            Baby Boomers
+            Baby Boomers (1946–1964)
           </option>
           <option value="gen_x">
-            Gen X
+            Gen X (1965–1980)
           </option>
           <option value="millenials">
-            Millennials
+            Millennials (1981–1996)
           </option>
           <option value="gen_z">
-            Gen Z
+            Gen Z (1997–2012)
           </option>
           <option value="gen_alpha">
-            Gen Alpha
+            Gen Alpha (2013–2025)
           </option>
         </select>
       </div>
@@ -142,17 +142,15 @@
           Minimum all-time births nationally
         </label>
 
-        <input
-          id="minimum_births"
-          type="number"
-          min="1000"
-          step="1000"
-          value="1000"
-        />
-
-        <div class="help">
-          Applies to the selected sex; minimum 1,000.
-        </div>
+        <select id="minimum_births">
+          <option value="1000">1,000</option>
+          <option value="2000">2,000</option>
+          <option value="5000" selected>5,000</option>
+          <option value="10000">10,000</option>
+          <option value="20000">20,000</option>
+          <option value="50000">50,000</option>
+          <option value="100000">100,000</option>
+        </select>
       </div>
     </section>
 
@@ -227,7 +225,7 @@
 
     const SEX_INFO = {
       combined: {
-        label: "All",
+        label: "All Sexes",
         colorscale: [
           [0.00, "#F4EFF8"],
           [0.35, "#D8C9E4"],
@@ -257,7 +255,7 @@
       }
     };
 
-    const PERIOD_LABELS = {
+    const PERIOD_DISPLAY_NAMES = {
       all: "All time",
       greatest_gen: "Greatest Gen",
       silent_gen: "Silent Gen",
@@ -266,6 +264,65 @@
       millenials: "Millennials",
       gen_z: "Gen Z",
       gen_alpha: "Gen Alpha"
+    };
+
+    let periodInfo = new Map();
+
+
+    // Small-state / crowded-region text placement follows the same
+    // approach used in the existing Top Name by State visualization.
+    const STATE_LABEL_POSITIONS = {
+      AL: "bottom center",
+      AK: "middle center",
+      AZ: "middle center",
+      AR: "middle center",
+      CA: "middle center",
+      CO: "middle center",
+      CT: "middle center",
+      DE: "middle right",
+      DC: "bottom right",
+      FL: "middle right",
+      GA: "middle center",
+      HI: "middle center",
+      ID: "bottom center",
+      IL: "top center",
+      IN: "bottom center",
+      IA: "middle center",
+      KS: "middle center",
+      KY: "middle center",
+      LA: "bottom center",
+      ME: "middle center",
+      MD: "middle center",
+      MA: "middle center",
+      MI: "bottom center",
+      MN: "middle center",
+      MS: "top center",
+      MO: "middle center",
+      MT: "middle center",
+      NE: "middle center",
+      NV: "middle center",
+      NH: "bottom center",
+      NJ: "middle center",
+      NM: "middle center",
+      NY: "middle center",
+      NC: "middle center",
+      ND: "middle center",
+      OH: "middle center",
+      OK: "middle center",
+      OR: "middle center",
+      PA: "middle center",
+      RI: "top right",
+      SC: "middle center",
+      SD: "middle center",
+      TN: "middle center",
+      TX: "middle center",
+      UT: "middle center",
+      VT: "top center",
+      VA: "middle center",
+      WA: "middle center",
+      WV: "middle center",
+      WI: "middle center",
+      WY: "middle center"
     };
 
     const sexSelect =
@@ -310,25 +367,114 @@
     }
 
     function normalizeMinimumBirths() {
-      const entered =
+      const threshold =
         Number(
           minimumBirthsInput.value
         );
 
-      const threshold =
-        Number.isFinite(entered)
-          ? Math.max(
-              1000,
-              Math.ceil(
-                entered / 1000
-              ) * 1000
-            )
-          : 1000;
+      return (
+        Number.isFinite(threshold)
+          ? threshold
+          : 5000
+      );
+    }
 
-      minimumBirthsInput.value =
-        String(threshold);
+    function periodLabel(
+      periodKey
+    ) {
+      const info =
+        periodInfo.get(
+          periodKey
+        );
 
-      return threshold;
+      if (!info) {
+        const option =
+          generationSelect
+          .querySelector(
+            `option[value="${periodKey}"]`
+          );
+
+        return (
+          option?.textContent?.trim()
+          || PERIOD_DISPLAY_NAMES[periodKey]
+          || periodKey
+        );
+      }
+
+      const displayName =
+        PERIOD_DISPLAY_NAMES[
+          periodKey
+        ]
+        || info.period
+        || periodKey;
+
+      return (
+        `${displayName} `
+        + `(${info.period_start}–${info.period_end})`
+      );
+    }
+
+    function populateGenerationOptions(
+      periodRecords
+    ) {
+      if (!periodRecords.length) {
+        return;
+      }
+
+      const ordered =
+        [...periodRecords]
+        .sort(
+          (a, b) =>
+            Number(a.period_order)
+            - Number(b.period_order)
+        );
+
+      periodInfo =
+        new Map(
+          ordered.map(
+            row => [
+              String(row.period_key),
+              row
+            ]
+          )
+        );
+
+      const selected =
+        generationSelect.value;
+
+      generationSelect.innerHTML =
+        ordered
+        .map(
+          row => {
+            const key =
+              String(row.period_key);
+
+            const displayName =
+              PERIOD_DISPLAY_NAMES[key]
+              || row.period;
+
+            return (
+              `<option value="${key}">`
+              + `${displayName} `
+              + `(${row.period_start}–${row.period_end})`
+              + `</option>`
+            );
+          }
+        )
+        .join("");
+
+      if (
+        generationSelect
+        .querySelector(
+          `option[value="${selected}"]`
+        )
+      ) {
+        generationSelect.value =
+          selected;
+      } else {
+        generationSelect.value =
+          "all";
+      }
     }
 
     function groupKey(
@@ -399,13 +545,24 @@
         dataRoot
       });
 
-      const table =
-        await NameData.loadGlobalTable(
+      const [
+        table,
+        generationTable
+      ] = await Promise.all([
+        NameData.loadGlobalTable(
           "stateRepresentationFrontier"
-        );
+        ),
+        NameData.loadGlobalTable(
+          "generationPeriods"
+        )
+      ]);
 
       records =
         table?.records || [];
+
+      populateGenerationOptions(
+        generationTable?.records || []
+      );
 
       lookup =
         new Map();
@@ -515,6 +672,56 @@
       );
     }
 
+    function formatBirths(
+      value
+    ) {
+      const n =
+        Number(value);
+
+      if (!Number.isFinite(n)) {
+        return "";
+      }
+
+      if (Math.abs(n) >= 1_000_000) {
+        return (
+          `${(n / 1_000_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}M`
+        );
+      }
+
+      if (Math.abs(n) >= 10_000) {
+        return (
+          `${Math.round(
+            n / 1_000
+          )}k`
+        );
+      }
+
+      if (Math.abs(n) >= 1_000) {
+        return (
+          `${(n / 1_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}k`
+        );
+      }
+
+      return (
+        Math.round(n)
+        .toLocaleString()
+      );
+    }
+
+    function nonBreaking(
+      value
+    ) {
+      return String(value)
+        .replace(
+          / /g,
+          "&nbsp;"
+        );
+    }
+
     function listHtml(
       rows
     ) {
@@ -522,13 +729,90 @@
         return "No qualifying names";
       }
 
-      return rows
-        .map(
+      const nameWidth =
+        Math.max(
+          4,
+          ...rows.map(
+            row =>
+              String(row.name).length
+          )
+        );
+
+      const ratioValues =
+        rows.map(
           row =>
-            `<b>${row.name}</b> : `
-            + `${formatRatio(row.ratio)}`
-        )
-        .join("<br>");
+            formatRatio(
+              row.ratio
+            )
+        );
+
+      const birthsValues =
+        rows.map(
+          row =>
+            formatBirths(
+              row.state_period_frequency
+            )
+        );
+
+      const ratioWidth =
+        Math.max(
+          5,
+          ...ratioValues.map(
+            value => value.length
+          )
+        );
+
+      const birthsWidth =
+        Math.max(
+          6,
+          ...birthsValues.map(
+            value => value.length
+          )
+        );
+
+      const header =
+        (
+          "Name".padEnd(
+            nameWidth
+          )
+          + "  "
+          + "Ratio".padStart(
+              ratioWidth
+            )
+          + "  "
+          + "Births".padStart(
+              birthsWidth
+            )
+        );
+
+      const body =
+        rows.map(
+          (row, index) =>
+            (
+              String(row.name)
+              .padEnd(
+                nameWidth
+              )
+              + "  "
+              + ratioValues[index]
+                .padStart(
+                  ratioWidth
+                )
+              + "  "
+              + birthsValues[index]
+                .padStart(
+                  birthsWidth
+                )
+            )
+        );
+
+      return (
+        nonBreaking(header)
+        + "<br>"
+        + body
+          .map(nonBreaking)
+          .join("<br>")
+      );
     }
 
     function stateSummary(
@@ -676,15 +960,16 @@
           observedMax
         );
 
+      const selectedPeriodLabel =
+        periodLabel(
+          periodKey
+        );
+
       const customdata =
         summaries.map(
           item => [
             STATE_NAMES[item.state],
-            PERIOD_LABELS[periodKey],
-            threshold.toLocaleString(),
-            formatRatio(
-              item.strongest
-            ),
+            selectedPeriodLabel,
             listHtml(
               item.over
             ),
@@ -725,17 +1010,13 @@
 
         hovertemplate:
           "<b>%{customdata[0]}</b><br>"
-          + "%{customdata[1]} · "
-          + "%{customdata[2]}+ national all-time births"
-          + "<br>"
-          + "Strongest overrepresentation: "
-          + "%{customdata[3]}"
+          + "%{customdata[1]}"
           + "<br><br>"
           + "<b>Most overrepresented</b><br>"
-          + "%{customdata[4]}"
+          + "%{customdata[2]}"
           + "<br><br>"
           + "<b>Most underrepresented</b><br>"
-          + "%{customdata[5]}"
+          + "%{customdata[3]}"
           + "<extra></extra>",
 
         colorbar: {
@@ -755,21 +1036,95 @@
         showscale: true
       };
 
+      const labelRows =
+        summaries
+        .filter(
+          item =>
+            item.over.length
+        )
+        .map(
+          item => ({
+            state:
+              item.state,
+            text:
+              item.over[0].name,
+            position:
+              STATE_LABEL_POSITIONS[
+                item.state
+              ]
+              || "middle center",
+            normalized:
+              (
+                Math.max(
+                  0,
+                  Math.log2(
+                    Math.max(
+                      1,
+                      item.strongest
+                    )
+                  )
+                )
+                / ticks.maxPower
+              )
+          })
+        );
+
+      const lightLabels =
+        labelRows.filter(
+          item =>
+            item.normalized <= 0.68
+        );
+
+      const darkLabels =
+        labelRows.filter(
+          item =>
+            item.normalized > 0.68
+        );
+
+      function labelTrace(
+        rows,
+        color
+      ) {
+        return {
+          type: "scattergeo",
+          locationmode:
+            "USA-states",
+          locations:
+            rows.map(
+              row => row.state
+            ),
+          text:
+            rows.map(
+              row => row.text
+            ),
+          textposition:
+            rows.map(
+              row => row.position
+            ),
+          mode: "text",
+          textfont: {
+            color,
+            size: 11
+          },
+          hoverinfo: "skip",
+          showlegend: false
+        };
+      }
+
       const layout = {
         title: {
           text:
             "<b>Over/Underrepresentation by State</b>"
             + "<br><sup>"
-            + `${info.label} · ${PERIOD_LABELS[periodKey]}`
-            + " · color = strongest qualifying overrepresentation"
+            + `${info.label} · ${selectedPeriodLabel}`
             + "</sup>",
           x: 0.5,
           xanchor: "center",
-          y: 0.97
+          y: 0.985
         },
 
         width: 1100,
-        height: 690,
+        height: 665,
 
         paper_bgcolor: "white",
         plot_bgcolor: "white",
@@ -777,8 +1132,8 @@
         margin: {
           l: 12,
           r: 70,
-          t: 85,
-          b: 55
+          t: 58,
+          b: 20
         },
 
         dragmode: false,
@@ -789,33 +1144,35 @@
             type:
               "albers usa"
           },
+          domain: {
+            x: [
+              0,
+              1
+            ],
+            y: [
+              0.01,
+              1
+            ]
+          },
           bgcolor: "white"
         },
 
-        annotations: [
-          {
-            x: 0,
-            y: 0.01,
-            xref: "paper",
-            yref: "paper",
-            xanchor: "left",
-            yanchor: "bottom",
-            showarrow: false,
-            align: "left",
-            font: {
-              size: 11,
-              color: "gray"
-            },
-            text:
-              "Representation = state share ÷ national share. "
-              + "Hover lists use names with recorded births in the state/period."
-          }
-        ]
+        hoverlabel: {
+          align: "left"
+        }
       };
 
       return {
         data: [
-          trace
+          trace,
+          labelTrace(
+            lightLabels,
+            "black"
+          ),
+          labelTrace(
+            darkLabels,
+            "white"
+          )
         ],
         layout
       };
@@ -870,29 +1227,6 @@
         }
       );
     }
-
-    minimumBirthsInput.addEventListener(
-      "keydown",
-      event => {
-        if (
-          event.key === "Enter"
-        ) {
-          event.preventDefault();
-
-          render().catch(
-            error => {
-              console.error(error);
-
-              setStatus(
-                error?.message
-                || String(error),
-                true
-              );
-            }
-          );
-        }
-      }
-    );
 
     try {
       setStatus("Loading…");
