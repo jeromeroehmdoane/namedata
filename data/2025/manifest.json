@@ -9,4 +9,7 @@
   "globals/scrabble-hover-candidates.json",
 
 "unisexAllTimeSummary":
-  "globals/unisex-all-time-summary.json"}}
+  "globals/unisex-all-time-summary.json",
+
+"scrabbleStateAverages":
+  "globals/scrabble-state-averages.json"}}
