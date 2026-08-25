@@ -345,6 +345,29 @@ export const visualizations = [
     ]
   },
   {
+    id: "state-over-under-representation",
+    title: "Over/Underrepresentation by State",
+    shortTitle: "Over/underrepresentation",
+    category: "States and geography",
+    description:
+      "Find the names that are unusually common—or unusually uncommon—in each state compared with the nation as a whole.",
+    instructions:
+      "Choose All, Male, or Female; choose All time or a generation; and set the minimum national all-time births. Hover over a state to see its five most overrepresented and five most underrepresented qualifying names. The map color reflects that state's strongest qualifying overrepresentation.",
+    methodology:
+      "Representation compares a name's share of recorded births in a state with its share of recorded births nationally over the same selected period. For example, 2.0× means the name accounts for twice the share of births in that state that it does nationally, while 0.5× means half the national share. The minimum-birth control uses the name's national all-time recorded births for the selected sex. Underrepresentation lists include only names with recorded births in that state and period because SSA suppresses state-level counts below five; treating missing observations as confirmed zeroes would exaggerate underrepresentation.",
+    dataThrough: 2025,
+    iframeHeight: 790,
+    embedMode: "scale",
+    embedWidth: 1100,
+    variants: [
+      {
+        id: "default",
+        label: "Open visualization",
+        path: "../visualizations/showcase/over-under-representation-by-state.html"
+      }
+    ]
+  },
+  {
     id: "place-names-state-national",
     title: "Place Names: State vs. National",
     shortTitle: "Place names",
