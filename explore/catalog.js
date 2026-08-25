@@ -201,20 +201,31 @@ export const visualizations = [
     shortTitle: "Scrabble score",
     category: "Structural Patterns",
     description:
-      "See how the frequency-weighted average Scrabble score of U.S. baby names has changed over time for all births, male births, and female births.",
+      "Compare the frequency-weighted average Scrabble score of U.S. baby names across years and states.",
     instructions:
-      "Hover over any curve and year to see the five highest-Scrabble-score names with at least the selected number of births in that specific year. The minimum-birth input affects only those hover names; the plotted average curves always include all observed births.",
+      "Average score over time shows Combined, Male, and Female national curves. Hover a curve/year to see the five highest-scoring names above the selected birth threshold for that year; changing the threshold does not change the curves. Average score by state uses the Sex dropdown and the year slider, with All time at the far left.",
     methodology:
-      "Each name receives the standard English-language Scrabble letter score, ignoring non-letter characters. Annual averages weight each name's score by its recorded birth frequency. Combined, Male, and Female are calculated separately. The hover threshold uses births in the hovered year: Combined uses combined births that year, Male uses male births that year, and Female uses female births that year.",
+      "Each name receives the standard English-language Scrabble letter score, ignoring non-letter characters. National and state averages weight each name's score by recorded birth frequency. The national hover threshold uses births in the hovered year only. The state map uses all observed names in each state/year (or all years for All time) and shows a continuous Viridis color scale.",
     dataThrough: 2025,
-    iframeHeight: 725,
+    iframeHeight: 750,
     embedMode: "scale",
     embedWidth: 1200,
     variants: [
       {
-        id: "default",
-        label: "Open visualization",
-        path: "../visualizations/showcase/scrabble-score-over-time.html"
+        id: "over-time",
+        label: "Average score over time",
+        path: "../visualizations/showcase/scrabble-score-over-time.html",
+        iframeHeight: 725,
+        embedMode: "scale",
+        embedWidth: 1200
+      },
+      {
+        id: "by-state",
+        label: "Average score by state",
+        path: "../visualizations/showcase/scrabble-score-by-state.html",
+        iframeHeight: 750,
+        embedMode: "scale",
+        embedWidth: 1050
       }
     ]
   },
@@ -224,23 +235,31 @@ export const visualizations = [
     shortTitle: "Unisex evolution",
     category: "Structural Patterns",
     description:
-      "Explore how names move between female- and male-leaning usage over time, then search and rank the complete all-time name distribution by sex balance.",
+      "Explore how names move between female- and male-leaning usage over time, how all recorded births are distributed by a name's sex balance, and the complete all-time name table.",
     instructions:
-      "Evolution uses the existing generation control and hover behavior. In the Table view, search for a name, set a minimum all-time-birth threshold, and move the Table order slider from All Female to All Male. At 50/50, the table ranks names by closeness to an even male/female split; moving the slider changes that target in one-percentage-point increments.",
+      "Evolution Scatter Plot uses the existing generation control and hover behavior. Distribution Histogram groups names into 2-percentage-point male-share bins and sums all-time births within each bin. In the Table view, search for a name, set a minimum all-time-birth threshold, or move the Table order slider from All Female to All Male.",
     methodology:
-      "The Evolution view compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Table view uses all names in the national SSA data and sums observed male and female births across all years. Percentages are based on each name's observed combined all-time total; SSA-suppressed counts below five are not present in the source files.",
+      "The Evolution Scatter Plot compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Distribution Histogram uses every name in the all-time national summary: each name is assigned to a bin by its male share, and the y-axis sums that name's observed all-time births, so the bars represent births rather than the number of distinct names. The Table uses the same all-time male/female totals and percentages.",
     dataThrough: 2025,
     iframeHeight: 850,
     embedMode: "scale",
-    embedWidth: 1000,
+    embedWidth: 1100,
     variants: [
       {
-        id: "evolution",
-        label: "Evolution",
+        id: "scatter",
+        label: "Evolution Scatter Plot",
         path: "../visualizations/showcase/unisex-name-evolution.html",
-        iframeHeight: 840,
+        iframeHeight: 800,
         embedMode: "scale",
         embedWidth: 760
+      },
+      {
+        id: "histogram",
+        label: "Distribution Histogram",
+        path: "../visualizations/showcase/unisex-name-distribution-histogram.html",
+        iframeHeight: 700,
+        embedMode: "scale",
+        embedWidth: 1100
       },
       {
         id: "table",
