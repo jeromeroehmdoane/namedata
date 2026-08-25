@@ -150,6 +150,7 @@
           <option value="20000">20,000</option>
           <option value="50000">50,000</option>
           <option value="100000">100,000</option>
+          <option value="1000000">1,000,000</option>
         </select>
       </div>
     </section>
@@ -1120,7 +1121,7 @@
             + "</sup>",
           x: 0.5,
           xanchor: "center",
-          y: 0.985
+          y: 0.965
         },
 
         width: 1100,
@@ -1132,7 +1133,7 @@
         margin: {
           l: 12,
           r: 70,
-          t: 58,
+          t: 68,
           b: 20
         },
 
@@ -1150,7 +1151,7 @@
               1
             ],
             y: [
-              0.01,
+              0.015,
               1
             ]
           },
@@ -1158,7 +1159,12 @@
         },
 
         hoverlabel: {
-          align: "left"
+          align: "left",
+          font: {
+            family:
+              "Menlo, Monaco, Consolas, 'Courier New', monospace",
+            size: 12
+          }
         }
       };
 
@@ -1171,7 +1177,7 @@
           ),
           labelTrace(
             darkLabels,
-            "white"
+            "#E0E0E0"
           )
         ],
         layout
