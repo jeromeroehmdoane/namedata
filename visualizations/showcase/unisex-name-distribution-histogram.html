@@ -102,14 +102,8 @@
 
         <select id="bin_width">
           <option value="1">1%</option>
-          <option value="2" selected>2%</option>
-          <option value="3">3%</option>
-          <option value="4">4%</option>
-          <option value="5">5%</option>
-          <option value="6">6%</option>
-          <option value="7">7%</option>
-          <option value="8">8%</option>
-          <option value="9">9%</option>
+          <option value="2">2%</option>
+          <option value="4" selected>4%</option>
           <option value="10">10%</option>
         </select>
       </div>
@@ -120,10 +114,10 @@
         </label>
 
         <select id="y_scale">
-          <option value="linear" selected>
+          <option value="linear">
             Linear
           </option>
-          <option value="log">
+          <option value="log" selected>
             Log
           </option>
         </select>
@@ -411,24 +405,11 @@
           const start =
             bin.start;
 
-          const isLast =
-            bin.index
-            === bins.length - 1;
-
           const displayedEnd =
-            isLast
-              ? 100
-              : (
-                  bin.endExclusive
-                  - 1
-                );
+            bin.endExclusive;
 
           const label =
-            (
-              binWidth === 1
-                ? `${start}%`
-                : `${start}–${displayedEnd}%`
-            );
+            `${start}–${displayedEnd}%`;
 
           const topNamesHtml =
             topNames.length
@@ -604,7 +585,11 @@
 
         yaxis: {
           title:
-            yLabel,
+            (
+              yScale === "log"
+                ? `${yLabel} (Log scale)`
+                : yLabel
+            ),
           type:
             yScale,
           tickformat:
@@ -620,6 +605,26 @@
               ? "tozero"
               : undefined
         },
+
+        annotations: [
+          {
+            x: 0,
+            y: -0.16,
+            xref: "paper",
+            yref: "paper",
+            xanchor: "left",
+            yanchor: "top",
+            showarrow: false,
+            align: "left",
+            font: {
+              size: 11,
+              color: "gray"
+            },
+            text:
+              "Bin labels show boundaries. For example, 48–52% means [48, 52): "
+              + "48% is included and 52% is not. The final bin includes 100%."
+          }
+        ],
 
         hoverlabel: {
           align: "left"
