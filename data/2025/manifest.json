@@ -12,4 +12,7 @@
   "globals/unisex-all-time-summary.json",
 
 "scrabbleStateAverages":
-  "globals/scrabble-state-averages.json"}}
+  "globals/scrabble-state-averages.json",
+
+"stateRepresentationFrontier":
+  "globals/state-representation-frontier.json"}}
