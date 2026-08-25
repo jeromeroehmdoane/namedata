@@ -237,9 +237,9 @@ export const visualizations = [
     description:
       "Explore how names move between female- and male-leaning usage over time, how all recorded births are distributed by a name's sex balance, and the complete all-time name table.",
     instructions:
-      "Evolution Scatter Plot uses the existing generation control and hover behavior. Distribution Histogram lets you switch between births and distinct-name counts, choose 1%–10% male-share bins, and use a linear or logarithmic y-axis; hover a bar for its five most popular names. In the Table view, search for a name, set a minimum all-time-birth threshold, or move the Table order slider from All Female to All Male.",
+      "Evolution Scatter Plot uses the existing generation control and hover behavior. Distribution Histogram lets you switch between births and distinct-name counts, choose 1%, 2%, 4%, or 10% male-share bins, and use a linear or logarithmic y-axis; hover a bar for its five most popular names. In the Table view, search for a name, set a minimum all-time-birth threshold, or move the Table order slider from All Female to All Male.",
     methodology:
-      "The Evolution Scatter Plot compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Distribution Histogram uses every name in the all-time national summary and assigns each name to a bin by its male share. The y-axis can sum observed all-time births or count distinct names. Bar color runs from the site's Female pink (#E4577E) through neutral to the Male blue (#4C78A8). The Table uses the same all-time male/female totals and percentages.",
+      "The Evolution Scatter Plot compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Distribution Histogram groups names by the share of their recorded all-time births that are male, then either sums births or counts distinct names within each group. Bin labels show boundaries: for example, 48–52% male means [48, 52), so 48% is included and 52% is not; the final bin includes 100%. The colors move from female-leaning pink through neutral to male-leaning blue. The Table uses the same all-time male/female totals and percentages.",
     dataThrough: 2025,
     iframeHeight: 850,
     embedMode: "scale",
