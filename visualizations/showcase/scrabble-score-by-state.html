@@ -123,15 +123,36 @@
     const SEX_INFO = {
       combined: {
         label: "Combined",
-        field: "avg_combined"
+        field: "avg_combined",
+        color: "#7A5195",
+        colorscale: [
+          [0.00, "#F4EFF8"],
+          [0.35, "#D8C9E4"],
+          [0.70, "#AB88C1"],
+          [1.00, "#7A5195"]
+        ]
       },
       M: {
         label: "Male",
-        field: "avg_M"
+        field: "avg_M",
+        color: "#4C78A8",
+        colorscale: [
+          [0.00, "#EEF4FA"],
+          [0.35, "#C8D9EA"],
+          [0.70, "#86A9CC"],
+          [1.00, "#4C78A8"]
+        ]
       },
       F: {
         label: "Female",
-        field: "avg_F"
+        field: "avg_F",
+        color: "#E4577E",
+        colorscale: [
+          [0.00, "#FCEEF2"],
+          [0.35, "#F7C8D5"],
+          [0.70, "#ED8DA8"],
+          [1.00, "#E4577E"]
+        ]
       }
     };
 
@@ -263,36 +284,82 @@
         );
     }
 
-    function colorRange(
-      field
-    ) {
-      const values =
-        records
-        .map(
-          row => Number(row[field])
-        )
-        .filter(
+    function safeRange(values) {
+      const finite =
+        values.filter(
           Number.isFinite
         );
 
-      if (!values.length) {
+      if (!finite.length) {
         return {
           min: 0,
           max: 1
         };
       }
 
+      let min =
+        Math.min(...finite);
+
+      let max =
+        Math.max(...finite);
+
+      if (min === max) {
+        const padding =
+          Math.max(
+            Math.abs(min) * 0.02,
+            0.01
+          );
+
+        min -= padding;
+        max += padding;
+      }
+
       return {
-        min:
-          Math.min(...values),
-        max:
-          Math.max(...values)
+        min,
+        max
+      };
+    }
+
+    function colorRanges(
+      field
+    ) {
+      const allTimeValues =
+        records
+        .filter(
+          row =>
+            Number(row.year) === 0
+        )
+        .map(
+          row => Number(row[field])
+        );
+
+      const annualValues =
+        records
+        .filter(
+          row =>
+            Number(row.year) > 0
+        )
+        .map(
+          row => Number(row[field])
+        );
+
+      return {
+        allTime:
+          safeRange(
+            allTimeValues
+          ),
+        annual:
+          safeRange(
+            annualValues
+          )
       };
     }
 
     function traceForPeriod(
       year,
-      field
+      field,
+      colorscale,
+      ranges
     ) {
       const rows =
         periodRows(year);
@@ -321,7 +388,19 @@
               Number(row[field])
             ]
           ),
-        colorscale: "Viridis",
+        colorscale,
+        zmin:
+          (
+            year === 0
+              ? ranges.allTime.min
+              : ranges.annual.min
+          ),
+        zmax:
+          (
+            year === 0
+              ? ranges.allTime.max
+              : ranges.annual.max
+          ),
         marker: {
           line: {
             color: "white",
@@ -362,22 +441,20 @@
 
       const activeIndex = 0;
 
-      const range =
-        colorRange(field);
+      const ranges =
+        colorRanges(
+          field
+        );
 
       const firstTrace =
         traceForPeriod(
           allPeriods[
             activeIndex
           ].year,
-          field
+          field,
+          info.colorscale,
+          ranges
         );
-
-      firstTrace.zmin =
-        range.min;
-
-      firstTrace.zmax =
-        range.max;
 
       const steps =
         allPeriods.map(
@@ -385,7 +462,9 @@
             const trace =
               traceForPeriod(
                 period.year,
-                field
+                field,
+                info.colorscale,
+                ranges
               );
 
             return {
@@ -403,6 +482,15 @@
                   ],
                   customdata: [
                     trace.customdata
+                  ],
+                  zmin: [
+                    trace.zmin
+                  ],
+                  zmax: [
+                    trace.zmax
+                  ],
+                  colorscale: [
+                    info.colorscale
                   ]
                 },
                 [0]

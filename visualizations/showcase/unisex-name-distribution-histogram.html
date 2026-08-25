@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=1100, initial-scale=1" />
-  <title>Distribution of Births by Name Sex Balance</title>
+  <title>Distribution of Names by Sex Balance</title>
 
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
@@ -20,6 +20,43 @@
       color: #222;
       font-family: Arial, Helvetica, sans-serif;
       overflow-x: hidden;
+    }
+
+    .app {
+      width: 1100px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        minmax(180px, 0.9fr)
+        minmax(180px, 0.8fr)
+        minmax(180px, 0.8fr);
+      gap: 14px;
+      align-items: end;
+      padding: 12px 18px 9px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select,
+    input[type="number"] {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
     }
 
     #status {
@@ -41,17 +78,101 @@
 </head>
 
 <body>
-  <div id="status" aria-live="polite"></div>
-  <div id="plot"></div>
+  <main class="app">
+    <section class="controls">
+      <div>
+        <label for="y_metric">
+          Y-axis
+        </label>
+
+        <select id="y_metric">
+          <option value="births" selected>
+            Number of births
+          </option>
+          <option value="names">
+            Number of distinct names
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label for="bin_width">
+          Bin size
+        </label>
+
+        <select id="bin_width">
+          <option value="1">1%</option>
+          <option value="2" selected>2%</option>
+          <option value="3">3%</option>
+          <option value="4">4%</option>
+          <option value="5">5%</option>
+          <option value="6">6%</option>
+          <option value="7">7%</option>
+          <option value="8">8%</option>
+          <option value="9">9%</option>
+          <option value="10">10%</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="y_scale">
+          Y-axis scale
+        </label>
+
+        <select id="y_scale">
+          <option value="linear" selected>
+            Linear
+          </option>
+          <option value="log">
+            Log
+          </option>
+        </select>
+      </div>
+    </section>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
 
   <script type="module">
     import NameData from "../../assets/js/name-data-loader.js";
 
-    const BIN_WIDTH = 2;
+    const FEMALE_COLOR = "#E4577E";
+    const MALE_COLOR = "#4C78A8";
+    const NEUTRAL_COLOR = "#F3F3F3";
+
+    const BALANCE_COLORSCALE = [
+      [0.00, FEMALE_COLOR],
+      [0.50, NEUTRAL_COLOR],
+      [1.00, MALE_COLOR]
+    ];
+
+    const yMetricSelect =
+      document.getElementById(
+        "y_metric"
+      );
+
+    const binWidthSelect =
+      document.getElementById(
+        "bin_width"
+      );
+
+    const yScaleSelect =
+      document.getElementById(
+        "y_scale"
+      );
+
     const statusEl =
-      document.getElementById("status");
+      document.getElementById(
+        "status"
+      );
+
     const plotEl =
-      document.getElementById("plot");
+      document.getElementById(
+        "plot"
+      );
+
+    let records = [];
 
     function setStatus(
       message,
@@ -122,21 +243,91 @@
         dataRoot
       });
 
-      return NameData.loadGlobalTable(
-        "unisexAllTimeSummary"
-      );
-    }
-
-    function buildBins(records) {
-      const binCount =
-        Math.ceil(
-          100 / BIN_WIDTH
+      const table =
+        await NameData.loadGlobalTable(
+          "unisexAllTimeSummary"
         );
 
-      const births =
-        Array(binCount).fill(0);
+      records =
+        table?.records || [];
+    }
 
-      for (const row of records) {
+    function formatCount(value) {
+      const n =
+        Number(value);
+
+      if (!Number.isFinite(n)) {
+        return "";
+      }
+
+      const abs =
+        Math.abs(n);
+
+      if (abs >= 1_000_000) {
+        const value =
+          n / 1_000_000;
+
+        return (
+          `${value.toFixed(1)
+          .replace(/\.0$/, "")}M`
+        );
+      }
+
+      if (abs >= 1_000) {
+        const value =
+          n / 1_000;
+
+        return (
+          `${value.toFixed(
+            value >= 100
+              ? 0
+              : 1
+          )
+          .replace(/\.0$/, "")}k`
+        );
+      }
+
+      return Math.round(n)
+        .toLocaleString();
+    }
+
+    function buildBins(
+      sourceRecords,
+      binWidth
+    ) {
+      const binCount =
+        Math.ceil(
+          100 / binWidth
+        );
+
+      const bins =
+        Array.from(
+          {
+            length:
+              binCount
+          },
+          (_, index) => ({
+            index,
+            start:
+              index * binWidth,
+            endExclusive:
+              Math.min(
+                100,
+                (
+                  index + 1
+                )
+                * binWidth
+              ),
+            births: 0,
+            names: 0,
+            rows: []
+          })
+        );
+
+      for (
+        const row
+        of sourceRecords
+      ) {
         const malePct =
           Number(
             row.male_all_time_percentage
@@ -148,8 +339,12 @@
           );
 
         if (
-          !Number.isFinite(malePct)
-          || !Number.isFinite(allBirths)
+          !Number.isFinite(
+            malePct
+          )
+          || !Number.isFinite(
+              allBirths
+            )
           || allBirths <= 0
         ) {
           continue;
@@ -169,94 +364,206 @@
             ? binCount - 1
             : Math.floor(
                 safePct
-                / BIN_WIDTH
+                / binWidth
               );
 
-        births[binIndex] +=
+        const bin =
+          bins[
+            Math.max(
+              0,
+              Math.min(
+                binCount - 1,
+                binIndex
+              )
+            )
+          ];
+
+        bin.births +=
           allBirths;
+
+        bin.names += 1;
+
+        bin.rows.push(row);
       }
 
-      return births.map(
-        (birthCount, index) => {
-          const start =
-            index * BIN_WIDTH;
+      return bins.map(
+        bin => {
+          const topNames =
+            [...bin.rows]
+            .sort(
+              (a, b) =>
+                Number(
+                  b.all_time_births
+                )
+                - Number(
+                    a.all_time_births
+                  )
+                || String(a.name)
+                  .localeCompare(
+                    String(b.name)
+                  )
+            )
+            .slice(
+              0,
+              5
+            );
 
-          const end =
-            index === binCount - 1
+          const start =
+            bin.start;
+
+          const isLast =
+            bin.index
+            === bins.length - 1;
+
+          const displayedEnd =
+            isLast
               ? 100
               : (
-                  start
-                  + BIN_WIDTH
+                  bin.endExclusive
                   - 1
                 );
 
+          const label =
+            (
+              binWidth === 1
+                ? `${start}%`
+                : `${start}–${displayedEnd}%`
+            );
+
+          const topNamesHtml =
+            topNames.length
+              ? topNames
+                  .map(
+                    row =>
+                      `<b>${row.name}</b> - `
+                      + `${formatCount(row.all_time_births)}`
+                  )
+                  .join("<br>")
+              : "None";
+
           return {
-            start,
-            end,
+            ...bin,
             center:
-              start
-              + BIN_WIDTH / 2,
-            label:
-              `${start}–${end}%`,
-            births:
-              birthCount
+              Math.min(
+                100,
+                start
+                + (
+                    bin.endExclusive
+                    - start
+                  )
+                  / 2
+              ),
+            label,
+            topNamesHtml
           };
         }
       );
     }
 
-    function buildFigure(records) {
+    function buildFigure() {
+      const binWidth =
+        Number(
+          binWidthSelect.value
+        );
+
+      const yMetric =
+        yMetricSelect.value;
+
+      const yScale =
+        yScaleSelect.value;
+
       const bins =
-        buildBins(records);
+        buildBins(
+          records,
+          binWidth
+        );
+
+      const y =
+        bins.map(
+          bin =>
+            yMetric === "names"
+              ? bin.names
+              : bin.births
+        );
+
+      const yLabel =
+        yMetric === "names"
+          ? "Distinct names"
+          : "Births";
+
+      const metricPhrase =
+        yMetric === "names"
+          ? "distinct names"
+          : "births";
 
       const trace = {
         type: "bar",
+
         x:
           bins.map(
             bin => bin.center
           ),
-        y:
-          bins.map(
-            bin => bin.births
-          ),
+
+        y,
+
         width:
           bins.map(
-            () => BIN_WIDTH * 0.92
+            bin =>
+              (
+                bin.endExclusive
+                - bin.start
+              )
+              * 0.92
           ),
+
         marker: {
           color:
             bins.map(
               bin => bin.center
             ),
-          colorscale: "RdBu",
+
+          colorscale:
+            BALANCE_COLORSCALE,
+
           cmin: 0,
           cmax: 100,
           showscale: false,
+
           line: {
-            color: "rgba(0,0,0,0.16)",
+            color:
+              "rgba(0,0,0,0.16)",
             width: 0.5
           }
         },
+
         customdata:
           bins.map(
             bin => [
               bin.label,
-              bin.births.toLocaleString()
+              bin.births.toLocaleString(),
+              bin.names.toLocaleString(),
+              bin.topNamesHtml
             ]
           ),
+
         hovertemplate:
           "<b>%{customdata[0]} male</b><br>"
-          + "%{customdata[1]} births have names "
-          + "in this male-share range"
+          + "%{customdata[1]} births<br>"
+          + "%{customdata[2]} distinct names"
+          + "<br><br>"
+          + "<b>Most popular names</b><br>"
+          + "%{customdata[3]}"
           + "<extra></extra>",
+
         showlegend: false
       };
 
       const layout = {
         title: {
           text:
-            "<b>Distribution of Births by Name Sex Balance</b>"
-            + "<br><sup>2-percentage-point bins</sup>",
+            "<b>Distribution of Names by Sex Balance</b>"
+            + `<br><sup>${binWidth}-percentage-point bins; `
+            + `${metricPhrase}</sup>`,
           x: 0.5,
           xanchor: "center",
           y: 0.95
@@ -269,7 +576,7 @@
         plot_bgcolor: "white",
 
         margin: {
-          l: 92,
+          l: 96,
           r: 35,
           t: 90,
           b: 78
@@ -297,13 +604,21 @@
 
         yaxis: {
           title:
-            "Births",
-          tickformat: ",~s",
+            yLabel,
+          type:
+            yScale,
+          tickformat:
+            yScale === "linear"
+              ? ",~s"
+              : undefined,
           showgrid: true,
           gridcolor:
             "rgba(0,0,0,0.12)",
           zeroline: false,
-          rangemode: "tozero"
+          rangemode:
+            yScale === "linear"
+              ? "tozero"
+              : undefined
         },
 
         hoverlabel: {
@@ -317,15 +632,7 @@
       };
     }
 
-    try {
-      setStatus("Loading…");
-
-      const table =
-        await configureLatestData();
-
-      const records =
-        table?.records || [];
-
+    async function render() {
       if (!records.length) {
         throw new Error(
           "The Unisex all-time summary contains no rows."
@@ -333,9 +640,9 @@
       }
 
       const figure =
-        buildFigure(records);
+        buildFigure();
 
-      await Plotly.newPlot(
+      await Plotly.react(
         plotEl,
         figure.data,
         figure.layout,
@@ -348,11 +655,44 @@
           toImageButtonOptions: {
             format: "png",
             filename:
-              "unisex_birth_distribution",
+              "unisex_sex_balance_distribution",
             scale: 3
           }
         }
       );
+    }
+
+    for (
+      const control
+      of [
+        yMetricSelect,
+        binWidthSelect,
+        yScaleSelect
+      ]
+    ) {
+      control.addEventListener(
+        "change",
+        () => {
+          render().catch(
+            error => {
+              console.error(error);
+
+              setStatus(
+                error?.message
+                || String(error),
+                true
+              );
+            }
+          );
+        }
+      );
+    }
+
+    try {
+      setStatus("Loading…");
+
+      await configureLatestData();
+      await render();
 
       setStatus("");
 
