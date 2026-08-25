@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Over/Underrepresentation by State</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1100px;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1100px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        minmax(150px, 0.7fr)
+        minmax(190px, 0.9fr)
+        minmax(245px, 1.1fr);
+      gap: 14px;
+      align-items: end;
+      padding: 12px 18px 9px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select,
+    input {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    .help {
+      margin-top: 4px;
+      color: #666;
+      font-size: 11px;
+    }
+
+    #status {
+      min-height: 24px;
+      padding: 5px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1100px;
+      height: 690px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div>
+        <label for="sex_select">
+          Sex
+        </label>
+
+        <select id="sex_select">
+          <option value="combined" selected>
+            All
+          </option>
+          <option value="M">
+            Male
+          </option>
+          <option value="F">
+            Female
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label for="generation_select">
+          Generation
+        </label>
+
+        <select id="generation_select">
+          <option value="all" selected>
+            All time
+          </option>
+          <option value="greatest_gen">
+            Greatest Gen
+          </option>
+          <option value="silent_gen">
+            Silent Gen
+          </option>
+          <option value="baby_boomers">
+            Baby Boomers
+          </option>
+          <option value="gen_x">
+            Gen X
+          </option>
+          <option value="millenials">
+            Millennials
+          </option>
+          <option value="gen_z">
+            Gen Z
+          </option>
+          <option value="gen_alpha">
+            Gen Alpha
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label for="minimum_births">
+          Minimum all-time births nationally
+        </label>
+
+        <input
+          id="minimum_births"
+          type="number"
+          min="1000"
+          step="1000"
+          value="1000"
+        />
+
+        <div class="help">
+          Applies to the selected sex; minimum 1,000.
+        </div>
+      </div>
+    </section>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const ALL_STATES = [
+      "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL",
+      "GA","HI","ID","IL","IN","IA","KS","KY","LA","ME",
+      "MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
+      "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI",
+      "SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"
+    ];
+
+    const STATE_NAMES = {
+      AL: "Alabama",
+      AK: "Alaska",
+      AZ: "Arizona",
+      AR: "Arkansas",
+      CA: "California",
+      CO: "Colorado",
+      CT: "Connecticut",
+      DE: "Delaware",
+      DC: "District of Columbia",
+      FL: "Florida",
+      GA: "Georgia",
+      HI: "Hawaii",
+      ID: "Idaho",
+      IL: "Illinois",
+      IN: "Indiana",
+      IA: "Iowa",
+      KS: "Kansas",
+      KY: "Kentucky",
+      LA: "Louisiana",
+      ME: "Maine",
+      MD: "Maryland",
+      MA: "Massachusetts",
+      MI: "Michigan",
+      MN: "Minnesota",
+      MS: "Mississippi",
+      MO: "Missouri",
+      MT: "Montana",
+      NE: "Nebraska",
+      NV: "Nevada",
+      NH: "New Hampshire",
+      NJ: "New Jersey",
+      NM: "New Mexico",
+      NY: "New York",
+      NC: "North Carolina",
+      ND: "North Dakota",
+      OH: "Ohio",
+      OK: "Oklahoma",
+      OR: "Oregon",
+      PA: "Pennsylvania",
+      RI: "Rhode Island",
+      SC: "South Carolina",
+      SD: "South Dakota",
+      TN: "Tennessee",
+      TX: "Texas",
+      UT: "Utah",
+      VT: "Vermont",
+      VA: "Virginia",
+      WA: "Washington",
+      WV: "West Virginia",
+      WI: "Wisconsin",
+      WY: "Wyoming"
+    };
+
+    const SEX_INFO = {
+      combined: {
+        label: "All",
+        colorscale: [
+          [0.00, "#F4EFF8"],
+          [0.35, "#D8C9E4"],
+          [0.70, "#AB88C1"],
+          [1.00, "#7A5195"]
+        ]
+      },
+
+      M: {
+        label: "Male",
+        colorscale: [
+          [0.00, "#EEF4FA"],
+          [0.35, "#C8D9EA"],
+          [0.70, "#86A9CC"],
+          [1.00, "#4C78A8"]
+        ]
+      },
+
+      F: {
+        label: "Female",
+        colorscale: [
+          [0.00, "#FCEEF2"],
+          [0.35, "#F7C8D5"],
+          [0.70, "#ED8DA8"],
+          [1.00, "#E4577E"]
+        ]
+      }
+    };
+
+    const PERIOD_LABELS = {
+      all: "All time",
+      greatest_gen: "Greatest Gen",
+      silent_gen: "Silent Gen",
+      baby_boomers: "Baby Boomers",
+      gen_x: "Gen X",
+      millenials: "Millennials",
+      gen_z: "Gen Z",
+      gen_alpha: "Gen Alpha"
+    };
+
+    const sexSelect =
+      document.getElementById(
+        "sex_select"
+      );
+
+    const generationSelect =
+      document.getElementById(
+        "generation_select"
+      );
+
+    const minimumBirthsInput =
+      document.getElementById(
+        "minimum_births"
+      );
+
+    const statusEl =
+      document.getElementById(
+        "status"
+      );
+
+    const plotEl =
+      document.getElementById(
+        "plot"
+      );
+
+    let records = [];
+    let lookup = new Map();
+
+    function setStatus(
+      message,
+      isError=false
+    ) {
+      statusEl.textContent =
+        message || "";
+
+      statusEl.classList.toggle(
+        "error",
+        Boolean(isError)
+      );
+    }
+
+    function normalizeMinimumBirths() {
+      const entered =
+        Number(
+          minimumBirthsInput.value
+        );
+
+      const threshold =
+        Number.isFinite(entered)
+          ? Math.max(
+              1000,
+              Math.ceil(
+                entered / 1000
+              ) * 1000
+            )
+          : 1000;
+
+      minimumBirthsInput.value =
+        String(threshold);
+
+      return threshold;
+    }
+
+    function groupKey(
+      sex,
+      periodKey,
+      state
+    ) {
+      return [
+        sex,
+        periodKey,
+        state
+      ].join("|");
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      const table =
+        await NameData.loadGlobalTable(
+          "stateRepresentationFrontier"
+        );
+
+      records =
+        table?.records || [];
+
+      lookup =
+        new Map();
+
+      for (
+        const row
+        of records
+      ) {
+        const key =
+          groupKey(
+            row.sex,
+            row.period_key,
+            row.state
+          );
+
+        if (
+          !lookup.has(key)
+        ) {
+          lookup.set(
+            key,
+            []
+          );
+        }
+
+        lookup
+          .get(key)
+          .push(row);
+      }
+    }
+
+    function compareOver(
+      a,
+      b
+    ) {
+      return (
+        Number(b.ratio)
+        - Number(a.ratio)
+        ||
+        Number(
+          b.national_all_time_frequency
+        )
+        - Number(
+            a.national_all_time_frequency
+          )
+        ||
+        Number(
+          b.state_period_frequency
+        )
+        - Number(
+            a.state_period_frequency
+          )
+        ||
+        String(a.name)
+        .localeCompare(
+          String(b.name)
+        )
+      );
+    }
+
+    function compareUnder(
+      a,
+      b
+    ) {
+      return (
+        Number(a.ratio)
+        - Number(b.ratio)
+        ||
+        Number(
+          b.national_all_time_frequency
+        )
+        - Number(
+            a.national_all_time_frequency
+          )
+        ||
+        Number(
+          b.state_period_frequency
+        )
+        - Number(
+            a.state_period_frequency
+          )
+        ||
+        String(a.name)
+        .localeCompare(
+          String(b.name)
+        )
+      );
+    }
+
+    function formatRatio(
+      value
+    ) {
+      const ratio =
+        Number(value);
+
+      if (!Number.isFinite(ratio)) {
+        return "";
+      }
+
+      if (ratio >= 100) {
+        return (
+          `${ratio.toFixed(0)}×`
+        );
+      }
+
+      return (
+        `${ratio.toFixed(2)}×`
+      );
+    }
+
+    function listHtml(
+      rows
+    ) {
+      if (!rows.length) {
+        return "No qualifying names";
+      }
+
+      return rows
+        .map(
+          row =>
+            `<b>${row.name}</b> : `
+            + `${formatRatio(row.ratio)}`
+        )
+        .join("<br>");
+    }
+
+    function stateSummary(
+      state,
+      sex,
+      periodKey,
+      threshold
+    ) {
+      const candidates =
+        (
+          lookup.get(
+            groupKey(
+              sex,
+              periodKey,
+              state
+            )
+          )
+          || []
+        )
+        .filter(
+          row =>
+            Number(
+              row.national_all_time_frequency
+            )
+            >= threshold
+        );
+
+      const over =
+        [...candidates]
+        .sort(
+          compareOver
+        )
+        .slice(
+          0,
+          5
+        );
+
+      const under =
+        [...candidates]
+        .sort(
+          compareUnder
+        )
+        .slice(
+          0,
+          5
+        );
+
+      const strongest =
+        over.length
+          ? Number(
+              over[0].ratio
+            )
+          : 1;
+
+      return {
+        strongest,
+        over,
+        under
+      };
+    }
+
+    function colorbarTicks(
+      maxLogValue
+    ) {
+      const maxPower =
+        Math.max(
+          1,
+          Math.ceil(
+            maxLogValue
+          )
+        );
+
+      const tickvals = [];
+      const ticktext = [];
+
+      for (
+        let power = 0;
+        power <= maxPower;
+        power += 1
+      ) {
+        tickvals.push(
+          power
+        );
+
+        ticktext.push(
+          `${2 ** power}×`
+        );
+      }
+
+      return {
+        tickvals,
+        ticktext,
+        maxPower
+      };
+    }
+
+    function buildFigure() {
+      const sex =
+        sexSelect.value;
+
+      const periodKey =
+        generationSelect.value;
+
+      const threshold =
+        normalizeMinimumBirths();
+
+      const info =
+        SEX_INFO[sex];
+
+      const summaries =
+        ALL_STATES.map(
+          state => ({
+            state,
+            ...stateSummary(
+              state,
+              sex,
+              periodKey,
+              threshold
+            )
+          })
+        );
+
+      const zRaw =
+        summaries.map(
+          item =>
+            Math.max(
+              0,
+              Math.log2(
+                Math.max(
+                  1,
+                  item.strongest
+                )
+              )
+            )
+        );
+
+      const observedMax =
+        Math.max(
+          1,
+          ...zRaw
+        );
+
+      const ticks =
+        colorbarTicks(
+          observedMax
+        );
+
+      const customdata =
+        summaries.map(
+          item => [
+            STATE_NAMES[item.state],
+            PERIOD_LABELS[periodKey],
+            threshold.toLocaleString(),
+            formatRatio(
+              item.strongest
+            ),
+            listHtml(
+              item.over
+            ),
+            listHtml(
+              item.under
+            )
+          ]
+        );
+
+      const trace = {
+        type: "choropleth",
+        locationmode:
+          "USA-states",
+
+        locations:
+          ALL_STATES,
+
+        z:
+          zRaw,
+
+        zmin:
+          0,
+
+        zmax:
+          ticks.maxPower,
+
+        colorscale:
+          info.colorscale,
+
+        marker: {
+          line: {
+            color: "white",
+            width: 0.7
+          }
+        },
+
+        customdata,
+
+        hovertemplate:
+          "<b>%{customdata[0]}</b><br>"
+          + "%{customdata[1]} · "
+          + "%{customdata[2]}+ national all-time births"
+          + "<br>"
+          + "Strongest overrepresentation: "
+          + "%{customdata[3]}"
+          + "<br><br>"
+          + "<b>Most overrepresented</b><br>"
+          + "%{customdata[4]}"
+          + "<br><br>"
+          + "<b>Most underrepresented</b><br>"
+          + "%{customdata[5]}"
+          + "<extra></extra>",
+
+        colorbar: {
+          title: {
+            text:
+              "Strongest<br>overrepresentation"
+          },
+          thickness: 15,
+          len: 0.67,
+          y: 0.54,
+          tickvals:
+            ticks.tickvals,
+          ticktext:
+            ticks.ticktext
+        },
+
+        showscale: true
+      };
+
+      const layout = {
+        title: {
+          text:
+            "<b>Over/Underrepresentation by State</b>"
+            + "<br><sup>"
+            + `${info.label} · ${PERIOD_LABELS[periodKey]}`
+            + " · color = strongest qualifying overrepresentation"
+            + "</sup>",
+          x: 0.5,
+          xanchor: "center",
+          y: 0.97
+        },
+
+        width: 1100,
+        height: 690,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 12,
+          r: 70,
+          t: 85,
+          b: 55
+        },
+
+        dragmode: false,
+
+        geo: {
+          scope: "usa",
+          projection: {
+            type:
+              "albers usa"
+          },
+          bgcolor: "white"
+        },
+
+        annotations: [
+          {
+            x: 0,
+            y: 0.01,
+            xref: "paper",
+            yref: "paper",
+            xanchor: "left",
+            yanchor: "bottom",
+            showarrow: false,
+            align: "left",
+            font: {
+              size: 11,
+              color: "gray"
+            },
+            text:
+              "Representation = state share ÷ national share. "
+              + "Hover lists use names with recorded births in the state/period."
+          }
+        ]
+      };
+
+      return {
+        data: [
+          trace
+        ],
+        layout
+      };
+    }
+
+    async function render() {
+      const figure =
+        buildFigure();
+
+      await Plotly.react(
+        plotEl,
+        figure.data,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename:
+              "state_over_under_representation",
+            scale: 3
+          }
+        }
+      );
+    }
+
+    for (
+      const control
+      of [
+        sexSelect,
+        generationSelect,
+        minimumBirthsInput
+      ]
+    ) {
+      control.addEventListener(
+        "change",
+        () => {
+          render().catch(
+            error => {
+              console.error(error);
+
+              setStatus(
+                error?.message
+                || String(error),
+                true
+              );
+            }
+          );
+        }
+      );
+    }
+
+    minimumBirthsInput.addEventListener(
+      "keydown",
+      event => {
+        if (
+          event.key === "Enter"
+        ) {
+          event.preventDefault();
+
+          render().catch(
+            error => {
+              console.error(error);
+
+              setStatus(
+                error?.message
+                || String(error),
+                true
+              );
+            }
+          );
+        }
+      }
+    );
+
+    try {
+      setStatus("Loading…");
+
+      await configureLatestData();
+      await render();
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message
+        || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
