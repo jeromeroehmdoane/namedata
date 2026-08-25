@@ -205,7 +205,7 @@ export const visualizations = [
     instructions:
       "Average score over time shows Combined, Male, and Female national curves. Hover a curve/year to see the five highest-scoring names above the selected birth threshold for that year; changing the threshold does not change the curves. Average score by state uses the Sex dropdown and the year slider, with All time at the far left.",
     methodology:
-      "Each name receives the standard English-language Scrabble letter score, ignoring non-letter characters. National and state averages weight each name's score by recorded birth frequency. The national hover threshold uses births in the hovered year only. The state map uses all observed names in each state/year (or all years for All time) and shows a continuous Viridis color scale.",
+      "Each name receives the standard English-language Scrabble letter score, ignoring non-letter characters. National and state averages weight each name's score by recorded birth frequency. The national hover threshold uses births in the hovered year only. The state map uses all observed names in each state/year (or all years for All time). Combined, Male, and Female use separate purple, blue, and pink single-hue gradients. All time has its own within-sex color range, while all individual years share a second within-sex range so year-to-year comparisons remain consistent.",
     dataThrough: 2025,
     iframeHeight: 750,
     embedMode: "scale",
@@ -237,9 +237,9 @@ export const visualizations = [
     description:
       "Explore how names move between female- and male-leaning usage over time, how all recorded births are distributed by a name's sex balance, and the complete all-time name table.",
     instructions:
-      "Evolution Scatter Plot uses the existing generation control and hover behavior. Distribution Histogram groups names into 2-percentage-point male-share bins and sums all-time births within each bin. In the Table view, search for a name, set a minimum all-time-birth threshold, or move the Table order slider from All Female to All Male.",
+      "Evolution Scatter Plot uses the existing generation control and hover behavior. Distribution Histogram lets you switch between births and distinct-name counts, choose 1%–10% male-share bins, and use a linear or logarithmic y-axis; hover a bar for its five most popular names. In the Table view, search for a name, set a minimum all-time-birth threshold, or move the Table order slider from All Female to All Male.",
     methodology:
-      "The Evolution Scatter Plot compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Distribution Histogram uses every name in the all-time national summary: each name is assigned to a bin by its male share, and the y-axis sums that name's observed all-time births, so the bars represent births rather than the number of distinct names. The Table uses the same all-time male/female totals and percentages.",
+      "The Evolution Scatter Plot compares male and female birth frequencies for selected prominent unisex names on logarithmic axes. The Distribution Histogram uses every name in the all-time national summary and assigns each name to a bin by its male share. The y-axis can sum observed all-time births or count distinct names. Bar color runs from the site's Female pink (#E4577E) through neutral to the Male blue (#4C78A8). The Table uses the same all-time male/female totals and percentages.",
     dataThrough: 2025,
     iframeHeight: 850,
     embedMode: "scale",
