@@ -700,6 +700,88 @@
       ];
     }
 
+    function middleShareSummary(
+      bins,
+      yMetric,
+      binWidth
+    ) {
+      const valueForRow =
+        row =>
+          (
+            yMetric === "names"
+              ? Number(
+                  row.distinct_names
+                )
+              : Number(
+                  row.births
+                )
+          );
+
+      const total =
+        bins.reduce(
+          (sum, row) =>
+            sum
+            + valueForRow(row),
+          0
+        );
+
+      const lowerBound =
+        binWidth;
+
+      const upperBound =
+        100 - binWidth;
+
+      const middleTotal =
+        bins
+        .filter(
+          row =>
+            Number(
+              row.bin_start
+            ) >= lowerBound
+            && Number(
+                row.bin_end
+              ) <= upperBound
+        )
+        .reduce(
+          (sum, row) =>
+            sum
+            + valueForRow(row),
+          0
+        );
+
+      const percent =
+        total > 0
+          ? (
+              middleTotal
+              / total
+              * 100
+            )
+          : 0;
+
+      const percentText =
+        (
+          percent >= 10
+            ? percent.toFixed(1)
+            : percent.toFixed(1)
+        )
+        .replace(
+          /\.0$/,
+          ""
+        );
+
+      if (yMetric === "names") {
+        return (
+          `${percentText}% of names are not strongly gendered `
+          + `(between ${lowerBound}% and ${upperBound}% male)`
+        );
+      }
+
+      return (
+        `${percentText}% of births have names that are not strongly gendered `
+        + `(between ${lowerBound}% and ${upperBound}% male)`
+      );
+    }
+
     function buildFigure() {
       const bins =
         currentBins();
@@ -756,6 +838,13 @@
         yMetric === "names"
           ? "distinct names"
           : "births";
+
+      const middleShareText =
+        middleShareSummary(
+          bins,
+          yMetric,
+          binWidth
+        );
 
       const sharedGenerationRange =
         periodKey === "all"
@@ -867,6 +956,9 @@
             + `${selectedPeriodLabel}; `
             + `${binWidth}-percentage-point bins; `
             + `${metricPhrase}`
+            + "</sup>"
+            + "<br><sup>"
+            + `${middleShareText}`
             + "</sup>",
           x: 0.5,
           xanchor: "center",
@@ -882,7 +974,7 @@
         margin: {
           l: 96,
           r: 35,
-          t: 90,
+          t: 108,
           b: 78
         },
 
