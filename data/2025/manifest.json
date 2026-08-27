@@ -15,4 +15,7 @@
   "globals/scrabble-state-averages.json",
 
 "stateRepresentationFrontier":
-  "globals/state-representation-frontier.json"}}
+  "globals/state-representation-frontier.json",
+
+"unisexHistogramGeneration":
+  "globals/unisex-histogram-generation.json"}}
