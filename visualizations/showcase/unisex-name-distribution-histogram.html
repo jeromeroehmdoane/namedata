@@ -59,6 +59,37 @@
       font: 14px Arial, Helvetica, sans-serif;
     }
 
+    .generation-picker {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 36px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .generation-arrow {
+      width: 36px;
+      height: 38px;
+      padding: 0;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #333;
+      font: 700 22px/1 Arial, Helvetica, sans-serif;
+      cursor: pointer;
+    }
+
+    .generation-arrow:hover:not(:disabled) {
+      background: #f2f2f2;
+      border-color: #888;
+    }
+
+    .generation-arrow:disabled {
+      color: #bbb;
+      background: #f7f7f7;
+      cursor: default;
+      opacity: 0.65;
+    }
+
     #status {
       min-height: 24px;
       padding: 5px 18px 0;
@@ -85,11 +116,33 @@
           Generation
         </label>
 
-        <select id="generation">
-          <option value="all" selected>
-            All time
-          </option>
-        </select>
+        <div class="generation-picker">
+          <button
+            id="generation_prev"
+            class="generation-arrow"
+            type="button"
+            aria-label="Previous generation"
+            title="Previous generation"
+          >
+            ‹
+          </button>
+
+          <select id="generation">
+            <option value="all" selected>
+              All time
+            </option>
+          </select>
+
+          <button
+            id="generation_next"
+            class="generation-arrow"
+            type="button"
+            aria-label="Next generation"
+            title="Next generation"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
       <div>
@@ -167,6 +220,16 @@
     const generationSelect =
       document.getElementById(
         "generation"
+      );
+
+    const generationPrevButton =
+      document.getElementById(
+        "generation_prev"
+      );
+
+    const generationNextButton =
+      document.getElementById(
+        "generation_next"
       );
 
     const yMetricSelect =
@@ -287,6 +350,59 @@
       );
     }
 
+    function updateGenerationArrows() {
+      const index =
+        generationSelect.selectedIndex;
+
+      generationPrevButton.disabled =
+        index <= 0;
+
+      generationNextButton.disabled =
+        (
+          index < 0
+          || index
+             >= generationSelect.options.length - 1
+        );
+    }
+
+    function moveGeneration(
+      direction
+    ) {
+      const current =
+        generationSelect.selectedIndex;
+
+      const target =
+        Math.max(
+          0,
+          Math.min(
+            generationSelect.options.length - 1,
+            current + direction
+          )
+        );
+
+      if (target === current) {
+        updateGenerationArrows();
+        return;
+      }
+
+      generationSelect.selectedIndex =
+        target;
+
+      updateGenerationArrows();
+
+      render().catch(
+        error => {
+          console.error(error);
+
+          setStatus(
+            error?.message
+            || String(error),
+            true
+          );
+        }
+      );
+    }
+
     function populateGenerationOptions() {
       const uniquePeriods =
         new Map();
@@ -355,6 +471,8 @@
 
       generationSelect.value =
         "all";
+
+      updateGenerationArrows();
     }
 
     async function configureLatestData() {
@@ -499,6 +617,89 @@
         );
     }
 
+    function generationAxisRange(
+      yMetric,
+      binWidth,
+      yScale
+    ) {
+      const values =
+        records
+        .filter(
+          row =>
+            String(
+              row.period_key
+            ) !== "all"
+            && Number(
+                row.bin_width
+              ) === binWidth
+        )
+        .map(
+          row =>
+            yMetric === "names"
+              ? Number(
+                  row.distinct_names
+                )
+              : Number(
+                  row.births
+                )
+        )
+        .filter(
+          Number.isFinite
+        );
+
+      if (!values.length) {
+        return undefined;
+      }
+
+      if (yScale === "linear") {
+        const maxValue =
+          Math.max(
+            ...values
+          );
+
+        return [
+          0,
+          maxValue > 0
+            ? maxValue * 1.06
+            : 1
+        ];
+      }
+
+      const positive =
+        values.filter(
+          value => value > 0
+        );
+
+      if (!positive.length) {
+        return undefined;
+      }
+
+      const minLog =
+        Math.log10(
+          Math.min(
+            ...positive
+          )
+        );
+
+      const maxLog =
+        Math.log10(
+          Math.max(
+            ...positive
+          )
+        );
+
+      const span =
+        Math.max(
+          maxLog - minLog,
+          0.25
+        );
+
+      return [
+        minLog - span * 0.04,
+        maxLog + span * 0.06
+      ];
+    }
+
     function buildFigure() {
       const bins =
         currentBins();
@@ -555,6 +756,15 @@
         yMetric === "names"
           ? "distinct names"
           : "births";
+
+      const sharedGenerationRange =
+        periodKey === "all"
+          ? undefined
+          : generationAxisRange(
+              yMetric,
+              binWidth,
+              yScale
+            );
 
       const trace = {
         type: "bar",
@@ -705,6 +915,12 @@
             ),
           type:
             yScale,
+          range:
+            sharedGenerationRange,
+          autorange:
+            periodKey === "all"
+              ? true
+              : false,
           tickformat:
             yScale === "linear"
               ? ",~s"
@@ -714,7 +930,10 @@
             "rgba(0,0,0,0.12)",
           zeroline: false,
           rangemode:
-            yScale === "linear"
+            (
+              periodKey === "all"
+              && yScale === "linear"
+            )
               ? "tozero"
               : undefined
         },
@@ -780,10 +999,42 @@
       );
     }
 
+    generationPrevButton.addEventListener(
+      "click",
+      () => {
+        moveGeneration(-1);
+      }
+    );
+
+    generationNextButton.addEventListener(
+      "click",
+      () => {
+        moveGeneration(1);
+      }
+    );
+
+    generationSelect.addEventListener(
+      "change",
+      () => {
+        updateGenerationArrows();
+
+        render().catch(
+          error => {
+            console.error(error);
+
+            setStatus(
+              error?.message
+              || String(error),
+              true
+            );
+          }
+        );
+      }
+    );
+
     for (
       const control
       of [
-        generationSelect,
         yMetricSelect,
         binWidthSelect,
         yScaleSelect
