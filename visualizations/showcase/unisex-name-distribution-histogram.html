@@ -30,9 +30,10 @@
     .controls {
       display: grid;
       grid-template-columns:
+        minmax(205px, 1fr)
         minmax(180px, 0.9fr)
-        minmax(180px, 0.8fr)
-        minmax(180px, 0.8fr);
+        minmax(150px, 0.7fr)
+        minmax(155px, 0.7fr);
       gap: 14px;
       align-items: end;
       padding: 12px 18px 9px;
@@ -47,8 +48,7 @@
       font-weight: 700;
     }
 
-    select,
-    input[type="number"] {
+    select {
       width: 100%;
       min-height: 38px;
       padding: 7px 9px;
@@ -80,6 +80,18 @@
 <body>
   <main class="app">
     <section class="controls">
+      <div>
+        <label for="generation">
+          Generation
+        </label>
+
+        <select id="generation">
+          <option value="all" selected>
+            All time
+          </option>
+        </select>
+      </div>
+
       <div>
         <label for="y_metric">
           Y-axis
@@ -132,14 +144,30 @@
     import NameData from "../../assets/js/name-data-loader.js";
 
     const FEMALE_COLOR = "#E4577E";
+    const MIDPOINT_COLOR = "#D8C9E4";
     const MALE_COLOR = "#4C78A8";
-    const NEUTRAL_COLOR = "#F3F3F3";
 
     const BALANCE_COLORSCALE = [
       [0.00, FEMALE_COLOR],
-      [0.50, NEUTRAL_COLOR],
+      [0.50, MIDPOINT_COLOR],
       [1.00, MALE_COLOR]
     ];
+
+    const PERIOD_DISPLAY_NAMES = {
+      all: "All time",
+      greatest_gen: "Greatest Gen",
+      silent_gen: "Silent Gen",
+      baby_boomers: "Baby Boomers",
+      gen_x: "Gen X",
+      millenials: "Millennials",
+      gen_z: "Gen Z",
+      gen_alpha: "Gen Alpha"
+    };
+
+    const generationSelect =
+      document.getElementById(
+        "generation"
+      );
 
     const yMetricSelect =
       document.getElementById(
@@ -167,6 +195,7 @@
       );
 
     let records = [];
+    let periodInfo = new Map();
 
     function setStatus(
       message,
@@ -179,6 +208,153 @@
         "error",
         Boolean(isError)
       );
+    }
+
+    function formatCount(value) {
+      const n =
+        Number(value);
+
+      if (!Number.isFinite(n)) {
+        return "";
+      }
+
+      const abs =
+        Math.abs(n);
+
+      if (abs >= 1_000_000) {
+        return (
+          `${(n / 1_000_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}M`
+        );
+      }
+
+      if (abs >= 100_000) {
+        return (
+          `${Math.round(
+            n / 1_000
+          )}k`
+        );
+      }
+
+      if (abs >= 1_000) {
+        return (
+          `${(n / 1_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}k`
+        );
+      }
+
+      return Math.round(n)
+        .toLocaleString();
+    }
+
+    function displayPeriodName(
+      row
+    ) {
+      const key =
+        String(
+          row.period_key
+        );
+
+      return (
+        PERIOD_DISPLAY_NAMES[key]
+        || row.period
+        || key
+      );
+    }
+
+    function periodLabel(
+      periodKey
+    ) {
+      const info =
+        periodInfo.get(
+          periodKey
+        );
+
+      if (!info) {
+        return (
+          PERIOD_DISPLAY_NAMES[
+            periodKey
+          ]
+          || periodKey
+        );
+      }
+
+      return (
+        `${displayPeriodName(info)} `
+        + `(${info.period_start}–${info.period_end})`
+      );
+    }
+
+    function populateGenerationOptions() {
+      const uniquePeriods =
+        new Map();
+
+      for (
+        const row
+        of records
+      ) {
+        const key =
+          String(
+            row.period_key
+          );
+
+        if (
+          !uniquePeriods.has(key)
+        ) {
+          uniquePeriods.set(
+            key,
+            row
+          );
+        }
+      }
+
+      const ordered =
+        [...uniquePeriods.values()]
+        .sort(
+          (a, b) =>
+            Number(
+              a.period_order
+            )
+            - Number(
+                b.period_order
+              )
+        );
+
+      periodInfo =
+        new Map(
+          ordered.map(
+            row => [
+              String(
+                row.period_key
+              ),
+              row
+            ]
+          )
+        );
+
+      generationSelect.innerHTML =
+        ordered
+        .map(
+          row => {
+            const key =
+              String(
+                row.period_key
+              );
+
+            return (
+              `<option value="${key}">`
+              + `${displayPeriodName(row)} `
+              + `(${row.period_start}–${row.period_end})`
+              + `</option>`
+            );
+          }
+        )
+        .join("");
+
+      generationSelect.value =
+        "all";
     }
 
     async function configureLatestData() {
@@ -239,209 +415,103 @@
 
       const table =
         await NameData.loadGlobalTable(
-          "unisexAllTimeSummary"
+          "unisexHistogramGeneration"
         );
 
       records =
         table?.records || [];
+
+      populateGenerationOptions();
     }
 
-    function formatCount(value) {
-      const n =
-        Number(value);
-
-      if (!Number.isFinite(n)) {
-        return "";
-      }
-
-      const abs =
-        Math.abs(n);
-
-      if (abs >= 1_000_000) {
-        const value =
-          n / 1_000_000;
-
-        return (
-          `${value.toFixed(1)
-          .replace(/\.0$/, "")}M`
-        );
-      }
-
-      if (abs >= 1_000) {
-        const value =
-          n / 1_000;
-
-        return (
-          `${value.toFixed(
-            value >= 100
-              ? 0
-              : 1
-          )
-          .replace(/\.0$/, "")}k`
-        );
-      }
-
-      return Math.round(n)
-        .toLocaleString();
-    }
-
-    function buildBins(
-      sourceRecords,
-      binWidth
+    function topNamesHtml(
+      row
     ) {
-      const binCount =
-        Math.ceil(
-          100 / binWidth
-        );
-
-      const bins =
-        Array.from(
-          {
-            length:
-              binCount
-          },
-          (_, index) => ({
-            index,
-            start:
-              index * binWidth,
-            endExclusive:
-              Math.min(
-                100,
-                (
-                  index + 1
-                )
-                * binWidth
-              ),
-            births: 0,
-            names: 0,
-            rows: []
-          })
-        );
+      const lines = [];
 
       for (
-        const row
-        of sourceRecords
+        let rank = 1;
+        rank <= 5;
+        rank += 1
       ) {
-        const malePct =
-          Number(
-            row.male_all_time_percentage
-          );
+        const name =
+          row[
+            `top${rank}_name`
+          ];
 
-        const allBirths =
+        const births =
           Number(
-            row.all_time_births
+            row[
+              `top${rank}_births`
+            ]
           );
 
         if (
-          !Number.isFinite(
-            malePct
-          )
+          !name
           || !Number.isFinite(
-              allBirths
+              births
             )
-          || allBirths <= 0
+          || births <= 0
         ) {
           continue;
         }
 
-        const safePct =
-          Math.max(
-            0,
-            Math.min(
-              100,
-              malePct
-            )
-          );
-
-        const binIndex =
-          safePct >= 100
-            ? binCount - 1
-            : Math.floor(
-                safePct
-                / binWidth
-              );
-
-        const bin =
-          bins[
-            Math.max(
-              0,
-              Math.min(
-                binCount - 1,
-                binIndex
-              )
-            )
-          ];
-
-        bin.births +=
-          allBirths;
-
-        bin.names += 1;
-
-        bin.rows.push(row);
+        lines.push(
+          `<b>${name}</b> - `
+          + `${formatCount(births)}`
+        );
       }
 
-      return bins.map(
-        bin => {
-          const topNames =
-            [...bin.rows]
-            .sort(
-              (a, b) =>
-                Number(
-                  b.all_time_births
-                )
-                - Number(
-                    a.all_time_births
-                  )
-                || String(a.name)
-                  .localeCompare(
-                    String(b.name)
-                  )
-            )
-            .slice(
-              0,
-              5
-            );
-
-          const start =
-            bin.start;
-
-          const displayedEnd =
-            bin.endExclusive;
-
-          const label =
-            `${start}–${displayedEnd}%`;
-
-          const topNamesHtml =
-            topNames.length
-              ? topNames
-                  .map(
-                    row =>
-                      `<b>${row.name}</b> - `
-                      + `${formatCount(row.all_time_births)}`
-                  )
-                  .join("<br>")
-              : "None";
-
-          return {
-            ...bin,
-            center:
-              Math.min(
-                100,
-                start
-                + (
-                    bin.endExclusive
-                    - start
-                  )
-                  / 2
-              ),
-            label,
-            topNamesHtml
-          };
-        }
+      return (
+        lines.length
+          ? lines.join("<br>")
+          : "None"
       );
     }
 
+    function currentBins() {
+      const periodKey =
+        generationSelect.value;
+
+      const binWidth =
+        Number(
+          binWidthSelect.value
+        );
+
+      return records
+        .filter(
+          row =>
+            String(
+              row.period_key
+            ) === periodKey
+            && Number(
+                row.bin_width
+              ) === binWidth
+        )
+        .sort(
+          (a, b) =>
+            Number(
+              a.bin_start
+            )
+            - Number(
+                b.bin_start
+              )
+        );
+    }
+
     function buildFigure() {
+      const bins =
+        currentBins();
+
+      if (!bins.length) {
+        throw new Error(
+          "No histogram bins are available for this selection."
+        );
+      }
+
+      const periodKey =
+        generationSelect.value;
+
       const binWidth =
         Number(
           binWidthSelect.value
@@ -453,18 +523,27 @@
       const yScale =
         yScaleSelect.value;
 
-      const bins =
-        buildBins(
-          records,
-          binWidth
+      const yRaw =
+        bins.map(
+          row =>
+            yMetric === "names"
+              ? Number(
+                  row.distinct_names
+                )
+              : Number(
+                  row.births
+                )
         );
 
       const y =
-        bins.map(
-          bin =>
-            yMetric === "names"
-              ? bin.names
-              : bin.births
+        yRaw.map(
+          value =>
+            (
+              yScale === "log"
+              && value <= 0
+            )
+              ? null
+              : value
         );
 
       const yLabel =
@@ -482,17 +561,30 @@
 
         x:
           bins.map(
-            bin => bin.center
+            row =>
+              (
+                Number(
+                  row.bin_start
+                )
+                + Number(
+                    row.bin_end
+                  )
+              )
+              / 2
           ),
 
         y,
 
         width:
           bins.map(
-            bin =>
+            row =>
               (
-                bin.endExclusive
-                - bin.start
+                Number(
+                  row.bin_end
+                )
+                - Number(
+                    row.bin_start
+                  )
               )
               * 0.92
           ),
@@ -500,7 +592,16 @@
         marker: {
           color:
             bins.map(
-              bin => bin.center
+              row =>
+                (
+                  Number(
+                    row.bin_start
+                  )
+                  + Number(
+                      row.bin_end
+                    )
+                )
+                / 2
             ),
 
           colorscale:
@@ -519,11 +620,15 @@
 
         customdata:
           bins.map(
-            bin => [
-              bin.label,
-              bin.births.toLocaleString(),
-              bin.names.toLocaleString(),
-              bin.topNamesHtml
+            row => [
+              `${row.bin_start}–${row.bin_end}%`,
+              Number(
+                row.births
+              ).toLocaleString(),
+              Number(
+                row.distinct_names
+              ).toLocaleString(),
+              topNamesHtml(row)
             ]
           ),
 
@@ -539,12 +644,20 @@
         showlegend: false
       };
 
+      const selectedPeriodLabel =
+        periodLabel(
+          periodKey
+        );
+
       const layout = {
         title: {
           text:
             "<b>Distribution of Names by Sex Balance</b>"
-            + `<br><sup>${binWidth}-percentage-point bins; `
-            + `${metricPhrase}</sup>`,
+            + "<br><sup>"
+            + `${selectedPeriodLabel}; `
+            + `${binWidth}-percentage-point bins; `
+            + `${metricPhrase}`
+            + "</sup>",
           x: 0.5,
           xanchor: "center",
           y: 0.95
@@ -571,7 +684,7 @@
 
         xaxis: {
           title:
-            "Male share of all-time births for the name",
+            "Male share of births for the name in the selected period",
           range: [
             0,
             100
@@ -640,7 +753,7 @@
     async function render() {
       if (!records.length) {
         throw new Error(
-          "The Unisex all-time summary contains no rows."
+          "The Unisex histogram summary contains no rows."
         );
       }
 
@@ -670,6 +783,7 @@
     for (
       const control
       of [
+        generationSelect,
         yMetricSelect,
         binWidthSelect,
         yScaleSelect
