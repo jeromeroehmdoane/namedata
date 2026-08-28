@@ -520,19 +520,29 @@ export const visualizations = [
     shortTitle: "Name guessing game",
     category: "Interactive tools",
     description:
-      "Guess baby names from their historical popularity curves, then inspect the same names through sex-specific trends and state geography.",
+      "Guess baby names from their historical popularity curves, match several curves to names, or build a custom challenge.",
     instructions:
-      "Single curve gives one hidden name with four choices across five increasing difficulty levels. Match asks you to match three numbered curves to three names. Custom accepts any 2–6 names available in the packet data. Use the View, Sex, Y, Scale, and generation controls to inspect the evidence before answering.",
+      "Choose Single Curve, Match, or Custom above the visualization. Single Curve gives one hidden name with four choices across five increasing difficulty levels. Match asks you to match three numbered curves to three names. Custom accepts any 2–6 names available in the packet data. Line views can be inspected by sex and by Frequency, Percentage, or Rank; all map views use the All time period.",
     methodology:
-      "Rounds 1–4 are precomputed from the 1,000 most common U.S. names of all time, using curve shape, popularity, peak timing, sex balance, and geographic differentiation to tune difficulty. Round 5 uses curated themed name groups. The website stores only the compact round banks; national curves and state maps are loaded on demand from the standard name packets. Custom mode is unrestricted by the round-bank universe.",
+      "Rounds 1–4 are precomputed from the 1,000 most common U.S. names of all time, using curve shape, popularity, peak timing, sex balance, and geographic differentiation to tune difficulty. Round 5 uses curated themed name groups. Frequency and Percentage line views use a linear scale; Rank uses a logarithmic scale. The website stores only the compact round banks; national curves and state maps are loaded on demand from the standard name packets. Custom mode is unrestricted by the round-bank universe.",
     dataThrough: 2025,
     iframeHeight: 900,
     embedMode: "fluid",
     variants: [
       {
-        id: "game",
-        label: "Play game",
-        path: "../visualizations/showcase/name-guessing-game.html"
+        id: "single",
+        label: "Single Curve",
+        path: "../visualizations/showcase/name-guessing-game.html?mode=single"
+      },
+      {
+        id: "match",
+        label: "Match",
+        path: "../visualizations/showcase/name-guessing-game.html?mode=multi"
+      },
+      {
+        id: "custom",
+        label: "Custom",
+        path: "../visualizations/showcase/name-guessing-game.html?mode=custom"
       }
     ]
   },
