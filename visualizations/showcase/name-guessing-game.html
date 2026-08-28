@@ -162,7 +162,7 @@
     }
 
     #nameCurveGameWeb .ncg-map-slider-box {
-      display: none;
+      display: none !important;
       width: 54%;
       min-width: 450px;
       max-width: 700px;
@@ -373,21 +373,23 @@
     }
   </style>
 
-  <div class="ncg-topbar">
-    <div class="ncg-group">
-      <label for="ncgMode">Mode:</label>
-      <select id="ncgMode">
-        <option value="single">Single curve</option>
-        <option value="multi">Match</option>
-        <option value="custom">Custom</option>
-      </select>
-    </div>
+  <select id="ncgMode" hidden aria-hidden="true">
+    <option value="single">Single curve</option>
+    <option value="multi">Match</option>
+    <option value="custom">Custom</option>
+  </select>
 
+  <select id="ncgScale" hidden aria-hidden="true">
+    <option value="linear">Linear</option>
+    <option value="log">Log</option>
+  </select>
+
+  <div class="ncg-topbar">
     <div class="ncg-group">
       <label for="ncgView">View:</label>
       <select id="ncgView">
         <option value="line">Line</option>
-        <option value="percentage">Map %</option>
+        <option value="percentage">Map</option>
       </select>
     </div>
 
@@ -399,21 +401,13 @@
     <div class="ncg-group">
       <label for="ncgMetric">Y:</label>
       <select id="ncgMetric">
-        <option value="frequency">Freq</option>
-        <option value="percent">Pct</option>
+        <option value="frequency">Frequency</option>
+        <option value="percent">Percentage</option>
         <option value="rank">Rank</option>
       </select>
     </div>
 
-    <div class="ncg-group">
-      <label for="ncgScale">Scale:</label>
-      <select id="ncgScale">
-        <option value="linear">Lin</option>
-        <option value="log">Log</option>
-      </select>
-    </div>
-
-    <button type="button" id="ncgNewGame" class="ncg-new-game">New</button>
+    <button type="button" id="ncgNewGame" class="ncg-new-game">New Game</button>
   </div>
 
   <div id="ncgCustomBox" class="ncg-custom-box">
@@ -966,8 +960,22 @@
         return idx;
       }
 
+      const requestedMode =
+        new URLSearchParams(
+          window.location.search
+        ).get("mode");
+
+      const FIXED_MODE =
+        ["single", "multi", "custom"]
+        .includes(requestedMode)
+          ? requestedMode
+          : "single";
+
+      modeSelect.value =
+        FIXED_MODE;
+
       const state = {
-        mode: "single",
+        mode: FIXED_MODE,
         view: "line",
         sex: "combined",
         metric: "frequency",
@@ -1152,7 +1160,7 @@
         if (round.type === "single") {
           return [
             ["line", "Line"],
-            ["percentage", "Map %"]
+            ["percentage", "Map"]
           ];
         }
 
@@ -1191,53 +1199,101 @@
         state.view = nextView;
       }
 
+      function scaleForMetric(
+        metric
+      ) {
+        return (
+          metric === "rank"
+            ? "log"
+            : "linear"
+        );
+      }
+
       function saveFreeSettingsFromControls() {
         if (isMapView(viewSelect.value)) return;
 
-        state.freeSettings.sex = sexSelect.value;
-        state.freeSettings.metric = metricSelect.value;
+        state.freeSettings.sex =
+          sexSelect.value;
 
-        if (metricSelect.value === "rank") {
-          state.freeSettings.scale = "log";
-        } else {
-          state.freeSettings.scale = scaleSelect.value;
-          state.lastNonRankScale = scaleSelect.value;
-        }
+        state.freeSettings.metric =
+          metricSelect.value;
+
+        state.freeSettings.scale =
+          scaleForMetric(
+            metricSelect.value
+          );
+
+        scaleSelect.value =
+          state.freeSettings.scale;
       }
 
       function syncInspectionControlsForView() {
         syncViewOptionsForRound();
 
-        const mapVisible = isMapView(viewSelect.value);
+        const mapVisible =
+          isMapView(
+            viewSelect.value
+          );
 
         if (mapVisible) {
-          sexSelect.value = "combined";
-          metricSelect.value = "percent";
-          scaleSelect.value = "linear";
+          sexSelect.value =
+            "combined";
 
-          sexSelect.disabled = true;
-          metricSelect.disabled = true;
-          scaleSelect.disabled = true;
+          metricSelect.value =
+            "percent";
+
+          scaleSelect.value =
+            "linear";
+
+          sexSelect.disabled =
+            true;
+
+          metricSelect.disabled =
+            true;
+
+          scaleSelect.disabled =
+            true;
+
         } else {
-          sexSelect.disabled = false;
-          metricSelect.disabled = false;
+          sexSelect.disabled =
+            false;
 
-          if (Array.from(sexSelect.options).some(opt => opt.value === state.freeSettings.sex)) {
-            sexSelect.value = state.freeSettings.sex;
+          metricSelect.disabled =
+            false;
+
+          if (
+            Array.from(
+              sexSelect.options
+            ).some(
+              opt =>
+                opt.value
+                === state.freeSettings.sex
+            )
+          ) {
+            sexSelect.value =
+              state.freeSettings.sex;
+
           } else {
-            sexSelect.value = "combined";
-            state.freeSettings.sex = "combined";
+            sexSelect.value =
+              "combined";
+
+            state.freeSettings.sex =
+              "combined";
           }
 
-          metricSelect.value = state.freeSettings.metric;
+          metricSelect.value =
+            state.freeSettings.metric;
 
-          if (metricSelect.value === "rank") {
-            scaleSelect.value = "log";
-            scaleSelect.disabled = true;
-          } else {
-            scaleSelect.value = state.freeSettings.scale || state.lastNonRankScale || "linear";
-            scaleSelect.disabled = false;
-          }
+          state.freeSettings.scale =
+            scaleForMetric(
+              metricSelect.value
+            );
+
+          scaleSelect.value =
+            state.freeSettings.scale;
+
+          scaleSelect.disabled =
+            true;
         }
       }
 
@@ -1259,6 +1315,7 @@
         const pct = 100 * v;
         const abs = Math.abs(pct);
 
+        if (pct === 0) return "0%";
         if (abs >= 10) return pct.toFixed(0) + "%";
         if (abs >= 1) return pct.toFixed(1).replace(/\.0$/, "") + "%";
         if (abs >= 0.01) return pct.toFixed(2) + "%";
@@ -1281,7 +1338,7 @@
 
       function shortMetricLabel(metric) {
         if (metric === "frequency") return "Frequency";
-        if (metric === "percent") return "Pct";
+        if (metric === "percent") return "Percentage";
         return "Rank";
       }
 
@@ -2047,7 +2104,7 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(
-            "Choose or start a game mode.",
+            "Start a new game.",
             (box.left + box.right) / 2,
             (box.top + box.bottom) / 2
           );
@@ -3284,13 +3341,43 @@
       }
 
       function renderSingleChoice(round) {
-        const title = document.createElement("div");
-        title.className = "ncg-answer-title";
-        title.textContent = round.answered
-          ? "Answer revealed. Other choice curves are shown for comparison."
-          : "Which name matches the curve?";
+        const header =
+          document.createElement(
+            "div"
+          );
 
-        answerArea.appendChild(title);
+        header.className =
+          "ncg-match-header";
+
+        const title =
+          document.createElement(
+            "div"
+          );
+
+        title.className =
+          "ncg-answer-title";
+
+        title.style.marginBottom =
+          "0";
+
+        title.textContent =
+          round.answered
+            ? "Answer revealed. Other choice curves are shown for comparison."
+            : "Which name matches the curve?";
+
+        header.appendChild(
+          title
+        );
+
+        if (round.answered) {
+          renderNavigationButtons(
+            header
+          );
+        }
+
+        answerArea.appendChild(
+          header
+        );
 
         const grid = document.createElement("div");
         grid.className = "ncg-choice-grid";
@@ -3319,13 +3406,42 @@
               ? computeYRange(getSeriesForRound(round))
               : null;
 
-            round.selected = idx;
-            round.answered = true;
-            state.hover = null;
+            round.selected =
+              idx;
+
+            // In Single Curve line view, always reveal the answer and
+            // comparison curves using Combined sex, even if the player
+            // inspected the hidden curve as Separate first.
+            if (shouldAnimateReveal) {
+              sexSelect.value =
+                "combined";
+
+              state.sex =
+                "combined";
+
+              state.freeSettings.sex =
+                "combined";
+            }
+
+            round.answered =
+              true;
+
+            state.hover =
+              null;
 
             if (shouldAnimateReveal) {
-              const afterRange = computeYRange(getSeriesForRound(round));
-              beginSingleRevealAxisAnimation(beforeRange, afterRange);
+              const afterRange =
+                computeYRange(
+                  getSeriesForRound(
+                    round
+                  )
+                );
+
+              beginSingleRevealAxisAnimation(
+                beforeRange,
+                afterRange
+              );
+
             } else {
               cancelAxisAnimation();
             }
@@ -3356,7 +3472,6 @@
             );
           }
 
-          renderNavigationButtons();
         }
       }
 
@@ -3523,7 +3638,7 @@
         if (state.mode !== "custom" && state.roundIndex < state.rounds.length - 1) {
           const next = document.createElement("button");
           next.type = "button";
-          next.textContent = "Next";
+          next.textContent = "Next Round";
           next.addEventListener("click", nextRound);
           nav.appendChild(next);
         }
@@ -3531,7 +3646,7 @@
         if (state.mode !== "custom" && state.roundIndex === state.rounds.length - 1) {
           const restart = document.createElement("button");
           restart.type = "button";
-          restart.textContent = "New";
+          restart.textContent = "New Game";
           restart.addEventListener("click", startNewGame);
           nav.appendChild(restart);
         }
@@ -3567,7 +3682,7 @@
           if (state.mode === "custom") {
             note.textContent = "Enter 2–6 names above to start a custom matching challenge.";
           } else {
-            note.textContent = "Click New to begin.";
+            note.textContent = "Click New Game to begin.";
           }
 
           answerArea.appendChild(note);
@@ -3584,32 +3699,74 @@
       function renderVisualization() {
         syncInspectionControlsForView();
 
-        state.view = viewSelect.value;
-        state.sex = sexSelect.value;
-        state.metric = metricSelect.value;
-        state.scale = scaleSelect.value;
-        state.periodIndex = Number(periodSlider.value || 0);
+        state.view =
+          viewSelect.value;
 
-        periodLabelEl.textContent = periodText(state.periodIndex);
+        state.sex =
+          sexSelect.value;
 
-        const mapVisible = isMapView(state.view);
+        state.metric =
+          metricSelect.value;
 
-        canvas.style.display = mapVisible ? "none" : "block";
-        mapDiv.style.display = mapVisible ? "block" : "none";
-        mapSliderBox.style.display = mapVisible ? "block" : "none";
+        state.scale =
+          scaleForMetric(
+            state.metric
+          );
+
+        scaleSelect.value =
+          state.scale;
+
+        // Every map view uses All time only.
+        state.periodIndex =
+          0;
+
+        periodSlider.value =
+          "0";
+
+        periodLabelEl.textContent =
+          periodText(0);
+
+        const mapVisible =
+          isMapView(
+            state.view
+          );
+
+        canvas.style.display =
+          mapVisible
+            ? "none"
+            : "block";
+
+        mapDiv.style.display =
+          mapVisible
+            ? "block"
+            : "none";
+
+        mapSliderBox.style.display =
+          "none";
 
         if (mapVisible) {
-          window.requestAnimationFrame(() => {
-            drawMap();
-          });
+          window.requestAnimationFrame(
+            () => {
+              drawMap();
+            }
+          );
+
         } else {
           drawLinePlot();
         }
       }
 
       function render() {
-        state.mode = modeSelect.value;
-        customBox.classList.toggle("visible", state.mode === "custom");
+        modeSelect.value =
+          FIXED_MODE;
+
+        state.mode =
+          FIXED_MODE;
+
+        customBox.classList.toggle(
+          "visible",
+          state.mode === "custom"
+        );
 
         syncViewOptionsForRound();
         renderRoundStatus();
@@ -3669,7 +3826,12 @@
       }
 
       async function startNewGame() {
-        state.mode = modeSelect.value;
+        modeSelect.value =
+          FIXED_MODE;
+
+        state.mode =
+          FIXED_MODE;
+
         state.roundIndex = 0;
 
         resetInspectionDefaults();
@@ -3748,8 +3910,12 @@
 
           const indices = resolved.map(item => item.idx);
 
-          state.mode = "custom";
-          modeSelect.value = "custom";
+          state.mode =
+            "custom";
+
+          modeSelect.value =
+            "custom";
+
           state.roundIndex = 0;
           resetInspectionDefaults();
 
@@ -3773,8 +3939,6 @@
           startCustomButton.disabled = false;
         }
       }
-
-      modeSelect.addEventListener("change", startNewGame);
 
       viewSelect.addEventListener("change", async () => {
         state.hover = null;
@@ -3803,53 +3967,32 @@
         render();
       });
 
-      metricSelect.addEventListener("change", () => {
-        state.hover = null;
-        cancelAxisAnimation();
+      metricSelect.addEventListener(
+        "change",
+        () => {
+          state.hover = null;
+          cancelAxisAnimation();
 
-        if (!isMapView(viewSelect.value)) {
-          const previousMetric = state.freeSettings.metric;
-          const nextMetric = metricSelect.value;
+          if (
+            !isMapView(
+              viewSelect.value
+            )
+          ) {
+            state.freeSettings.metric =
+              metricSelect.value;
 
-          if (previousMetric !== "rank" && scaleSelect.value !== "log") {
-            state.lastNonRankScale = scaleSelect.value;
+            state.freeSettings.scale =
+              scaleForMetric(
+                metricSelect.value
+              );
+
+            scaleSelect.value =
+              state.freeSettings.scale;
           }
 
-          state.freeSettings.metric = nextMetric;
-
-          if (nextMetric === "rank") {
-            state.freeSettings.scale = "log";
-            scaleSelect.value = "log";
-          } else {
-            if (previousMetric === "rank") {
-              scaleSelect.value = state.lastNonRankScale || "linear";
-            }
-            state.freeSettings.scale = scaleSelect.value;
-          }
+          render();
         }
-
-        render();
-      });
-
-      scaleSelect.addEventListener("change", () => {
-        state.hover = null;
-        cancelAxisAnimation();
-
-        if (!isMapView(viewSelect.value)) {
-          if (metricSelect.value === "rank") {
-            state.freeSettings.metric = "rank";
-            state.freeSettings.scale = "log";
-            scaleSelect.value = "log";
-          } else {
-            state.freeSettings.scale = scaleSelect.value;
-            state.lastNonRankScale = scaleSelect.value;
-          }
-        }
-
-        render();
-      });
-
-      periodSlider.addEventListener("input", render);
+      );
 
       newGameButton.addEventListener("click", startNewGame);
       startCustomButton.addEventListener("click", startCustomRound);
