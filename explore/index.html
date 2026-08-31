@@ -36,7 +36,7 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260831-explore-thumbnails-1";
+    import { visualizations } from "./catalog.js?v=20260831-explore-screenshot-teasers-1";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
@@ -69,9 +69,80 @@
       return article;
     }
 
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const thumbnailRotators = new Set();
+
+    function setupThumbnailRotation(card, frames, imageA, imageB) {
+      if (frames.length <= 1 || reduceMotion.matches) return;
+
+      let frameIndex = 0;
+      let front = imageA;
+      let back = imageB;
+      let timer = null;
+      let active = false;
+
+      const schedule = (initial = false) => {
+        clearTimeout(timer);
+        if (!active || document.hidden) return;
+        const duration = Number(frames[frameIndex]?.duration) || 5000;
+        const stagger = initial ? (card.dataset.thumbIndex % 3) * 650 : 0;
+        timer = window.setTimeout(advance, duration + stagger);
+      };
+
+      const advance = () => {
+        if (!active || document.hidden) return;
+        const nextIndex = (frameIndex + 1) % frames.length;
+        back.src = frames[nextIndex].src;
+
+        const reveal = () => {
+          back.classList.add("is-visible");
+          front.classList.remove("is-visible");
+          [front, back] = [back, front];
+          frameIndex = nextIndex;
+          schedule(false);
+        };
+
+        if (back.complete) reveal();
+        else back.addEventListener("load", reveal, { once: true });
+      };
+
+      const rotator = {
+        start() {
+          active = true;
+          schedule(true);
+        },
+        stop() {
+          active = false;
+          clearTimeout(timer);
+        },
+        resumeIfActive() {
+          if (active) schedule(false);
+        }
+      };
+
+      card._thumbnailRotator = rotator;
+      thumbnailRotators.add(rotator);
+    }
+
+    const thumbnailObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const rotator = entry.target._thumbnailRotator;
+        if (!rotator) return;
+        if (entry.isIntersecting) rotator.start();
+        else rotator.stop();
+      });
+    }, { rootMargin: "120px 0px", threshold: 0.08 });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        thumbnailRotators.forEach(rotator => rotator.resumeIfActive());
+      }
+    });
+
     function makeCard(item) {
       const link = document.createElement("a");
       link.className = "gallery-card gallery-card-link";
+      link.dataset.thumbIndex = String(visualizations.indexOf(item));
       link.dataset.category = item.category;
       link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
 
@@ -85,17 +156,32 @@
       thumbnailShell.className = "card-thumbnail-shell";
       thumbnailShell.setAttribute("aria-hidden", "true");
 
-      const thumbnail = document.createElement("img");
-      thumbnail.className = "card-thumbnail";
-      thumbnail.src = item.thumbnail;
-      thumbnail.alt = "";
-      thumbnail.loading = "lazy";
-      thumbnail.decoding = "async";
-      thumbnail.width = 640;
-      thumbnail.height = 380;
+      const frames = (item.thumbnailFrames?.length
+        ? item.thumbnailFrames
+        : [{ src: item.thumbnail, duration: 5000 }]);
 
-      thumbnailShell.append(thumbnail);
+      const imageA = document.createElement("img");
+      imageA.className = "card-thumbnail card-thumbnail-a is-visible";
+      imageA.src = frames[0].src;
+      imageA.alt = "";
+      imageA.loading = "lazy";
+      imageA.decoding = "async";
+      imageA.width = 900;
+      imageA.height = 540;
+
+      const imageB = document.createElement("img");
+      imageB.className = "card-thumbnail card-thumbnail-b";
+      imageB.alt = "";
+      imageB.loading = "lazy";
+      imageB.decoding = "async";
+      imageB.width = 900;
+      imageB.height = 540;
+
+      thumbnailShell.append(imageA, imageB);
       link.append(title, description, thumbnailShell);
+
+      setupThumbnailRotation(link, frames, imageA, imageB);
+      if (link._thumbnailRotator) thumbnailObserver.observe(link);
       return link;
     }
 

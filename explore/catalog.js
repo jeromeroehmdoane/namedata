@@ -17,7 +17,29 @@ export const visualizations = [
         "path": "../visualizations/showcase/cumulative-name-bar-race.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/cumulative-top-10.webp"
+    "thumbnail": "../assets/thumbnails/explore/cumulative-top-10--y1900.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/cumulative-top-10--y1900.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/cumulative-top-10--y1930.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/cumulative-top-10--y1960.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/cumulative-top-10--y1990.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/cumulative-top-10--y2025.webp",
+        "duration": 2200
+      }
+    ]
   },
   {
     "id": "top-10-and-100-proportions",
@@ -37,7 +59,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/top10-top100-share-by-sex.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/top-10-and-100-proportions.webp"
+    "thumbnail": "../assets/thumbnails/explore/top-10-and-100-proportions--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/top-10-and-100-proportions--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "top-name-concentrations",
@@ -57,7 +85,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-concentration.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/top-name-concentrations.webp"
+    "thumbnail": "../assets/thumbnails/explore/top-name-concentrations--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/top-name-concentrations--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "top-name-by-state-and-year",
@@ -82,7 +116,33 @@ export const visualizations = [
         "path": "../visualizations/showcase/top-name-by-state/female.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/top-name-by-state-and-year.webp"
+    "thumbnail": "../assets/thumbnails/explore/top-name-by-state-and-year--male-1920.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--male-1920.webp",
+        "duration": 1800
+      },
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--male-1970.webp",
+        "duration": 1800
+      },
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--male-2025.webp",
+        "duration": 1800
+      },
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--female-1920.webp",
+        "duration": 1800
+      },
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--female-1970.webp",
+        "duration": 1800
+      },
+      {
+        "src": "../assets/thumbnails/explore/top-name-by-state-and-year--female-2025.webp",
+        "duration": 1800
+      }
+    ]
   },
   {
     "id": "places-and-people",
@@ -102,7 +162,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/place-names-state-vs-national.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/places-and-people.webp"
+    "thumbnail": "../assets/thumbnails/explore/places-and-people--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/places-and-people--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "leading-and-lagging-states",
@@ -122,7 +188,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/state-lead-lag-map.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/leading-and-lagging-states.webp"
+    "thumbnail": "../assets/thumbnails/explore/leading-and-lagging-states--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/leading-and-lagging-states--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "over-under-representation",
@@ -142,7 +214,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/over-under-representation-by-state.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/over-under-representation.webp"
+    "thumbnail": "../assets/thumbnails/explore/over-under-representation--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/over-under-representation--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "geographic-vs-name-distance",
@@ -162,7 +240,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/geographic-name-distance.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/geographic-vs-name-distance.webp"
+    "thumbnail": "../assets/thumbnails/explore/geographic-vs-name-distance--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/geographic-vs-name-distance--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "scrabble-scores-by-state",
@@ -182,7 +266,25 @@ export const visualizations = [
         "path": "../visualizations/showcase/scrabble-score-by-state.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/scrabble-scores-by-state.webp"
+    "thumbnail": "../assets/thumbnails/explore/scrabble-scores-by-state--y0.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores-by-state--y0.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores-by-state--y1930.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores-by-state--y1980.webp",
+        "duration": 2200
+      },
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores-by-state--y2025.webp",
+        "duration": 2200
+      }
+    ]
   },
   {
     "id": "states-connected-pairs-and-trios",
@@ -225,7 +327,29 @@ export const visualizations = [
         "embedWidth": 1150
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios.webp"
+    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios--aspen.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--aspen.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--casey.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--dwayne.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--summer.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--custom.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "first-and-last-letters",
@@ -256,7 +380,17 @@ export const visualizations = [
         "embedWidth": 1200
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/first-and-last-letters.webp"
+    "thumbnail": "../assets/thumbnails/explore/first-and-last-letters--first-letter.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/first-and-last-letters--first-letter.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/first-and-last-letters--sex-balance.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "scrabble-scores",
@@ -287,7 +421,17 @@ export const visualizations = [
         "embedWidth": 1050
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/scrabble-scores.webp"
+    "thumbnail": "../assets/thumbnails/explore/scrabble-scores--over-time.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores--over-time.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/scrabble-scores--by-state.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "names-and-gender",
@@ -333,7 +477,25 @@ export const visualizations = [
         "embedMode": "fluid"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/names-and-gender.webp"
+    "thumbnail": "../assets/thumbnails/explore/names-and-gender--scatter.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/names-and-gender--scatter.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/names-and-gender--histogram.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/names-and-gender--over-time.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/names-and-gender--table.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "trendy-vs-timeless",
@@ -371,7 +533,21 @@ export const visualizations = [
         "embedMode": "fluid"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/trendy-vs-timeless.webp"
+    "thumbnail": "../assets/thumbnails/explore/trendy-vs-timeless--trendy.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/trendy-vs-timeless--trendy.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/trendy-vs-timeless--timeless.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/trendy-vs-timeless--table.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "cultural-influence",
@@ -391,7 +567,21 @@ export const visualizations = [
         "path": "../visualizations/showcase/cultural-name-waves.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/cultural-influence.webp"
+    "thumbnail": "../assets/thumbnails/explore/cultural-influence--example-1.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/cultural-influence--example-1.webp",
+        "duration": 2600
+      },
+      {
+        "src": "../assets/thumbnails/explore/cultural-influence--example-2.webp",
+        "duration": 2600
+      },
+      {
+        "src": "../assets/thumbnails/explore/cultural-influence--example-3.webp",
+        "duration": 2600
+      }
+    ]
   },
   {
     "id": "comeback-names",
@@ -421,7 +611,17 @@ export const visualizations = [
         "embedMode": "fluid"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/comeback-names.webp"
+    "thumbnail": "../assets/thumbnails/explore/comeback-names--comeback.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/comeback-names--comeback.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/comeback-names--table.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "religion",
@@ -454,7 +654,17 @@ export const visualizations = [
         "embedWidth": 1250
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/religion.webp"
+    "thumbnail": "../assets/thumbnails/explore/religion--national.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/religion--national.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/religion--state.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "migration",
@@ -476,7 +686,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/irish-german-national.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/migration.webp"
+    "thumbnail": "../assets/thumbnails/explore/migration--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/migration--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "name-correlation-explorer",
@@ -496,7 +712,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-correlation-explorer.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/name-correlation-explorer.webp"
+    "thumbnail": "../assets/thumbnails/explore/name-correlation-explorer--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/name-correlation-explorer--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "top-bottom-correlates",
@@ -516,7 +738,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-correlation-correlates.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/top-bottom-correlates.webp"
+    "thumbnail": "../assets/thumbnails/explore/top-bottom-correlates--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/top-bottom-correlates--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "draw-your-own-curve",
@@ -535,7 +763,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/drawn-curve-matcher.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/draw-your-own-curve.webp"
+    "thumbnail": "../assets/thumbnails/explore/draw-your-own-curve--main.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/draw-your-own-curve--main.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "groupings-connected-pairs-and-trios",
@@ -578,7 +812,29 @@ export const visualizations = [
         "embedWidth": 1150
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios.webp"
+    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios--aspen.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--aspen.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--casey.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--dwayne.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--summer.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/states-connected-pairs-and-trios--custom.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "yearbook-guesser",
@@ -613,7 +869,25 @@ export const visualizations = [
         "path": "../visualizations/showcase/yearbook-custom.html"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/yearbook-guesser.webp"
+    "thumbnail": "../assets/thumbnails/explore/yearbook-guesser--mambo.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/yearbook-guesser--mambo.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/yearbook-guesser--dream.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/yearbook-guesser--friends.webp",
+        "duration": 5000
+      },
+      {
+        "src": "../assets/thumbnails/explore/yearbook-guesser--custom.webp",
+        "duration": 5000
+      }
+    ]
   },
   {
     "id": "name-identification-single",
@@ -632,7 +906,21 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-guessing-game.html?mode=single"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/name-identification-single.webp"
+    "thumbnail": "../assets/thumbnails/explore/name-identification-single--round-1.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/name-identification-single--round-1.webp",
+        "duration": 2500
+      },
+      {
+        "src": "../assets/thumbnails/explore/name-identification-single--round-2.webp",
+        "duration": 2500
+      },
+      {
+        "src": "../assets/thumbnails/explore/name-identification-single--round-3.webp",
+        "duration": 2500
+      }
+    ]
   },
   {
     "id": "name-identification-matching",
@@ -651,7 +939,21 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-guessing-game.html?mode=multi"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/name-identification-matching.webp"
+    "thumbnail": "../assets/thumbnails/explore/name-identification-matching--round-1.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/name-identification-matching--round-1.webp",
+        "duration": 2500
+      },
+      {
+        "src": "../assets/thumbnails/explore/name-identification-matching--round-2.webp",
+        "duration": 2500
+      },
+      {
+        "src": "../assets/thumbnails/explore/name-identification-matching--round-3.webp",
+        "duration": 2500
+      }
+    ]
   },
   {
     "id": "name-identification-custom",
@@ -670,7 +972,13 @@ export const visualizations = [
         "path": "../visualizations/showcase/name-guessing-game.html?mode=custom"
       }
     ],
-    "thumbnail": "../assets/thumbnails/explore/name-identification-custom.webp"
+    "thumbnail": "../assets/thumbnails/explore/name-identification-custom--custom.webp",
+    "thumbnailFrames": [
+      {
+        "src": "../assets/thumbnails/explore/name-identification-custom--custom.webp",
+        "duration": 5000
+      }
+    ]
   }
 ];
 
