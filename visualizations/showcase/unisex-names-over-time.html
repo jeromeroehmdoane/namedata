@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1100, initial-scale=1" />
+  <title>Unisex Names Over Time</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 1100px;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1100px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns:
+        minmax(240px, 0.9fr)
+        minmax(245px, 0.9fr);
+      gap: 16px;
+      justify-content: center;
+      align-items: end;
+      padding: 12px 235px 9px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 7px 9px;
+      border: 1px solid #aaa;
+      border-radius: 7px;
+      background: #fff;
+      color: #222;
+      font: 14px Arial, Helvetica, sans-serif;
+    }
+
+    #status {
+      min-height: 22px;
+      padding: 4px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1100px;
+      height: 650px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls">
+      <div>
+        <label for="y_metric">
+          Y-axis
+        </label>
+
+        <select id="y_metric">
+          <option value="names" selected>
+            Number of distinct names
+          </option>
+          <option value="births">
+            Number of births
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label for="minimum_births">
+          Minimum all-time births
+        </label>
+
+        <select id="minimum_births">
+          <option value="1000" selected>
+            1,000
+          </option>
+          <option value="5000">
+            5,000
+          </option>
+          <option value="10000">
+            10,000
+          </option>
+        </select>
+      </div>
+    </section>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const SERIES = [
+      {
+        key: "1_99",
+        label: "1–99% male",
+        color: "#A67DB8"
+      },
+      {
+        key: "10_90",
+        label: "10–90% male",
+        color: "#7A5195"
+      },
+      {
+        key: "25_75",
+        label: "25–75% male",
+        color: "#4D2E63"
+      }
+    ];
+
+    const yMetricSelect =
+      document.getElementById(
+        "y_metric"
+      );
+
+    const minimumBirthsSelect =
+      document.getElementById(
+        "minimum_births"
+      );
+
+    const statusEl =
+      document.getElementById(
+        "status"
+      );
+
+    const plotEl =
+      document.getElementById(
+        "plot"
+      );
+
+    let records = [];
+
+    function setStatus(
+      message,
+      isError=false
+    ) {
+      statusEl.textContent =
+        message || "";
+
+      statusEl.classList.toggle(
+        "error",
+        Boolean(isError)
+      );
+    }
+
+    function formatCount(
+      value
+    ) {
+      const n =
+        Number(value);
+
+      if (!Number.isFinite(n)) {
+        return "";
+      }
+
+      if (Math.abs(n) >= 1_000_000) {
+        return (
+          `${(n / 1_000_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}M`
+        );
+      }
+
+      if (Math.abs(n) >= 10_000) {
+        return (
+          `${Math.round(
+            n / 1_000
+          )}k`
+        );
+      }
+
+      if (Math.abs(n) >= 1_000) {
+        return (
+          `${(n / 1_000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}k`
+        );
+      }
+
+      return (
+        Math.round(n)
+        .toLocaleString()
+      );
+    }
+
+    function formatMalePct(
+      value
+    ) {
+      const n =
+        Number(value);
+
+      if (!Number.isFinite(n)) {
+        return "";
+      }
+
+      return (
+        `${n.toFixed(1)
+        .replace(/\.0$/, "")}% male`
+      );
+    }
+
+    function topNamesHtml(
+      row
+    ) {
+      const lines = [];
+
+      for (
+        let rank = 1;
+        rank <= 5;
+        rank += 1
+      ) {
+        const name =
+          row[
+            `top${rank}_name`
+          ];
+
+        const births =
+          Number(
+            row[
+              `top${rank}_births`
+            ]
+          );
+
+        const malePct =
+          Number(
+            row[
+              `top${rank}_male_pct`
+            ]
+          );
+
+        if (
+          !name
+          || !Number.isFinite(
+              births
+            )
+          || births <= 0
+        ) {
+          continue;
+        }
+
+        lines.push(
+          `<b>${name}</b> — `
+          + `${formatCount(births)} births — `
+          + `${formatMalePct(malePct)}`
+        );
+      }
+
+      return (
+        lines.length
+          ? lines.join("<br>")
+          : "No qualifying names"
+      );
+    }
+
+    async function configureLatestData() {
+      const dataBase =
+        new URL(
+          "../../data/",
+          window.location.href
+        );
+
+      const response =
+        await fetch(
+          new URL(
+            "latest.json",
+            dataBase
+          ),
+          {
+            cache: "no-cache",
+            headers: {
+              Accept:
+                "application/json"
+            }
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json `
+          + `(HTTP ${response.status}).`
+        );
+      }
+
+      const pointer =
+        await response.json();
+
+      const version =
+        String(
+          pointer.dataVersion ?? ""
+        ).trim();
+
+      if (!version) {
+        throw new Error(
+          "data/latest.json does not contain dataVersion."
+        );
+      }
+
+      const dataRoot =
+        new URL(
+          String(
+            pointer.dataRoot
+            ?? `${version}/`
+          ),
+          dataBase
+        );
+
+      NameData.configure({
+        dataRoot
+      });
+
+      const table =
+        await NameData.loadGlobalTable(
+          "unisexNamesOverTime"
+        );
+
+      records =
+        table?.records || [];
+    }
+
+    function currentRows() {
+      const threshold =
+        Number(
+          minimumBirthsSelect.value
+        );
+
+      return records.filter(
+        row =>
+          Number(
+            row.minimum_all_time_births
+          ) === threshold
+      );
+    }
+
+    function metricKey() {
+      return (
+        yMetricSelect.value === "births"
+          ? "pct_births"
+          : "pct_distinct_names"
+      );
+    }
+
+    function metricLabel() {
+      return (
+        yMetricSelect.value === "births"
+          ? "births"
+          : "distinct names"
+      );
+    }
+
+    function adjustedLabelPositions(
+      seriesRows,
+      yMax
+    ) {
+      const minGap =
+        Math.max(
+          yMax * 0.045,
+          1.25
+        );
+
+      const items =
+        seriesRows
+        .map(
+          item => ({
+            ...item,
+            y:
+              Number(
+                item.rows[
+                  item.rows.length - 1
+                ][metricKey()]
+              )
+          })
+        )
+        .sort(
+          (a, b) =>
+            a.y - b.y
+        );
+
+      for (
+        let i = 1;
+        i < items.length;
+        i += 1
+      ) {
+        if (
+          items[i].y
+          - items[i - 1].y
+          < minGap
+        ) {
+          items[i].y =
+            items[i - 1].y
+            + minGap;
+        }
+      }
+
+      const topLimit =
+        yMax * 0.98;
+
+      if (
+        items.length
+        && items[
+          items.length - 1
+        ].y > topLimit
+      ) {
+        const shift =
+          items[
+            items.length - 1
+          ].y - topLimit;
+
+        for (
+          const item
+          of items
+        ) {
+          item.y -= shift;
+        }
+      }
+
+      return new Map(
+        items.map(
+          item => [
+            item.key,
+            item.y
+          ]
+        )
+      );
+    }
+
+    function buildFigure() {
+      const rows =
+        currentRows();
+
+      if (!rows.length) {
+        throw new Error(
+          "No Unisex Names Over Time data are available for this selection."
+        );
+      }
+
+      const metric =
+        metricKey();
+
+      const grouped =
+        SERIES.map(
+          series => ({
+            ...series,
+            rows:
+              rows
+              .filter(
+                row =>
+                  String(
+                    row.band_key
+                  ) === series.key
+              )
+              .sort(
+                (a, b) =>
+                  Number(a.year)
+                  - Number(b.year)
+              )
+          })
+        );
+
+      const years =
+        grouped[0].rows.map(
+          row => Number(row.year)
+        );
+
+      const yearMin =
+        Math.min(
+          ...years
+        );
+
+      const yearMax =
+        Math.max(
+          ...years
+        );
+
+      const allY =
+        grouped.flatMap(
+          series =>
+            series.rows.map(
+              row =>
+                Number(
+                  row[metric]
+                )
+            )
+        );
+
+      const observedMax =
+        Math.max(
+          ...allY,
+          1
+        );
+
+      const yMax =
+        Math.min(
+          100,
+          Math.max(
+            observedMax * 1.10,
+            5
+          )
+        );
+
+      const labelY =
+        adjustedLabelPositions(
+          grouped,
+          yMax
+        );
+
+      const traces =
+        grouped.map(
+          series => ({
+            type: "scatter",
+            mode: "lines",
+            x:
+              series.rows.map(
+                row =>
+                  Number(
+                    row.year
+                  )
+              ),
+            y:
+              series.rows.map(
+                row =>
+                  Number(
+                    row[metric]
+                  )
+              ),
+            line: {
+              color:
+                series.color,
+              width: 3
+            },
+            customdata:
+              series.rows.map(
+                row => [
+                  Number(
+                    row[metric]
+                  ),
+                  topNamesHtml(row),
+                  Number(
+                    row.band_distinct_names
+                  ),
+                  Number(
+                    row.eligible_distinct_names
+                  ),
+                  Number(
+                    row.band_births
+                  ),
+                  Number(
+                    row.eligible_births
+                  )
+                ]
+              ),
+            hovertemplate:
+              "<b>%{x}</b><br>"
+              + `<b>${series.label}</b><br>`
+              + `%{customdata[0]:.1f}% of ${metricLabel()}`
+              + "<br><br>"
+              + "<b>Top qualifying names</b><br>"
+              + "%{customdata[1]}"
+              + "<extra></extra>",
+            showlegend: false,
+            name:
+              series.label
+          })
+        );
+
+      const annotations =
+        grouped.map(
+          series => ({
+            x:
+              yearMax + 1.5,
+            y:
+              labelY.get(
+                series.key
+              ),
+            xref: "x",
+            yref: "y",
+            text:
+              `<b>${series.label}</b>`,
+            showarrow: false,
+            xanchor: "left",
+            yanchor: "middle",
+            font: {
+              size: 12,
+              color:
+                series.color
+            },
+            bgcolor:
+              "rgba(255,255,255,0.78)",
+            borderpad: 2
+          })
+        );
+
+      const threshold =
+        Number(
+          minimumBirthsSelect.value
+        );
+
+      const layout = {
+        title: {
+          text:
+            "<b>Unisex Names Over Time</b>"
+            + "<br><sup>"
+            + `Names with at least ${threshold.toLocaleString()} `
+            + "combined all-time births"
+            + "</sup>",
+          x: 0.5,
+          xanchor: "center",
+          y: 0.96
+        },
+
+        width: 1100,
+        height: 650,
+
+        paper_bgcolor: "white",
+        plot_bgcolor: "white",
+
+        margin: {
+          l: 88,
+          r: 150,
+          t: 88,
+          b: 68
+        },
+
+        hovermode:
+          "closest",
+
+        xaxis: {
+          title:
+            "Year",
+          range: [
+            yearMin,
+            yearMax + 14
+          ],
+          dtick: 20,
+          showgrid: false,
+          zeroline: false
+        },
+
+        yaxis: {
+          title:
+            `Percentage of ${metricLabel()}`,
+          range: [
+            0,
+            yMax
+          ],
+          ticksuffix:
+            "%",
+          tickformat:
+            ".0f",
+          showgrid:
+            true,
+          gridcolor:
+            "rgba(0,0,0,0.12)",
+          zeroline:
+            false
+        },
+
+        annotations
+      };
+
+      return {
+        data:
+          traces,
+        layout
+      };
+    }
+
+    async function render() {
+      if (!records.length) {
+        throw new Error(
+          "The Unisex Names Over Time summary contains no rows."
+        );
+      }
+
+      const figure =
+        buildFigure();
+
+      await Plotly.react(
+        plotEl,
+        figure.data,
+        figure.layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename:
+              "unisex_names_over_time",
+            scale: 3
+          }
+        }
+      );
+    }
+
+    for (
+      const control
+      of [
+        yMetricSelect,
+        minimumBirthsSelect
+      ]
+    ) {
+      control.addEventListener(
+        "change",
+        () => {
+          render().catch(
+            error => {
+              console.error(error);
+
+              setStatus(
+                error?.message
+                || String(error),
+                true
+              );
+            }
+          );
+        }
+      );
+    }
+
+    try {
+      setStatus("Loading…");
+
+      await configureLatestData();
+      await render();
+
+      setStatus("");
+
+    } catch (error) {
+      console.error(error);
+
+      setStatus(
+        error?.message
+        || String(error),
+        true
+      );
+    }
+  </script>
+</body>
+</html>
