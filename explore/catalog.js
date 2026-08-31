@@ -16,7 +16,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/cumulative-name-bar-race.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/cumulative-top-10.webp"
   },
   {
     "id": "top-10-and-100-proportions",
@@ -35,7 +36,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/top10-top100-share-by-sex.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/top-10-and-100-proportions.webp"
   },
   {
     "id": "top-name-concentrations",
@@ -54,7 +56,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/name-concentration.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/top-name-concentrations.webp"
   },
   {
     "id": "top-name-by-state-and-year",
@@ -78,7 +81,8 @@ export const visualizations = [
         "label": "Female",
         "path": "../visualizations/showcase/top-name-by-state/female.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/top-name-by-state-and-year.webp"
   },
   {
     "id": "places-and-people",
@@ -97,7 +101,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/place-names-state-vs-national.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/places-and-people.webp"
   },
   {
     "id": "leading-and-lagging-states",
@@ -116,7 +121,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/state-lead-lag-map.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/leading-and-lagging-states.webp"
   },
   {
     "id": "over-under-representation",
@@ -135,7 +141,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/over-under-representation-by-state.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/over-under-representation.webp"
   },
   {
     "id": "geographic-vs-name-distance",
@@ -154,7 +161,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/geographic-name-distance.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/geographic-vs-name-distance.webp"
   },
   {
     "id": "scrabble-scores-by-state",
@@ -173,7 +181,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/scrabble-score-by-state.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/scrabble-scores-by-state.webp"
   },
   {
     "id": "states-connected-pairs-and-trios",
@@ -215,7 +224,8 @@ export const visualizations = [
         "embedMode": "scale",
         "embedWidth": 1150
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios.webp"
   },
   {
     "id": "first-and-last-letters",
@@ -245,7 +255,8 @@ export const visualizations = [
         "embedMode": "scale",
         "embedWidth": 1200
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/first-and-last-letters.webp"
   },
   {
     "id": "scrabble-scores",
@@ -275,7 +286,8 @@ export const visualizations = [
         "embedMode": "scale",
         "embedWidth": 1050
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/scrabble-scores.webp"
   },
   {
     "id": "names-and-gender",
@@ -320,7 +332,8 @@ export const visualizations = [
         "iframeHeight": 850,
         "embedMode": "fluid"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/names-and-gender.webp"
   },
   {
     "id": "trendy-vs-timeless",
@@ -357,7 +370,8 @@ export const visualizations = [
         "iframeHeight": 850,
         "embedMode": "fluid"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/trendy-vs-timeless.webp"
   },
   {
     "id": "cultural-influence",
@@ -376,7 +390,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/cultural-name-waves.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/cultural-influence.webp"
   },
   {
     "id": "comeback-names",
@@ -405,7 +420,8 @@ export const visualizations = [
         "iframeHeight": 850,
         "embedMode": "fluid"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/comeback-names.webp"
   },
   {
     "id": "religion",
@@ -437,7 +453,8 @@ export const visualizations = [
         "embedMode": "scale",
         "embedWidth": 1250
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/religion.webp"
   },
   {
     "id": "migration",
@@ -458,7 +475,8 @@ export const visualizations = [
         "label": "German and Irish Names",
         "path": "../visualizations/showcase/irish-german-national.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/migration.webp"
   },
   {
     "id": "name-correlation-explorer",
@@ -477,7 +495,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/name-correlation-explorer.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/name-correlation-explorer.webp"
   },
   {
     "id": "top-bottom-correlates",
@@ -496,7 +515,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/name-correlation-correlates.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/top-bottom-correlates.webp"
   },
   {
     "id": "draw-your-own-curve",
@@ -514,7 +534,8 @@ export const visualizations = [
         "label": "Open visualization",
         "path": "../visualizations/showcase/drawn-curve-matcher.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/draw-your-own-curve.webp"
   },
   {
     "id": "groupings-connected-pairs-and-trios",
@@ -556,7 +577,8 @@ export const visualizations = [
         "embedMode": "scale",
         "embedWidth": 1150
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/states-connected-pairs-and-trios.webp"
   },
   {
     "id": "yearbook-guesser",
@@ -590,7 +612,8 @@ export const visualizations = [
         "label": "Custom input",
         "path": "../visualizations/showcase/yearbook-custom.html"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/yearbook-guesser.webp"
   },
   {
     "id": "name-identification-single",
@@ -608,7 +631,8 @@ export const visualizations = [
         "label": "Open game",
         "path": "../visualizations/showcase/name-guessing-game.html?mode=single"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/name-identification-single.webp"
   },
   {
     "id": "name-identification-matching",
@@ -626,7 +650,8 @@ export const visualizations = [
         "label": "Open game",
         "path": "../visualizations/showcase/name-guessing-game.html?mode=multi"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/name-identification-matching.webp"
   },
   {
     "id": "name-identification-custom",
@@ -644,7 +669,8 @@ export const visualizations = [
         "label": "Open game",
         "path": "../visualizations/showcase/name-guessing-game.html?mode=custom"
       }
-    ]
+    ],
+    "thumbnail": "../assets/thumbnails/explore/name-identification-custom.webp"
   }
 ];
 

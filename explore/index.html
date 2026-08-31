@@ -36,7 +36,7 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260831-unisex-names-over-time-1";
+    import { visualizations } from "./catalog.js?v=20260831-explore-thumbnails-1";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
@@ -55,47 +55,48 @@
 
     function makeHeaderCard(category) {
       const article = document.createElement("article");
-      article.className = "gallery-card";
+      article.className = "section-card";
       article.dataset.category = category;
-
-      // Header cards span the full gallery width and stay compact.
-      article.style.gridColumn = "1 / -1";
-      article.style.minHeight = "0";
-      article.style.padding = "16px 18px";
 
       const eyebrow = document.createElement("p");
       eyebrow.className = "eyebrow";
       eyebrow.textContent = "Section";
-      eyebrow.style.marginBottom = "5px";
 
       const title = document.createElement("h2");
       title.textContent = category;
-      title.style.margin = "0";
-      title.style.fontSize = "1.35rem";
 
       article.append(eyebrow, title);
       return article;
     }
 
     function makeCard(item) {
-      const article = document.createElement("article");
-      article.className = "gallery-card";
-      article.dataset.category = item.category;
+      const link = document.createElement("a");
+      link.className = "gallery-card gallery-card-link";
+      link.dataset.category = item.category;
+      link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
 
       const title = document.createElement("h2");
       title.textContent = item.title;
-      title.style.marginTop = "0";
 
       const description = document.createElement("p");
       description.textContent = item.description;
 
-      const link = document.createElement("a");
-      link.className = "button card-action";
-      link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
-      link.textContent = item.variants.length > 1 ? "Choose a view" : "Open visualization";
+      const thumbnailShell = document.createElement("div");
+      thumbnailShell.className = "card-thumbnail-shell";
+      thumbnailShell.setAttribute("aria-hidden", "true");
 
-      article.append(title, description, link);
-      return article;
+      const thumbnail = document.createElement("img");
+      thumbnail.className = "card-thumbnail";
+      thumbnail.src = item.thumbnail;
+      thumbnail.alt = "";
+      thumbnail.loading = "lazy";
+      thumbnail.decoding = "async";
+      thumbnail.width = 640;
+      thumbnail.height = 380;
+
+      thumbnailShell.append(thumbnail);
+      link.append(title, description, thumbnailShell);
+      return link;
     }
 
     function applyFilter(category) {
@@ -103,7 +104,7 @@
         button.classList.toggle("active", button.dataset.category === category);
       });
 
-      document.querySelectorAll(".gallery-card").forEach(card => {
+      document.querySelectorAll(".gallery-card, .section-card").forEach(card => {
         card.hidden = category !== "All" && card.dataset.category !== category;
       });
     }
