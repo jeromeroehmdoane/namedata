@@ -19,6 +19,7 @@
       background: #fff;
       color: #222;
       font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
       overflow-x: hidden;
     }
 
@@ -30,12 +31,12 @@
     .controls {
       display: grid;
       grid-template-columns:
-        minmax(240px, 0.9fr)
-        minmax(245px, 0.9fr);
+        240px
+        245px;
       gap: 16px;
-      justify-content: center;
+      justify-content: start;
       align-items: end;
-      padding: 12px 235px 9px;
+      padding: 12px 18px 9px;
       border-bottom: 1px solid #ddd;
       background: #fafafa;
     }
@@ -43,7 +44,7 @@
     label {
       display: block;
       margin-bottom: 5px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
     }
 
@@ -55,14 +56,14 @@
       border-radius: 7px;
       background: #fff;
       color: #222;
-      font: 14px Arial, Helvetica, sans-serif;
+      font: 15px Arial, Helvetica, sans-serif;
     }
 
     #status {
       min-height: 22px;
       padding: 4px 18px 0;
       color: #666;
-      font-size: 12px;
+      font-size: 13px;
     }
 
     #status.error {
@@ -86,10 +87,10 @@
 
         <select id="y_metric">
           <option value="names" selected>
-            Number of distinct names
+            Distinct names
           </option>
           <option value="births">
-            Number of births
+            Births
           </option>
         </select>
       </div>
@@ -609,7 +610,7 @@
             xanchor: "left",
             yanchor: "middle",
             font: {
-              size: 12,
+              size: 13,
               color:
                 series.color
             },
@@ -634,7 +635,7 @@
             + "</sup>",
           x: 0.5,
           xanchor: "center",
-          y: 0.96
+          y: 0.975
         },
 
         width: 1100,
@@ -644,10 +645,14 @@
         plot_bgcolor: "white",
 
         margin: {
-          l: 88,
+          l: 92,
           r: 150,
-          t: 88,
-          b: 68
+          t: 68,
+          b: 70
+        },
+
+        font: {
+          size: 15
         },
 
         hovermode:
@@ -672,6 +677,8 @@
             0,
             yMax
           ],
+          rangemode:
+            "tozero",
           ticksuffix:
             "%",
           tickformat:
