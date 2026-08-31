@@ -36,10 +36,6 @@
             <p id="category" class="eyebrow"></p>
             <h1 id="title"></h1>
             <p id="description" class="viewer-intro"></p>
-            <div class="viewer-meta">
-              <span id="dataYear" class="badge"></span>
-              <span id="largeBadge" class="badge heavy" hidden>Larger interactive</span>
-            </div>
           </div>
         </div>
 
@@ -76,9 +72,6 @@
         </article>
       </section>
 
-      <div id="heavyNotice" class="notice" hidden>
-        This interactive contains a larger embedded dataset and may take longer to open on a mobile connection.
-      </div>
     </div>
 
     <footer class="footer">
@@ -87,7 +80,7 @@
   </main>
 
   <script type="module">
-    import { getVisualization, getVariant } from "./catalog.js?v=20260827-name-guessing-game-views-1";
+    import { getVisualization, getVariant } from "./catalog.js?v=20260828-explore-reorganization-1";
 
     const params = new URLSearchParams(window.location.search);
     const item = getVisualization(params.get("viz"));
@@ -120,7 +113,6 @@
       document.getElementById("category").textContent = item.category;
       document.getElementById("title").textContent = item.title;
       document.getElementById("description").textContent = item.description;
-      document.getElementById("dataYear").textContent = `Data through ${item.dataThrough}`;
       const instructionsEl = document.getElementById("instructions");
       const methodologyEl = document.getElementById("methodology");
 
@@ -135,8 +127,6 @@
       } else {
         methodologyEl.textContent = item.methodology;
       }
-      document.getElementById("largeBadge").hidden = !item.heavy;
-      document.getElementById("heavyNotice").hidden = !item.heavy;
 
       const requestedVariant = params.get("variant");
       const selected = getVariant(item, requestedVariant);

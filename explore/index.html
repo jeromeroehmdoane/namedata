@@ -21,9 +21,9 @@
       <p class="eyebrow">Interactive collection</p>
       <h1>Explore patterns beyond a single name</h1>
       <p>
-        These visualizations examine broad trends across years, states, name structures,
-        and cultural examples. Each page includes its own interaction instructions and
-        methodology notes.
+        Browse broad patterns in U.S. baby names across time, geography, name structure,
+        culture, and groups of related names. Each visualization includes brief guidance
+        for exploring it and a plain-language explanation of what the data represent.
       </p>
     </section>
 
@@ -36,7 +36,7 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260827-name-guessing-game-views-1";
+    import { visualizations } from "./catalog.js?v=20260828-explore-reorganization-1";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
@@ -53,33 +53,38 @@
       return button;
     }
 
+    function makeHeaderCard(category) {
+      const article = document.createElement("article");
+      article.className = "gallery-card";
+      article.dataset.category = category;
+
+      // Header cards span the full gallery width and stay compact.
+      article.style.gridColumn = "1 / -1";
+      article.style.minHeight = "0";
+      article.style.padding = "16px 18px";
+
+      const eyebrow = document.createElement("p");
+      eyebrow.className = "eyebrow";
+      eyebrow.textContent = "Section";
+      eyebrow.style.marginBottom = "5px";
+
+      const title = document.createElement("h2");
+      title.textContent = category;
+      title.style.margin = "0";
+      title.style.fontSize = "1.35rem";
+
+      article.append(eyebrow, title);
+      return article;
+    }
+
     function makeCard(item) {
       const article = document.createElement("article");
       article.className = "gallery-card";
       article.dataset.category = item.category;
 
-      const topLine = document.createElement("div");
-      topLine.className = "card-topline";
-
-      const category = document.createElement("span");
-      category.className = "badge";
-      category.textContent = item.category;
-      topLine.append(category);
-
-      const year = document.createElement("span");
-      year.className = "badge";
-      year.textContent = `Data through ${item.dataThrough}`;
-      topLine.append(year);
-
-      if (item.heavy) {
-        const heavy = document.createElement("span");
-        heavy.className = "badge heavy";
-        heavy.textContent = "Larger interactive";
-        topLine.append(heavy);
-      }
-
       const title = document.createElement("h2");
       title.textContent = item.title;
+      title.style.marginTop = "0";
 
       const description = document.createElement("p");
       description.textContent = item.description;
@@ -89,7 +94,7 @@
       link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
       link.textContent = item.variants.length > 1 ? "Choose a view" : "Open visualization";
 
-      article.append(topLine, title, description, link);
+      article.append(title, description, link);
       return article;
     }
 
@@ -104,7 +109,16 @@
     }
 
     categories.forEach(category => filters.append(makeFilter(category)));
-    visualizations.forEach(item => gallery.append(makeCard(item)));
+
+    categories
+      .filter(category => category !== "All")
+      .forEach(category => {
+        gallery.append(makeHeaderCard(category));
+
+        visualizations
+          .filter(item => item.category === category)
+          .forEach(item => gallery.append(makeCard(item)));
+      });
   </script>
 </body>
 </html>
