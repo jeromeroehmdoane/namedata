@@ -305,9 +305,7 @@
     function updateLoadedStatus() {
       if (!currentEmbed) return;
       status.textContent =
-        currentEmbed.mode === "scale" && currentEmbed.scale < 0.995
-          ? "Visualization loaded · scaled to fit"
-          : "Visualization loaded";
+        "Visualization loaded";
     }
   </script>
 </body>
