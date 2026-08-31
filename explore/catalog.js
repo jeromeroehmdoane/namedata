@@ -283,8 +283,8 @@ export const visualizations = [
     "shortTitle": "Names and Gender",
     "category": "Structural Patterns",
     "description": "Explore how names are shared between male and female births, from individual names to the overall distribution.",
-    "instructions": "Use the Unisex Name Scatter Plot to compare prominent names across generations. The Distribution Histogram lets you choose a generation, births or distinct names, bin width, and linear or log scale. The Table lets you search and sort all-time name totals by sex balance.",
-    "methodology": "Sex balance is based on the share of recorded births for each name that are male or female. The histogram recalculates each name's balance within the selected generation; its bin labels use left-inclusive, right-exclusive boundaries such as [48%, 52%), with the final bin including 100%. Very small counts omitted from the source data can slightly affect totals for rare names.",
+    "instructions": "Use the Unisex Name Scatter Plot to compare prominent names across generations. The Distribution Histogram shows how names are distributed by male/female balance within a selected generation. Unisex Names Over Time follows the yearly share of eligible names or births that fall within three increasingly balanced male-share ranges; choose the y-axis measure and the minimum combined all-time births. The Table lets you search and sort all-time name totals by sex balance.",
+    "methodology": "Sex balance is based on the share of recorded births for each name that are male or female. The histogram recalculates each name's balance within the selected generation. Unisex Names Over Time first limits the universe to names meeting the selected combined all-time birth threshold, then calculates each eligible name's male share separately in each year. Its lines show the percentage of eligible distinct names or eligible births falling between 1–99%, 10–90%, and 25–75% male. Very small counts omitted from the source data can slightly affect yearly sex shares when a name is rare in a particular year.",
     "iframeHeight": 850,
     "embedMode": "scale",
     "embedWidth": 1100,
@@ -301,6 +301,14 @@ export const visualizations = [
         "id": "histogram",
         "label": "Distribution Histogram",
         "path": "../visualizations/showcase/unisex-name-distribution-histogram.html",
+        "iframeHeight": 700,
+        "embedMode": "scale",
+        "embedWidth": 1100
+      },
+      {
+        "id": "over-time",
+        "label": "Unisex Names Over Time",
+        "path": "../visualizations/showcase/unisex-names-over-time.html",
         "iframeHeight": 700,
         "embedMode": "scale",
         "embedWidth": 1100
