@@ -28,6 +28,8 @@
         <div class="breadcrumbs">
           <a href="./index.html">Explore visualizations</a>
           <span aria-hidden="true"> / </span>
+          <a id="breadcrumbSection" href="#"></a>
+          <span aria-hidden="true"> / </span>
           <span id="breadcrumbTitle"></span>
         </div>
 
@@ -80,10 +82,11 @@
   </main>
 
   <script type="module">
-    import { getVisualization, getVariant } from "./catalog.js?v=20260831-unisex-names-over-time-1";
+    import { getVisualization, getVariant } from "./catalog.js?v=20260901-category-navigation-1";
+    import { categoryHref, sectionSlug } from "./gallery.js?v=20260901-category-navigation-1";
 
     const params = new URLSearchParams(window.location.search);
-    const item = getVisualization(params.get("viz"));
+    const item = getVisualization(params.get("id") ?? params.get("viz"));
 
     const viewer = document.getElementById("viewer");
     const errorPanel = document.getElementById("errorPanel");
@@ -108,7 +111,17 @@
     stageResizeObserver.observe(stage);
 
     function initializeViewer(item) {
+      const canonicalSection = sectionSlug(item.category);
+      const canonicalUrl = new URL(window.location.href);
+      canonicalUrl.searchParams.set("section", canonicalSection);
+      canonicalUrl.searchParams.set("id", item.id);
+      canonicalUrl.searchParams.delete("viz");
+      window.history.replaceState({}, "", canonicalUrl);
+
       document.title = `${item.title} | U.S. Baby-Name Data`;
+      const breadcrumbSection = document.getElementById("breadcrumbSection");
+      breadcrumbSection.textContent = item.category;
+      breadcrumbSection.href = categoryHref(item.category);
       document.getElementById("breadcrumbTitle").textContent = item.title;
       document.getElementById("category").textContent = item.category;
       document.getElementById("title").textContent = item.title;
@@ -190,7 +203,9 @@
 
       if (updateUrl) {
         const next = new URL(window.location.href);
-        next.searchParams.set("viz", item.id);
+        next.searchParams.set("section", sectionSlug(item.category));
+        next.searchParams.set("id", item.id);
+        next.searchParams.delete("viz");
         next.searchParams.set("variant", variant.id);
         window.history.replaceState({}, "", next);
       }

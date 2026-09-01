@@ -27,7 +27,7 @@
       </p>
     </section>
 
-    <div id="filters" class="filters" aria-label="Visualization categories"></div>
+    <nav id="filters" class="filters" aria-label="Visualization sections"></nav>
     <section id="gallery" class="gallery-grid" aria-live="polite"></section>
 
     <footer class="footer">
@@ -36,175 +36,28 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260901-literal-teasers-2";
+    import { visualizations } from "./catalog.js?v=20260901-category-navigation-1";
+    import {
+      getCategories,
+      makeSectionCard,
+      makeVisualizationCard,
+      renderCategoryNavigation
+    } from "./gallery.js?v=20260901-category-navigation-1";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
-    const categories = ["All", ...new Set(visualizations.map(item => item.category))];
+    const categories = getCategories(visualizations);
 
-    function makeFilter(category) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "filter-button";
-      button.textContent = category;
-      button.dataset.category = category;
-      button.classList.toggle("active", category === "All");
-      button.addEventListener("click", () => applyFilter(category));
-      return button;
-    }
+    renderCategoryNavigation(filters, visualizations);
 
-    function makeHeaderCard(category) {
-      const article = document.createElement("article");
-      article.className = "section-card";
-      article.dataset.category = category;
-
-      const eyebrow = document.createElement("p");
-      eyebrow.className = "eyebrow";
-      eyebrow.textContent = "Section";
-
-      const title = document.createElement("h2");
-      title.textContent = category;
-
-      article.append(eyebrow, title);
-      return article;
-    }
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const thumbnailRotators = new Set();
-
-    function setupThumbnailRotation(card, frames, imageA, imageB) {
-      if (frames.length <= 1 || reduceMotion.matches) return;
-
-      let frameIndex = 0;
-      let front = imageA;
-      let back = imageB;
-      let timer = null;
-      let active = false;
-
-      const schedule = (initial = false) => {
-        clearTimeout(timer);
-        if (!active || document.hidden) return;
-        const duration = Number(frames[frameIndex]?.duration) || 5000;
-        const stagger = initial ? (card.dataset.thumbIndex % 3) * 650 : 0;
-        timer = window.setTimeout(advance, duration + stagger);
-      };
-
-      const advance = () => {
-        if (!active || document.hidden) return;
-        const nextIndex = (frameIndex + 1) % frames.length;
-        back.src = frames[nextIndex].src;
-
-        const reveal = () => {
-          back.classList.add("is-visible");
-          front.classList.remove("is-visible");
-          [front, back] = [back, front];
-          frameIndex = nextIndex;
-          schedule(false);
-        };
-
-        if (back.complete) reveal();
-        else back.addEventListener("load", reveal, { once: true });
-      };
-
-      const rotator = {
-        start() {
-          active = true;
-          schedule(true);
-        },
-        stop() {
-          active = false;
-          clearTimeout(timer);
-        },
-        resumeIfActive() {
-          if (active) schedule(false);
-        }
-      };
-
-      card._thumbnailRotator = rotator;
-      thumbnailRotators.add(rotator);
-    }
-
-    const thumbnailObserver = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        const rotator = entry.target._thumbnailRotator;
-        if (!rotator) return;
-        if (entry.isIntersecting) rotator.start();
-        else rotator.stop();
-      });
-    }, { rootMargin: "120px 0px", threshold: 0.08 });
-
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) {
-        thumbnailRotators.forEach(rotator => rotator.resumeIfActive());
-      }
-    });
-
-    function makeCard(item) {
-      const link = document.createElement("a");
-      link.className = "gallery-card gallery-card-link";
-      link.dataset.thumbIndex = String(visualizations.indexOf(item));
-      link.dataset.category = item.category;
-      link.href = `./view.html?viz=${encodeURIComponent(item.id)}`;
-
-      const title = document.createElement("h2");
-      title.textContent = item.title;
-
-      const description = document.createElement("p");
-      description.textContent = item.description;
-
-      const thumbnailShell = document.createElement("div");
-      thumbnailShell.className = "card-thumbnail-shell";
-      thumbnailShell.setAttribute("aria-hidden", "true");
-
-      const frames = (item.thumbnailFrames?.length
-        ? item.thumbnailFrames
-        : [{ src: item.thumbnail, duration: 3000 }]);
-
-      const imageA = document.createElement("img");
-      imageA.className = "card-thumbnail card-thumbnail-a is-visible";
-      imageA.src = frames[0].src;
-      imageA.alt = "";
-      imageA.loading = "lazy";
-      imageA.decoding = "async";
-      imageA.width = 900;
-      imageA.height = 540;
-
-      const imageB = document.createElement("img");
-      imageB.className = "card-thumbnail card-thumbnail-b";
-      imageB.alt = "";
-      imageB.loading = "lazy";
-      imageB.decoding = "async";
-      imageB.width = 900;
-      imageB.height = 540;
-
-      thumbnailShell.append(imageA, imageB);
-      link.append(title, description, thumbnailShell);
-
-      setupThumbnailRotation(link, frames, imageA, imageB);
-      if (link._thumbnailRotator) thumbnailObserver.observe(link);
-      return link;
-    }
-
-    function applyFilter(category) {
-      document.querySelectorAll(".filter-button").forEach(button => {
-        button.classList.toggle("active", button.dataset.category === category);
-      });
-
-      document.querySelectorAll(".gallery-card, .section-card").forEach(card => {
-        card.hidden = category !== "All" && card.dataset.category !== category;
-      });
-    }
-
-    categories.forEach(category => filters.append(makeFilter(category)));
-
-    categories
-      .filter(category => category !== "All")
-      .forEach(category => {
-        gallery.append(makeHeaderCard(category));
+    categories.forEach(category => {
+        gallery.append(makeSectionCard(category));
 
         visualizations
           .filter(item => item.category === category)
-          .forEach(item => gallery.append(makeCard(item)));
+          .forEach(item => gallery.append(
+            makeVisualizationCard(item, visualizations.indexOf(item))
+          ));
       });
   </script>
 </body>

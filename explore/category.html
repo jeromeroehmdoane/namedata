@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="A section of interactive U.S. baby-name visualizations." />
+  <title>Visualization Section | U.S. Baby-Name Data</title>
+  <link rel="stylesheet" href="./explore.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="site-header">
+      <a class="brand" href="../index.html">U.S. Baby-Name Data</a>
+      <nav class="header-nav" aria-label="Site navigation">
+        <a class="nav-link" href="../index.html">Name dashboard</a>
+        <a class="nav-link" href="./index.html" aria-current="page">Explore visualizations</a>
+      </nav>
+    </header>
+
+    <div id="errorPanel" class="error-panel" hidden>
+      <h1>Visualization section not found</h1>
+      <p>The requested section is not listed in the current catalog.</p>
+      <a class="button" href="./index.html">Return to all visualizations</a>
+    </div>
+
+    <div id="categoryPage" hidden>
+      <section class="hero category-header">
+        <div class="breadcrumbs">
+          <a href="./index.html">Explore visualizations</a>
+          <span aria-hidden="true"> / </span>
+          <span id="breadcrumbSection"></span>
+        </div>
+        <p class="eyebrow">Section</p>
+        <h1 id="sectionTitle"></h1>
+        <p id="sectionDescription"></p>
+      </section>
+
+      <nav id="filters" class="filters" aria-label="Visualization sections"></nav>
+      <section id="gallery" class="gallery-grid" aria-live="polite"></section>
+    </div>
+
+    <footer class="footer">
+      U.S. Social Security Administration baby-name data through 2025.
+    </footer>
+  </main>
+
+  <script type="module">
+    import { visualizations } from "./catalog.js?v=20260901-category-navigation-1";
+    import {
+      getCategoryBySlug,
+      makeVisualizationCard,
+      renderCategoryNavigation,
+      sectionSlug
+    } from "./gallery.js?v=20260901-category-navigation-1";
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedSection = params.get("section") ?? "";
+    const category = getCategoryBySlug(visualizations, requestedSection);
+    const categoryPage = document.getElementById("categoryPage");
+    const errorPanel = document.getElementById("errorPanel");
+
+    if (!category) {
+      errorPanel.hidden = false;
+    } else {
+      const canonicalSection = sectionSlug(category);
+      if (requestedSection !== canonicalSection) {
+        const canonicalUrl = new URL(window.location.href);
+        canonicalUrl.searchParams.set("section", canonicalSection);
+        window.history.replaceState({}, "", canonicalUrl);
+      }
+
+      document.title = `${category} | U.S. Baby-Name Data`;
+      document.getElementById("breadcrumbSection").textContent = category;
+      document.getElementById("sectionTitle").textContent = category;
+      document.getElementById("sectionDescription").textContent =
+        `Explore the interactive visualizations in the ${category} section.`;
+
+      renderCategoryNavigation(
+        document.getElementById("filters"),
+        visualizations,
+        canonicalSection
+      );
+
+      const gallery = document.getElementById("gallery");
+      visualizations
+        .filter(item => item.category === category)
+        .forEach(item => gallery.append(
+          makeVisualizationCard(item, visualizations.indexOf(item))
+        ));
+
+      categoryPage.hidden = false;
+    }
+  </script>
+</body>
+</html>
