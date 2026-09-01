@@ -36,7 +36,7 @@
   </main>
 
   <script type="module">
-    import { visualizations } from "./catalog.js?v=20260831-explore-screenshot-teasers-1";
+    import { visualizations } from "./catalog.js?v=20260901-literal-teasers-2";
 
     const gallery = document.getElementById("gallery");
     const filters = document.getElementById("filters");
@@ -158,7 +158,7 @@
 
       const frames = (item.thumbnailFrames?.length
         ? item.thumbnailFrames
-        : [{ src: item.thumbnail, duration: 5000 }]);
+        : [{ src: item.thumbnail, duration: 3000 }]);
 
       const imageA = document.createElement("img");
       imageA.className = "card-thumbnail card-thumbnail-a is-visible";
