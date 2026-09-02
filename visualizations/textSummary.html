@@ -98,6 +98,27 @@ td{
       white-space: pre-wrap;
     }
 
+    .contextLink{
+      color:#315d8a;
+      font-weight:inherit;
+      text-decoration-line:underline;
+      text-decoration-color:rgba(49,93,138,0.48);
+      text-decoration-thickness:1px;
+      text-underline-offset:2px;
+      transition:color 120ms ease, text-decoration-color 120ms ease;
+    }
+
+    .contextLink:hover{
+      color:#1f4e79;
+      text-decoration-color:currentColor;
+    }
+
+    .contextLink:focus-visible{
+      outline:2px solid rgba(49,93,138,0.35);
+      outline-offset:2px;
+      border-radius:2px;
+    }
+
     /* ---------- Overall summary stack ---------- */
     .overallStack{ display:grid; gap:12px; margin-top: 8px; }
 
@@ -351,12 +372,32 @@ function makeTextBlock(text) {
   return block;
 }
 
+function makeContextLink(text, href) {
+  const link = document.createElement("a");
+  link.className = "contextLink";
+  link.href = href;
+  link.target = "_top";
+  link.textContent = text;
+  return link;
+}
+
+function makeStatText(...parts) {
+  const p = document.createElement("p");
+  p.className = "statText";
+  p.append(...parts);
+  return p;
+}
+
 function renderTable(container, title, rows, columns, opts = {}) {
   const wrap = document.createElement("div");
 
   const heading = document.createElement("div");
-  heading.innerHTML =
-    `<div class="muted" style="margin-top:10px;"><strong>${title}</strong></div>`;
+  heading.className = "muted";
+  heading.style.marginTop = "10px";
+
+  const headingText = document.createElement("strong");
+  headingText.append(...(Array.isArray(title) ? title : [title]));
+  heading.appendChild(headingText);
   wrap.appendChild(heading);
 
   const table = document.createElement("table");
@@ -435,15 +476,15 @@ function renderOverallSummary(card, data) {
 
   const popularity = document.createElement("div");
   popularity.className = "statBlock";
-  popularity.appendChild(
-    Object.assign(document.createElement("p"), {
-      className: "statText",
-      textContent:
-        `${data.name} is the ${ordinal(data.rank_all_time)} most popular US name of all time ` +
-        `(${data.rank_pct.toFixed(0)}th percentile) with ` +
-        `${data.total_all_time.toLocaleString()} babies given the name.`
-    })
-  );
+  popularity.appendChild(makeStatText(
+    `${data.name} is the ${ordinal(data.rank_all_time)} most popular US name of `,
+    makeContextLink(
+      "all time",
+      "../explore/category.html?section=top-names-over-time"
+    ),
+    ` (${data.rank_pct.toFixed(0)}th percentile) with ` +
+      `${data.total_all_time.toLocaleString()} babies given the name.`
+  ));
   popularity.appendChild(makeMeter({
     leftLabel: "Least popular",
     rightLabel: "Most popular",
@@ -454,14 +495,15 @@ function renderOverallSummary(card, data) {
 
   const sex = document.createElement("div");
   sex.className = "statBlock";
-  sex.appendChild(
-    Object.assign(document.createElement("p"), {
-      className: "statText",
-      textContent:
-        `${data.sex_word} ${data.name}s are ${data.dominant_sex} ` +
-        `(${pct(data.dominant_prop, 1)}).`
-    })
-  );
+  sex.appendChild(makeStatText(
+    `${data.sex_word} ${data.name}s are ${data.dominant_sex} ` +
+      `(${pct(data.dominant_prop, 1)}). See `,
+    makeContextLink(
+      "Names and Gender",
+      "../explore/view.html?section=structural-patterns&id=names-and-gender"
+    ),
+    "."
+  ));
   sex.appendChild(makeMeter({
     leftLabel: "All girls",
     rightLabel: "All boys",
@@ -492,18 +534,18 @@ function renderOverallSummary(card, data) {
 
   const trend = document.createElement("div");
   trend.className = "statBlock";
-  trend.appendChild(
-    Object.assign(document.createElement("p"), {
-      className: "statText",
-      textContent:
-        `Peak frequency came in ${data.peak_year} with ` +
-        `${data.peak_freq.toLocaleString()} births.\n` +
-        `The peak 10 year window was ${data.win_start} to ${data.win_end} ` +
-        `with ${pct(data.win_prop, 1)} of all ${data.name}s born in that time.\n` +
-        `That puts its trendy/timeless percentile as ` +
-        `${data.trend_pct.toFixed(0)}% – ${data.trend_word}.`
-    })
-  );
+  trend.appendChild(makeStatText(
+    `Peak frequency came in ${data.peak_year} with ` +
+      `${data.peak_freq.toLocaleString()} births.\n` +
+      `The peak 10 year window was ${data.win_start} to ${data.win_end} ` +
+      `with ${pct(data.win_prop, 1)} of all ${data.name}s born in that time.\n` +
+      "That puts its ",
+    makeContextLink(
+      "trendy/timeless",
+      "../explore/category.html?section=trendiness"
+    ),
+    ` percentile as ${data.trend_pct.toFixed(0)}% – ${data.trend_word}.`
+  ));
   trend.appendChild(makeMeter({
     leftLabel: "Timeless",
     rightLabel: "Trendy",
@@ -514,14 +556,15 @@ function renderOverallSummary(card, data) {
 
   const scrabble = document.createElement("div");
   scrabble.className = "statBlock";
-  scrabble.appendChild(
-    Object.assign(document.createElement("p"), {
-      className: "statText",
-      textContent:
-        `The Scrabble score for ${data.name} is ${data.scrabble_score}. ` +
-        `(${data.scrabble_pct.toFixed(0)}th percentile)`
-    })
-  );
+  scrabble.appendChild(makeStatText(
+    "The ",
+    makeContextLink(
+      "Scrabble score",
+      "../explore/view.html?section=structural-patterns&id=scrabble-scores"
+    ),
+    ` for ${data.name} is ${data.scrabble_score}. ` +
+      `(${data.scrabble_pct.toFixed(0)}th percentile)`
+  ));
   scrabble.appendChild(makeMeter({
     leftLabel: "Lower",
     rightLabel: "Higher",
@@ -949,7 +992,14 @@ function renderStateRepresentation(card, name, statePacket, selectedState) {
 
   renderTable(
     card,
-    `State Over/Underrepresentation for ${name} (All Time):`,
+    [
+      "State ",
+      makeContextLink(
+        "Over/Underrepresentation",
+        "../explore/view.html?section=states-and-geography&id=over-under-representation"
+      ),
+      ` for ${name} (All Time):`
+    ],
     rows,
     ["Representation Rank","State","Frequency","Percentage"],
     {
