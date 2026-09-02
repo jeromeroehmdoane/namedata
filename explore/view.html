@@ -178,6 +178,7 @@
       currentEmbed = {
         mode: embedMode,
         width: embedWidth,
+        contentWidth: embedWidth,
         baseHeight,
         contentHeight: baseHeight,
         scale: 1
@@ -196,7 +197,7 @@
 
       frame.onload = () => {
         attachChildObserver();
-        measureChildHeight();
+        measureChildSize();
         resizeVisualization();
         updateLoadedStatus();
       };
@@ -230,22 +231,35 @@
       resizeVisualization();
     }
 
-    function measureChildHeight() {
+    function measureChildSize() {
       if (!currentEmbed) return;
 
       try {
         const doc = frame.contentDocument;
         if (!doc) return;
 
-        const measured = Math.max(
+        const measuredHeight = Math.max(
           doc.documentElement?.scrollHeight || 0,
           doc.body?.scrollHeight || 0,
           doc.documentElement?.offsetHeight || 0,
           doc.body?.offsetHeight || 0
         );
 
-        if (Number.isFinite(measured) && measured > 0) {
-          currentEmbed.contentHeight = Math.max(currentEmbed.baseHeight, measured);
+        if (Number.isFinite(measuredHeight) && measuredHeight > 0) {
+          currentEmbed.contentHeight = Math.max(currentEmbed.baseHeight, measuredHeight);
+        }
+
+        if (currentEmbed.mode === "scale") {
+          const measuredWidth = Math.max(
+            doc.documentElement?.scrollWidth || 0,
+            doc.body?.scrollWidth || 0,
+            doc.documentElement?.offsetWidth || 0,
+            doc.body?.offsetWidth || 0
+          );
+
+          if (Number.isFinite(measuredWidth) && measuredWidth > 0) {
+            currentEmbed.contentWidth = Math.max(currentEmbed.width || 0, measuredWidth);
+          }
         }
       } catch (error) {
         // The configured visualizations are same-origin. If that ever changes,
@@ -260,7 +274,7 @@
         if (!doc || !childWindow) return;
 
         childResizeObserver = new ResizeObserver(() => {
-          measureChildHeight();
+          measureChildSize();
           resizeVisualization();
         });
 
@@ -268,7 +282,7 @@
         if (doc.body) childResizeObserver.observe(doc.body);
 
         childResizeHandler = () => {
-          measureChildHeight();
+          measureChildSize();
           resizeVisualization();
         };
         childWindow.addEventListener("resize", childResizeHandler, { passive: true });
@@ -299,7 +313,7 @@
       const sourceHeight = currentEmbed.contentHeight || currentEmbed.baseHeight;
 
       if (currentEmbed.mode === "scale") {
-        const sourceWidth = currentEmbed.width;
+        const sourceWidth = currentEmbed.contentWidth || currentEmbed.width;
         const scale = Math.min(1, stage.clientWidth / sourceWidth);
         currentEmbed.scale = scale;
 
