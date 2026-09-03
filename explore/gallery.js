@@ -147,6 +147,18 @@ export function makeVisualizationCard(item, thumbnailIndex) {
   thumbnailShell.className = "card-thumbnail-shell";
   thumbnailShell.setAttribute("aria-hidden", "true");
 
+  if (item.liveThumbnail) {
+    const preview = document.createElement("iframe");
+    preview.className = "card-thumbnail-live";
+    preview.src = item.liveThumbnail;
+    preview.title = "";
+    preview.loading = "lazy";
+    preview.tabIndex = -1;
+    thumbnailShell.appendChild(preview);
+    link.append(title, description, thumbnailShell);
+    return link;
+  }
+
   const frames = (item.thumbnailFrames?.length
     ? item.thumbnailFrames
     : [{ src: item.thumbnail, duration: 3000 }]);

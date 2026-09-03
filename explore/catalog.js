@@ -932,6 +932,25 @@ export const visualizations = [
     ]
   },
   {
+    "id": "name-identification-leaderboard",
+    "title": "Leaderboard",
+    "shortTitle": "Leaderboard",
+    "category": "Name Identification Game",
+    "description": "See the ten highest scores for Single Curve and Matching, with ties decided by completion time.",
+    "instructions": "The leaderboard updates when a qualifying player finishes a prepared Single Curve or Matching game and chooses to submit a short display name.",
+    "methodology": "Each player can hold one place per display name in each mode. Rankings use total correct answers first and elapsed time second. Single Curve is scored out of 5 and Matching is scored out of 15.",
+    "iframeHeight": 620,
+    "embedMode": "fluid",
+    "variants": [
+      {
+        "id": "default",
+        "label": "Open leaderboard",
+        "path": "../visualizations/showcase/name-identification-leaderboard.html"
+      }
+    ],
+    "liveThumbnail": "../visualizations/showcase/name-identification-leaderboard.html?preview=1"
+  },
+  {
     "id": "name-identification-custom",
     "title": "Custom",
     "shortTitle": "Custom",
