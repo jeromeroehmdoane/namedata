@@ -197,6 +197,10 @@ export const visualizations = [
       {
         "src": "../assets/thumbnails/explore/leading-and-lagging-states.webp",
         "duration": 3000
+      },
+      {
+        "src": "../assets/thumbnails/explore/leading-and-lagging-states--individual.webp",
+        "duration": 3000
       }
     ]
   },
