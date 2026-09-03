@@ -99,8 +99,8 @@ export const visualizations = [
     "shortTitle": "Top Name by State and Year",
     "category": "States and Geography",
     "description": "See which baby name ranked first in each state and how those leaders changed over time.",
-    "instructions": "Choose Male or Female above the visualization, then use the year control in the map. Hover over a state for its leading name and local details.",
-    "methodology": "For each state, year, and selected sex, the displayed name is the one with the highest recorded birth count in the Social Security state data.",
+    "instructions": "Choose Male, Female, or Graph Coloring Problem above the visualization. In the map views, use the year control and hover over a state for its leading name and local details. In the graph view, hover over a name for its all-time popularity, state-year wins, degree, and strongest collisions; drag or scroll to explore the network.",
+    "methodology": "For each state, year, and selected sex, the displayed name is the one with the highest recorded birth count in the Social Security state data. In the graph view, two names are connected when both rank first in different states during the same year; edge weights count those state-pair collisions across years. Node colors match the maps and avoid same-color collisions between connected names.",
     "iframeHeight": 720,
     "embedMode": "scale",
     "embedWidth": 950,
@@ -114,6 +114,14 @@ export const visualizations = [
         "id": "female",
         "label": "Female",
         "path": "../visualizations/showcase/top-name-by-state/female.html"
+      },
+      {
+        "id": "graph-coloring",
+        "label": "Graph Coloring Problem",
+        "path": "../visualizations/showcase/top-name-by-state/graph-coloring.html",
+        "iframeHeight": 1585,
+        "embedMode": "scale",
+        "embedWidth": 1100
       }
     ],
     "thumbnail": "../assets/thumbnails/explore/top-name-by-state-and-year--y1910.webp",
