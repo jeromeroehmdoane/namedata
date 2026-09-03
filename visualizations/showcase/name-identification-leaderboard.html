@@ -76,11 +76,30 @@
       background: var(--panel);
     }
 
+    .board-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px 4px;
+    }
+
     .board h2 {
       margin: 0;
-      padding: 12px 14px 4px;
       font-size: 19px;
     }
+
+    .play-link {
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .play-link:hover { color: #17457c; }
 
     .board-note {
       margin: 0;
@@ -164,7 +183,15 @@
 
     <div class="boards">
       <section class="board" aria-labelledby="singleTitle">
-        <h2 id="singleTitle">Single Curve</h2>
+        <div class="board-header">
+          <h2 id="singleTitle">Single Curve</h2>
+          <a
+            class="play-link"
+            href="../../explore/view.html?section=name-identification-game&amp;id=name-identification-single"
+            target="_top"
+            aria-label="Play Single Curve"
+          >Play →</a>
+        </div>
         <p class="board-note">Five names per game</p>
         <table>
           <thead>
@@ -175,7 +202,15 @@
       </section>
 
       <section class="board" aria-labelledby="multiTitle">
-        <h2 id="multiTitle">Matching</h2>
+        <div class="board-header">
+          <h2 id="multiTitle">Matching</h2>
+          <a
+            class="play-link"
+            href="../../explore/view.html?section=name-identification-game&amp;id=name-identification-matching"
+            target="_top"
+            aria-label="Play Matching"
+          >Play →</a>
+        </div>
         <p class="board-note">Fifteen matches per game</p>
         <table>
           <thead>
