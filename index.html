@@ -409,6 +409,7 @@
 
   <script type="module">
     import NameData from "./assets/js/name-data-loader.js";
+    import { fetchServiceJson } from "./assets/js/site-services.js";
 
     const FRAME_IDS = [
       "frameSummary",
@@ -616,6 +617,17 @@
       }
     }
 
+    async function recordDashboardInput(payload){
+      await fetchServiceJson("dashboard-inputs", {
+        method: "POST",
+        body: JSON.stringify({
+          name: payload.name,
+          state: payload.state || null,
+          year: payload.year === "All" ? null : Number(payload.year)
+        })
+      });
+    }
+
     function generate(){
       const payload = normalizedInputs();
       const validationError = validatePayload(payload);
@@ -631,6 +643,13 @@
 
       postToAllFrames(currentPayload);
       resizeFramesAggressively();
+
+      // Record only valid, visitor-initiated Generate/Enter submissions.
+      // Logging is intentionally non-blocking so the dashboard remains usable
+      // if the optional service is temporarily unavailable.
+      recordDashboardInput(currentPayload).catch(error => {
+        console.warn("Dashboard input could not be recorded.", error);
+      });
     }
 
     async function loadYearRange(){
