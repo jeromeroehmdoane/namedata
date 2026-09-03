@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Name Guessing Game</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body style="margin:10px 14px;background:white;">
 
@@ -349,6 +350,61 @@
       line-height: 1.35;
     }
 
+    #nameCurveGameWeb .ncg-leaderboard-result {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #d6dbe3;
+      border-radius: 12px;
+      background: #f8fafc;
+      line-height: 1.4;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-result.visible {
+      display: block;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-result h3 {
+      margin: 0 0 5px;
+      font-size: 18px;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-form {
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-form label {
+      display: grid;
+      gap: 4px;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-form input {
+      width: 110px;
+      text-transform: uppercase;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-link {
+      color: #245b9e;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    #nameCurveGameWeb .ncg-leaderboard-message {
+      min-height: 20px;
+      margin-top: 7px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    #nameCurveGameWeb .ncg-turnstile {
+      height: 0;
+      overflow: hidden;
+    }
+
     @media (max-width: 800px) {
       #nameCurveGameWeb .ncg-choice-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -442,9 +498,15 @@
 
   <div id="ncgAnswerArea" class="ncg-answer-area"></div>
   <div id="ncgFeedback" class="ncg-feedback"></div>
+  <div id="ncgLeaderboardResult" class="ncg-leaderboard-result" aria-live="polite"></div>
+  <div id="ncgTurnstile" class="ncg-turnstile" aria-hidden="true"></div>
 
   <script type="module">
     import NameData from "../../assets/js/name-data-loader.js";
+    import {
+      SITE_SERVICES,
+      fetchServiceJson
+    } from "../../assets/js/site-services.js";
 
     (async function() {
       const DISPLAY_STATES_BOOTSTRAP = [
@@ -700,6 +762,8 @@
       const roundStatus = root.querySelector("#ncgRoundStatus");
       const answerArea = root.querySelector("#ncgAnswerArea");
       const feedback = root.querySelector("#ncgFeedback");
+      const leaderboardResult = root.querySelector("#ncgLeaderboardResult");
+      const turnstileContainer = root.querySelector("#ncgTurnstile");
 
       const YEARS = PAYLOAD.years;
       const STATE_MAP = PAYLOAD.stateMap;
@@ -991,7 +1055,11 @@
           metric: "frequency",
           scale: "linear"
         },
-        lastNonRankScale: "linear"
+        lastNonRankScale: "linear",
+        gameStartedAt: null,
+        gameFinishedAt: null,
+        leaderboardHandled: false,
+        gameSerial: 0
       };
 
       function cleanNameInput(s) {
@@ -3317,6 +3385,289 @@
         feedback.innerHTML = "";
       }
 
+      const LEADERBOARD_HREF =
+        "../../explore/view.html?section=name-identification-game&id=name-identification-leaderboard";
+
+      let turnstileWidgetId = null;
+      let pendingTurnstile = null;
+
+      function leaderboardLink(label = "View the leaderboard") {
+        const link = document.createElement("a");
+        link.className = "ncg-leaderboard-link";
+        link.href = LEADERBOARD_HREF;
+        link.target = "_top";
+        link.textContent = label;
+        return link;
+      }
+
+      function clearLeaderboardResult() {
+        leaderboardResult.className = "ncg-leaderboard-result";
+        leaderboardResult.replaceChildren();
+      }
+
+      function formatElapsed(elapsedMs) {
+        const totalTenths = Math.max(0, Math.round(Number(elapsedMs) / 100));
+        const minutes = Math.floor(totalTenths / 600);
+        const seconds = Math.floor((totalTenths % 600) / 10);
+        const tenths = totalTenths % 10;
+        return minutes > 0
+          ? `${minutes}:${String(seconds).padStart(2, "0")}.${tenths}`
+          : `${seconds}.${tenths} seconds`;
+      }
+
+      function gameScore() {
+        if (state.mode === "single") {
+          return state.rounds.reduce(
+            (total, round) => total + (round.selected === round.answer ? 1 : 0),
+            0
+          );
+        }
+
+        return state.rounds.reduce((total, round) => {
+          return total + round.curveOrder.reduce((roundTotal, idx, pos) => {
+            return roundTotal + (round.assignments[String(pos)] === idx ? 1 : 0);
+          }, 0);
+        }, 0);
+      }
+
+      function gameTotal() {
+        return state.mode === "single" ? 5 : 15;
+      }
+
+      function markGameCompleted() {
+        if (
+          state.mode !== "custom" &&
+          state.roundIndex === state.rounds.length - 1 &&
+          currentRound()?.answered &&
+          state.gameFinishedAt === null
+        ) {
+          state.gameFinishedAt = performance.now();
+        }
+      }
+
+      async function waitForTurnstile() {
+        const deadline = Date.now() + 10000;
+
+        while (!window.turnstile) {
+          if (Date.now() >= deadline) {
+            throw new Error("The verification service did not load. Please try again.");
+          }
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        return window.turnstile;
+      }
+
+      async function getTurnstileToken() {
+        const turnstile = await waitForTurnstile();
+        const isNewWidget = turnstileWidgetId === null;
+
+        if (isNewWidget) {
+          turnstileWidgetId = turnstile.render(turnstileContainer, {
+            sitekey: SITE_SERVICES.turnstileSiteKey,
+            execution: "execute",
+            appearance: "interaction-only",
+            action: "leaderboard",
+            callback(token) {
+              if (!pendingTurnstile) return;
+              const {resolve, timer} = pendingTurnstile;
+              pendingTurnstile = null;
+              clearTimeout(timer);
+              resolve(token);
+            },
+            "error-callback"() {
+              if (!pendingTurnstile) return;
+              const {reject, timer} = pendingTurnstile;
+              pendingTurnstile = null;
+              clearTimeout(timer);
+              reject(new Error("Verification failed. Please try again."));
+            },
+            "expired-callback"() {
+              if (!pendingTurnstile) return;
+              const {reject, timer} = pendingTurnstile;
+              pendingTurnstile = null;
+              clearTimeout(timer);
+              reject(new Error("Verification expired. Please try again."));
+            }
+          });
+        }
+
+        if (pendingTurnstile) {
+          throw new Error("Verification is already in progress.");
+        }
+
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            if (!pendingTurnstile) return;
+            pendingTurnstile = null;
+            reject(new Error("Verification timed out. Please try again."));
+          }, 15000);
+
+          pendingTurnstile = {resolve, reject, timer};
+          if (!isNewWidget) {
+            turnstile.reset(turnstileWidgetId);
+          }
+          turnstile.execute(turnstileWidgetId);
+        });
+      }
+
+      function showLeaderboardOutcome({qualifies, score, total, elapsedMs}) {
+        leaderboardResult.className = "ncg-leaderboard-result visible";
+        leaderboardResult.replaceChildren();
+
+        const heading = document.createElement("h3");
+        heading.textContent = qualifies ? "You made the top 10!" : "Game complete";
+
+        const result = document.createElement("div");
+        result.textContent =
+          `Final score: ${score}/${total} in ${formatElapsed(elapsedMs)}.`;
+
+        leaderboardResult.append(heading, result);
+
+        if (!qualifies) {
+          const followup = document.createElement("div");
+          followup.style.marginTop = "7px";
+          followup.append(leaderboardLink());
+          leaderboardResult.append(followup);
+          return;
+        }
+
+        const prompt = document.createElement("div");
+        prompt.textContent = "Enter 1–5 letters or numbers to add your score.";
+
+        const form = document.createElement("form");
+        form.className = "ncg-leaderboard-form";
+
+        const label = document.createElement("label");
+        label.textContent = "Leaderboard name";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 5;
+        input.pattern = "[A-Za-z0-9]{1,5}";
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.required = true;
+        input.setAttribute("aria-label", "Leaderboard name");
+        input.addEventListener("input", () => {
+          input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        });
+
+        const submit = document.createElement("button");
+        submit.type = "submit";
+        submit.textContent = "Add my score";
+
+        const message = document.createElement("div");
+        message.className = "ncg-leaderboard-message";
+        message.setAttribute("aria-live", "polite");
+
+        label.appendChild(input);
+        form.append(label, submit);
+        leaderboardResult.append(prompt, form, message);
+
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          const displayName = input.value.trim().toUpperCase();
+
+          if (!/^[A-Z0-9]{1,5}$/.test(displayName)) {
+            message.textContent = "Use 1–5 letters or numbers.";
+            input.focus();
+            return;
+          }
+
+          input.disabled = true;
+          submit.disabled = true;
+          message.textContent = "Verifying and saving…";
+
+          try {
+            const turnstileToken = await getTurnstileToken();
+            const saved = await fetchServiceJson("leaderboard", {
+              method: "POST",
+              body: JSON.stringify({
+                mode: state.mode,
+                displayName,
+                score,
+                elapsedMs,
+                turnstileToken
+              })
+            });
+
+            form.remove();
+            prompt.remove();
+            message.textContent = saved.accepted
+              ? `${displayName} is now #${saved.rank} on the ${state.mode === "single" ? "Single Curve" : "Matching"} leaderboard. `
+              : "The leaderboard changed before this score was saved. ";
+            message.append(leaderboardLink("See the leaderboard"));
+          } catch (error) {
+            input.disabled = false;
+            submit.disabled = false;
+            message.textContent = error?.message || "The score could not be saved. Please try again.";
+          }
+        });
+
+        input.focus();
+      }
+
+      async function finishGameIfComplete() {
+        if (
+          state.mode === "custom" ||
+          state.leaderboardHandled ||
+          state.gameStartedAt === null ||
+          state.gameFinishedAt === null
+        ) {
+          return;
+        }
+
+        state.leaderboardHandled = true;
+        const gameSerial = state.gameSerial;
+        const score = gameScore();
+        const total = gameTotal();
+        const elapsedMs = Math.max(
+          0,
+          Math.round(state.gameFinishedAt - state.gameStartedAt)
+        );
+
+        leaderboardResult.className = "ncg-leaderboard-result visible";
+        leaderboardResult.innerHTML =
+          `<h3>Game complete</h3><div>Final score: ${score}/${total} in ${formatElapsed(elapsedMs)}.</div>` +
+          '<div class="ncg-leaderboard-message">Checking the leaderboard…</div>';
+
+        try {
+          const result = await fetchServiceJson(
+            `leaderboard/qualify?mode=${encodeURIComponent(state.mode)}` +
+            `&score=${encodeURIComponent(score)}` +
+            `&elapsedMs=${encodeURIComponent(elapsedMs)}`,
+            {cache: "no-store"}
+          );
+
+          if (gameSerial !== state.gameSerial) return;
+
+          showLeaderboardOutcome({
+            qualifies: Boolean(result.qualifies),
+            score,
+            total,
+            elapsedMs
+          });
+        } catch (error) {
+          if (gameSerial !== state.gameSerial) return;
+
+          leaderboardResult.className = "ncg-leaderboard-result visible";
+          leaderboardResult.replaceChildren();
+
+          const heading = document.createElement("h3");
+          heading.textContent = "Game complete";
+          const result = document.createElement("div");
+          result.textContent =
+            `Final score: ${score}/${total} in ${formatElapsed(elapsedMs)}.`;
+          const unavailable = document.createElement("div");
+          unavailable.className = "ncg-leaderboard-message";
+          unavailable.textContent = "The leaderboard is temporarily unavailable. ";
+          unavailable.append(leaderboardLink());
+
+          leaderboardResult.append(heading, result, unavailable);
+        }
+      }
+
       function renderRoundStatus() {
         const round = currentRound();
 
@@ -3426,6 +3777,8 @@
             round.answered =
               true;
 
+            markGameCompleted();
+
             state.hover =
               null;
 
@@ -3447,6 +3800,7 @@
             }
 
             render();
+            void finishGameIfComplete();
           });
 
           grid.appendChild(btn);
@@ -3509,7 +3863,9 @@
             }
 
             round.answered = true;
+            markGameCompleted();
             render();
+            void finishGameIfComplete();
           });
 
           header.appendChild(submit);
@@ -3833,6 +4189,11 @@
           FIXED_MODE;
 
         state.roundIndex = 0;
+        state.gameSerial += 1;
+        state.gameStartedAt = null;
+        state.gameFinishedAt = null;
+        state.leaderboardHandled = false;
+        clearLeaderboardResult();
 
         resetInspectionDefaults();
 
@@ -3850,6 +4211,7 @@
         try {
           await ensureRoundNational(currentRound());
           render();
+          state.gameStartedAt = performance.now();
         } catch (error) {
           console.error(error);
           state.rounds = [];

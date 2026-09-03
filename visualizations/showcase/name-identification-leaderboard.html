@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Name Identification Leaderboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --line: #dbe1e8;
+      --panel: #f8fafc;
+      --accent: #245b9e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #fff;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .leaderboard-app {
+      width: min(100%, 1040px);
+      margin: 0 auto;
+    }
+
+    .intro {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 5px;
+      font-size: 24px;
+    }
+
+    .intro p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    button {
+      flex: 0 0 auto;
+      border: 1px solid #aeb7c2;
+      border-radius: 8px;
+      padding: 7px 11px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) { background: #f1f5f9; }
+    button:disabled { cursor: wait; opacity: .65; }
+
+    .boards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .board {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+
+    .board h2 {
+      margin: 0;
+      padding: 12px 14px 4px;
+      font-size: 19px;
+    }
+
+    .board-note {
+      margin: 0;
+      padding: 0 14px 11px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-top: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    th:first-child,
+    td:first-child {
+      width: 48px;
+      text-align: center;
+    }
+
+    th:nth-child(3),
+    td:nth-child(3) {
+      width: 74px;
+      text-align: right;
+    }
+
+    th:last-child,
+    td:last-child {
+      width: 92px;
+      text-align: right;
+    }
+
+    td:nth-child(2) { font-weight: 700; }
+    tbody tr:first-child td { color: #7a5711; }
+
+    .empty td,
+    .status {
+      color: var(--muted);
+      font-weight: 400 !important;
+    }
+
+    .status {
+      min-height: 20px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    @media (max-width: 680px) {
+      body { padding: 10px; }
+      .intro { display: block; }
+      .intro button { margin-top: 10px; }
+      .boards { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="leaderboard-app">
+    <div class="intro">
+      <div>
+        <h1>Name Identification Leaderboard</h1>
+        <p>Highest score ranks first; ties go to the faster completed game.</p>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+
+    <div class="boards">
+      <section class="board" aria-labelledby="singleTitle">
+        <h2 id="singleTitle">Single Curve</h2>
+        <p class="board-note">Five names per game</p>
+        <table>
+          <thead>
+            <tr><th>Rank</th><th>Name</th><th>Score</th><th>Time</th></tr>
+          </thead>
+          <tbody id="singleRows"></tbody>
+        </table>
+      </section>
+
+      <section class="board" aria-labelledby="multiTitle">
+        <h2 id="multiTitle">Matching</h2>
+        <p class="board-note">Fifteen matches per game</p>
+        <table>
+          <thead>
+            <tr><th>Rank</th><th>Name</th><th>Score</th><th>Time</th></tr>
+          </thead>
+          <tbody id="multiRows"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+  </main>
+
+  <script type="module">
+    import { fetchServiceJson } from "../../assets/js/site-services.js";
+
+    const refreshButton = document.getElementById("refresh");
+    const status = document.getElementById("status");
+
+    function formatElapsed(elapsedMs) {
+      const totalTenths = Math.max(0, Math.round(Number(elapsedMs) / 100));
+      const minutes = Math.floor(totalTenths / 600);
+      const seconds = Math.floor((totalTenths % 600) / 10);
+      const tenths = totalTenths % 10;
+      return minutes > 0
+        ? `${minutes}:${String(seconds).padStart(2, "0")}.${tenths}`
+        : `${seconds}.${tenths}s`;
+    }
+
+    function renderRows(tbody, rows, total) {
+      tbody.replaceChildren();
+
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        tr.className = "empty";
+        const td = document.createElement("td");
+        td.colSpan = 4;
+        td.textContent = "No scores yet — the first top 10 is wide open.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      rows.forEach((row, index) => {
+        const tr = document.createElement("tr");
+        const values = [
+          index + 1,
+          row.displayName,
+          `${row.score}/${total}`,
+          formatElapsed(row.elapsedMs)
+        ];
+
+        values.forEach(value => {
+          const td = document.createElement("td");
+          td.textContent = String(value);
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadLeaderboard() {
+      refreshButton.disabled = true;
+      status.textContent = "Loading leaderboard…";
+
+      try {
+        const data = await fetchServiceJson("leaderboard", {cache: "no-store"});
+        renderRows(document.getElementById("singleRows"), data.single || [], 5);
+        renderRows(document.getElementById("multiRows"), data.multi || [], 15);
+        status.textContent = data.updatedAt
+          ? `Updated ${new Date(data.updatedAt).toLocaleString()}`
+          : "";
+      } catch (error) {
+        renderRows(document.getElementById("singleRows"), [], 5);
+        renderRows(document.getElementById("multiRows"), [], 15);
+        status.textContent =
+          error?.message || "The leaderboard is temporarily unavailable.";
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener("click", loadLeaderboard);
+    loadLeaderboard();
+  </script>
+</body>
+</html>
