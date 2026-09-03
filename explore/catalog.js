@@ -173,7 +173,7 @@ export const visualizations = [
     "category": "States and Geography",
     "description": "Explore which states tend to experience baby-name trends earlier or later than the national pattern.",
     "instructions": "In Full Map, hover over the map to compare states. Positive values indicate that naming trends tend to appear earlier in the state; negative values indicate that they tend to appear later. In Individual Names and States, enter a name and choose a state to compare its state and national popularity curves.",
-    "methodology": "The overview compares the timing of many state-level name trends with their national patterns. State results summarize whether local popularity curves tend to lead or lag the corresponding national curves. See the Individual view for examples.",
+    "methodology": "The overview compares the timing of many state-level name trends with their national patterns. State results summarize whether local popularity curves tend to lead or lag the corresponding national curves. See the Individual view for examples. Kayden in UT and Deloris in SC are nice, illustrative examples.",
     "iframeHeight": 730,
     "embedMode": "scale",
     "embedWidth": 1000,
