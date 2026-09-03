@@ -172,7 +172,7 @@ export const visualizations = [
     "shortTitle": "Leading and Lagging States",
     "category": "States and Geography",
     "description": "Explore which states tend to experience baby-name trends earlier or later than the national pattern.",
-    "instructions": "Hover over the map to compare states. Positive values indicate that naming trends tend to appear earlier in the state; negative values indicate that they tend to appear later.",
+    "instructions": "In Full Map, hover over the map to compare states. Positive values indicate that naming trends tend to appear earlier in the state; negative values indicate that they tend to appear later. In Individual Names and States, enter a name and choose a state to compare its state and national popularity curves.",
     "methodology": "The overview compares the timing of many state-level name trends with their national patterns. State results summarize whether local popularity curves tend to lead or lag the corresponding national curves. See the Individual view for examples.",
     "iframeHeight": 730,
     "embedMode": "scale",
@@ -180,8 +180,16 @@ export const visualizations = [
     "variants": [
       {
         "id": "default",
-        "label": "Open visualization",
+        "label": "Full Map",
         "path": "../visualizations/showcase/state-lead-lag-map.html"
+      },
+      {
+        "id": "individual",
+        "label": "Individual Names and States",
+        "path": "../visualizations/showcase/leading-lagging-explorer.html",
+        "iframeHeight": 820,
+        "embedMode": "scale",
+        "embedWidth": 1100
       }
     ],
     "thumbnail": "../assets/thumbnails/explore/leading-and-lagging-states.webp",
