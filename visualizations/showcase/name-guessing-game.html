@@ -1699,6 +1699,53 @@
         return ticks;
       }
 
+      function buildYearTicks(box) {
+        const candidates = [
+          YEARS[0],
+          1900,
+          1920,
+          1940,
+          1960,
+          1980,
+          2000,
+          2020
+        ].filter((value, index, values) => (
+          values.indexOf(value) === index &&
+          value >= YEARS[0] &&
+          value <= YEARS[YEARS.length - 1]
+        ));
+
+        if (candidates.length <= 2) return candidates;
+
+        // Preserve every established desktop tick. At narrower rendered widths,
+        // keep the first and last ticks and remove only labels that would
+        // collide. Measuring the actual canvas font makes this respond to the
+        // available plot width instead of relying on a hard-coded device width.
+        const labelWidth = Math.max(
+          ...candidates.map(year => ctx.measureText(String(year)).width)
+        );
+        const minimumGap = labelWidth + 14;
+        const selected = [candidates[0]];
+        const lastCandidate = candidates[candidates.length - 1];
+        const lastX = xFromYear(lastCandidate, box);
+
+        for (let index = 1; index < candidates.length - 1; index += 1) {
+          const candidate = candidates[index];
+          const candidateX = xFromYear(candidate, box);
+          const previousX = xFromYear(selected[selected.length - 1], box);
+
+          if (
+            candidateX - previousX >= minimumGap &&
+            lastX - candidateX >= minimumGap
+          ) {
+            selected.push(candidate);
+          }
+        }
+
+        selected.push(lastCandidate);
+        return selected;
+      }
+
       function drawAxes(box, range) {
         ctx.save();
 
@@ -1731,26 +1778,12 @@
           ctx.fillText(formatMetricValue(rawTick), box.left - 12, y);
         });
 
-        const yearTicks = [
-          YEARS[0],
-          1900,
-          1920,
-          1940,
-          1960,
-          1980,
-          2000,
-          2020,
-          
-        ].filter((v, i, arr) => (
-          arr.indexOf(v) === i &&
-          v >= YEARS[0] &&
-          v <= YEARS[YEARS.length - 1]
-        ));
-
         ctx.fillStyle = "rgba(0,0,0,0.76)";
         ctx.font = "22px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
+
+        const yearTicks = buildYearTicks(box);
 
         yearTicks.forEach(yr => {
           const x = xFromYear(yr, box);
