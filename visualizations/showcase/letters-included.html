@@ -285,18 +285,29 @@
       }
 
       const normalized = raw.map(row => {
-        const values = row.filter(Number.isFinite);
+        const values = row
+          .slice(2)
+          .filter(Number.isFinite);
         const minimum = Math.min(...values);
         const maximum = Math.max(...values);
         const span = maximum - minimum;
 
-        return row.map(value => {
-          if (!Number.isFinite(value)) {
+        return row.map((value, columnIndex) => {
+          if (
+            columnIndex < 2
+            || !Number.isFinite(value)
+          ) {
             return null;
           }
           return span > 0 ? (value - minimum) / span : 0.5;
         });
       });
+
+      const hoverTemplate =
+        "<b>%{customdata[1]} • %{customdata[0]} • %{customdata[2]}</b>" +
+        "<br>%{customdata[3]} of %{customdata[0]} %{customdata[2]} births" +
+        "<br><br><b>Top names</b><br>%{customdata[4]}" +
+        "<extra></extra>";
 
       const trace = {
         type: "heatmap",
@@ -308,12 +319,10 @@
         xaxis,
         yaxis,
         hoverongaps: false,
-        hovertemplate:
-          "<b>%{customdata[1]} • %{customdata[0]} • %{customdata[2]}</b>" +
-          "<br>%{customdata[3]} of %{customdata[0]} %{customdata[2]} births" +
-          "<br><br><b>Top names</b><br>%{customdata[4]}" +
-          "<extra></extra>"
+        hovertemplate: hoverTemplate
       };
+
+      const traces = [trace];
 
       if (mode === "universal") {
         trace.coloraxis = "coloraxis";
@@ -323,9 +332,33 @@
         trace.zmin = 0;
         trace.zmax = 1;
         trace.showscale = false;
+
+        traces.unshift({
+          type: "heatmap",
+          x: X_VALUES,
+          y: LETTERS,
+          z: raw.map(() =>
+            X_VALUES.map((_, columnIndex) =>
+              columnIndex === 0 ? 1 : null
+            )
+          ),
+          customdata,
+          colorscale: [
+            [0, "#d7e0e8"],
+            [1, "#d7e0e8"]
+          ],
+          zauto: false,
+          zmin: 0,
+          zmax: 1,
+          showscale: false,
+          xaxis,
+          yaxis,
+          hoverongaps: false,
+          hovertemplate: hoverTemplate
+        });
       }
 
-      return { trace, raw, normalized };
+      return { traces, raw, normalized };
     }
 
     function extremeAnnotations(panel, xref, yref) {
@@ -338,7 +371,10 @@
       panel.raw.forEach((row, rowIndex) => {
         const candidates = row
           .map((value, columnIndex) => ({ value, columnIndex }))
-          .filter(item => Number.isFinite(item.value));
+          .filter(item =>
+            item.columnIndex >= 2
+            && Number.isFinite(item.value)
+          );
 
         const low = candidates.reduce(
           (best, item) => item.value < best.value ? item : best
@@ -360,6 +396,18 @@
             yanchor: "middle"
           });
         };
+
+        annotations.push({
+          x: X_VALUES[0],
+          y: LETTERS[rowIndex],
+          xref,
+          yref,
+          text: `<b>${formatCellPercent(row[0])}</b>`,
+          showarrow: false,
+          font: { size: 9, color: "#243647" },
+          xanchor: "center",
+          yanchor: "middle"
+        });
 
         addLabel(low, "#ffffff");
 
@@ -481,7 +529,7 @@
 
       await Plotly.newPlot(
         plotEl,
-        [male.trace, female.trace],
+        [...male.traces, ...female.traces],
         layout,
         {
           scrollZoom: false,
@@ -508,7 +556,7 @@
       letterButton.setAttribute("aria-pressed", String(!isUniversal));
       modeHelp.textContent = isUniversal
         ? "One scale across every cell, making common and uncommon letters directly comparable."
-        : "Each letter uses its own range; its lowest and highest cells are labeled with their actual percentages.";
+        : "The neutral All column shows each all-time percentage; decade colors are normalized within each letter, with the low and high decades labeled.";
 
       render().catch(error => {
         console.error(error);
