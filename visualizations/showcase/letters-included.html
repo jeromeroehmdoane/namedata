@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1150, initial-scale=1" />
+  <title>Letters Included in Names</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #222;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      width: 1150px;
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: 1150px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 54px;
+      padding: 9px 18px;
+      border-bottom: 1px solid #ddd;
+      background: #fafafa;
+    }
+
+    .control-label {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .toggle {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid #b8b8b8;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .toggle button {
+      min-height: 32px;
+      padding: 6px 13px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #333;
+      cursor: pointer;
+      font: 600 13px Arial, Helvetica, sans-serif;
+    }
+
+    .toggle button.active {
+      background: #365f8d;
+      color: #fff;
+    }
+
+    .help {
+      margin-left: 4px;
+      color: #666;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    #status {
+      min-height: 20px;
+      padding: 4px 18px 0;
+      color: #666;
+      font-size: 12px;
+    }
+
+    #status.error {
+      color: #a61b1b;
+    }
+
+    #plot {
+      width: 1150px;
+      height: 616px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <section class="controls" aria-label="Heatmap color settings">
+      <span class="control-label">Color scale</span>
+
+      <div class="toggle" role="group" aria-label="Normalize colors">
+        <button
+          id="universal-button"
+          class="active"
+          type="button"
+          aria-pressed="true"
+        >
+          Universal
+        </button>
+
+        <button
+          id="letter-button"
+          type="button"
+          aria-pressed="false"
+        >
+          By letter
+        </button>
+      </div>
+
+      <span class="help" id="mode-help">
+        One scale across every cell, making common and uncommon letters directly comparable.
+      </span>
+    </section>
+
+    <div id="status" aria-live="polite">Loading letter data…</div>
+    <div id="plot"></div>
+  </main>
+
+  <script type="module">
+    import NameData from "../../assets/js/name-data-loader.js";
+
+    const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const DECADE_STARTS = Array.from(
+      { length: 15 },
+      (_, index) => 1880 + 10 * index
+    );
+    const PERIODS = [
+      "All years",
+      "",
+      ...DECADE_STARTS.map(year => `${year}s`)
+    ];
+    const X_VALUES = [
+      1860,
+      1870,
+      ...DECADE_STARTS
+    ];
+    const X_TICK_TEXT = [
+      "<b>All</b>",
+      "",
+      "1880",
+      "'90",
+      "1900",
+      "'10",
+      "'20",
+      "'30",
+      "'40",
+      "'50",
+      "'60",
+      "'70",
+      "'80",
+      "'90",
+      "2000",
+      "'10",
+      "'20"
+    ];
+    const COLORSCALE = [
+      [0.0, "#440154"],
+      [0.111111, "#482878"],
+      [0.222222, "#3e4989"],
+      [0.333333, "#31688e"],
+      [0.444444, "#26828e"],
+      [0.555556, "#1f9e89"],
+      [0.666667, "#35b779"],
+      [0.777778, "#6ece58"],
+      [0.888889, "#b5de2b"],
+      [1.0, "#fde725"]
+    ];
+
+    const plotEl = document.getElementById("plot");
+    const statusEl = document.getElementById("status");
+    const universalButton = document.getElementById("universal-button");
+    const letterButton = document.getElementById("letter-button");
+    const modeHelp = document.getElementById("mode-help");
+
+    let records = [];
+    let mode = "universal";
+
+    function setStatus(message, isError=false) {
+      statusEl.textContent = message || "";
+      statusEl.classList.toggle("error", Boolean(isError));
+    }
+
+    function formatPercent(value) {
+      return `${Number(Number(value).toFixed(2))}%`;
+    }
+
+    async function configureLatestData() {
+      const dataBase = new URL("../../data/", window.location.href);
+      const response = await fetch(
+        new URL("latest.json", dataBase),
+        {
+          cache: "no-cache",
+          headers: { Accept: "application/json" }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Could not load data/latest.json (HTTP ${response.status}).`
+        );
+      }
+
+      const pointer = await response.json();
+      const version = String(pointer.dataVersion ?? "").trim();
+
+      if (!version) {
+        throw new Error("data/latest.json does not contain dataVersion.");
+      }
+
+      NameData.configure({
+        dataRoot: new URL(
+          String(pointer.dataRoot ?? `${version}/`),
+          dataBase
+        )
+      });
+
+      return NameData.loadGlobalTable("lettersIncluded");
+    }
+
+    function recordLookup() {
+      return new Map(
+        records.map(row => [
+          `${row.sex}|${row.letter}|${row.period}`,
+          row
+        ])
+      );
+    }
+
+    function buildPanel(sex, xaxis, yaxis, lookup) {
+      const raw = [];
+      const customdata = [];
+
+      for (const letter of LETTERS) {
+        const rawRow = [];
+        const customRow = [];
+
+        for (const period of PERIODS) {
+          if (!period) {
+            rawRow.push(null);
+            customRow.push(null);
+            continue;
+          }
+
+          const row = lookup.get(`${sex}|${letter}|${period}`);
+          const share = Number(row?.share_pct ?? 0);
+          const topNames = row?.top_names_html || "None";
+
+          rawRow.push(share);
+          customRow.push([
+            sex,
+            letter,
+            period,
+            formatPercent(share),
+            topNames
+          ]);
+        }
+
+        raw.push(rawRow);
+        customdata.push(customRow);
+      }
+
+      const normalized = raw.map(row => {
+        const values = row.filter(Number.isFinite);
+        const minimum = Math.min(...values);
+        const maximum = Math.max(...values);
+        const span = maximum - minimum;
+
+        return row.map(value => {
+          if (!Number.isFinite(value)) {
+            return null;
+          }
+          return span > 0 ? (value - minimum) / span : 0.5;
+        });
+      });
+
+      const trace = {
+        type: "heatmap",
+        x: X_VALUES,
+        y: LETTERS,
+        z: mode === "universal" ? raw : normalized,
+        customdata,
+        colorscale: COLORSCALE,
+        zmin: 0,
+        xaxis,
+        yaxis,
+        hoverongaps: false,
+        hovertemplate:
+          "<b>%{customdata[1]} • %{customdata[0]} • %{customdata[2]}</b>" +
+          "<br>Names containing this letter: %{customdata[3]} of births" +
+          "<br><br><b>Top names</b><br>%{customdata[4]}" +
+          "<extra></extra>"
+      };
+
+      if (mode === "universal") {
+        trace.coloraxis = "coloraxis";
+      } else {
+        trace.showscale = false;
+      }
+
+      return { trace, raw, normalized };
+    }
+
+    function extremeAnnotations(panel, xref, yref) {
+      if (mode !== "letter") {
+        return [];
+      }
+
+      const annotations = [];
+
+      panel.raw.forEach((row, rowIndex) => {
+        const candidates = row
+          .map((value, columnIndex) => ({ value, columnIndex }))
+          .filter(item => Number.isFinite(item.value));
+
+        const low = candidates.reduce(
+          (best, item) => item.value < best.value ? item : best
+        );
+        const high = candidates.reduce(
+          (best, item) => item.value > best.value ? item : best
+        );
+
+        const addLabel = (item, color) => {
+          annotations.push({
+            x: X_VALUES[item.columnIndex],
+            y: LETTERS[rowIndex],
+            xref,
+            yref,
+            text: `<b>${formatPercent(item.value)}</b>`,
+            showarrow: false,
+            font: { size: 9, color },
+            xanchor: "center",
+            yanchor: "middle"
+          });
+        };
+
+        addLabel(low, "#ffffff");
+
+        if (high.columnIndex !== low.columnIndex) {
+          addLabel(high, "#1f1f1f");
+        }
+      });
+
+      return annotations;
+    }
+
+    function axis(domain, anchor) {
+      return {
+        domain,
+        anchor,
+        tickmode: "array",
+        tickvals: X_VALUES,
+        ticktext: X_TICK_TEXT,
+        tickfont: { size: 12 },
+        tickangle: 0,
+        showgrid: false,
+        zeroline: false,
+        fixedrange: true
+      };
+    }
+
+    function yAxis(anchor) {
+      return {
+        anchor,
+        categoryorder: "array",
+        categoryarray: LETTERS,
+        autorange: "reversed",
+        tickfont: { size: 13 },
+        showticklabels: true,
+        showgrid: false,
+        zeroline: false,
+        fixedrange: true
+      };
+    }
+
+    async function render() {
+      const lookup = recordLookup();
+      const male = buildPanel("Male", "x", "y", lookup);
+      const female = buildPanel("Female", "x2", "y2", lookup);
+      const allValues = [
+        ...male.raw.flat(),
+        ...female.raw.flat()
+      ].filter(Number.isFinite);
+      const universalMaximum = Math.max(...allValues);
+
+      const annotations = [
+        {
+          x: 0.2225,
+          y: 1,
+          xref: "paper",
+          yref: "paper",
+          text: "Male",
+          showarrow: false,
+          xanchor: "center",
+          yanchor: "bottom",
+          font: { size: 15, color: "#1f1f1f" }
+        },
+        {
+          x: 0.7775,
+          y: 1,
+          xref: "paper",
+          yref: "paper",
+          text: "Female",
+          showarrow: false,
+          xanchor: "center",
+          yanchor: "bottom",
+          font: { size: 15, color: "#1f1f1f" }
+        },
+        ...extremeAnnotations(male, "x", "y"),
+        ...extremeAnnotations(female, "x2", "y2")
+      ];
+
+      const layout = {
+        width: 1150,
+        height: 616,
+        paper_bgcolor: "#fff",
+        plot_bgcolor: "#fff",
+        showlegend: false,
+        margin: { l: 55, r: 50, t: 75, b: 62 },
+        title: {
+          text: "Letters Included in Names",
+          x: 0.5,
+          y: 0.95,
+          xanchor: "center",
+          yanchor: "top",
+          font: { size: 20, color: "#1f1f1f" }
+        },
+        xaxis: axis([0, 0.445], "y"),
+        yaxis: yAxis("x"),
+        xaxis2: axis([0.555, 1], "y2"),
+        yaxis2: yAxis("x2"),
+        annotations
+      };
+
+      if (mode === "universal") {
+        layout.coloraxis = {
+          colorscale: COLORSCALE,
+          cmin: 0,
+          cmax: universalMaximum,
+          colorbar: {
+            title: { text: "Percent" },
+            ticksuffix: "%",
+            len: 0.78,
+            thickness: 22,
+            x: 0.5,
+            xanchor: "center",
+            y: 0.5,
+            yanchor: "middle"
+          }
+        };
+      }
+
+      await Plotly.react(
+        plotEl,
+        [male.trace, female.trace],
+        layout,
+        {
+          scrollZoom: false,
+          displayModeBar: true,
+          displaylogo: false,
+          doubleClick: false,
+          responsive: true,
+          toImageButtonOptions: {
+            format: "png",
+            filename: "letters_included_heatmap",
+            scale: 3
+          }
+        }
+      );
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      const isUniversal = mode === "universal";
+
+      universalButton.classList.toggle("active", isUniversal);
+      universalButton.setAttribute("aria-pressed", String(isUniversal));
+      letterButton.classList.toggle("active", !isUniversal);
+      letterButton.setAttribute("aria-pressed", String(!isUniversal));
+      modeHelp.textContent = isUniversal
+        ? "One scale across every cell, making common and uncommon letters directly comparable."
+        : "Each letter uses its own range; its lowest and highest cells are labeled with their actual percentages.";
+
+      render().catch(error => {
+        console.error(error);
+        setStatus("The heatmap could not be updated.", true);
+      });
+    }
+
+    universalButton.addEventListener("click", () => setMode("universal"));
+    letterButton.addEventListener("click", () => setMode("letter"));
+
+    try {
+      const table = await configureLatestData();
+      records = table.records || [];
+
+      if (!records.length) {
+        throw new Error("The letters-included table is empty.");
+      }
+
+      await render();
+      setStatus("");
+    } catch (error) {
+      console.error("Could not load the letters-included visualization:", error);
+      setStatus("The letters-included data could not be loaded.", true);
+    }
+  </script>
+
+  <script src="/namedata/assets/js/site-session-tracker.js?v=20260904-1" defer></script>
+</body>
+</html>
