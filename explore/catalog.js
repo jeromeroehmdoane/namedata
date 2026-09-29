@@ -357,12 +357,12 @@ export const visualizations = [
   },
   {
     "id": "first-and-last-letters",
-    "title": "First and Last Letters",
-    "shortTitle": "First and Last Letters",
+    "title": "Letters",
+    "shortTitle": "Letters",
     "category": "Structural Patterns",
-    "description": "Explore how the letters at the beginning and end of names relate to popularity and sex balance.",
-    "instructions": "In First Letter Popularity, hover over the heatmap to see leading names for each letter, sex, and period. In Sex Balance, compare how strongly first- and last-letter patterns lean female or male.",
-    "methodology": "The first-letter view summarizes recorded births by sex, letter, and time period. The sex-balance view compares female and male shares among names beginning or ending with each letter. Boxes are sized according to total births.",
+    "description": "Explore how letters at the beginning, end, or anywhere within names relate to popularity and sex balance.",
+    "instructions": "In First Letter Popularity and Letters Included, hover over either heatmap to see the five leading names for each letter, sex, and period. Letters Included can use one universal color scale or normalize each letter across time. In Sex Balance, compare how strongly first- and last-letter patterns lean female or male.",
+    "methodology": "The popularity views summarize recorded births by sex, letter, and time period. Letters Included counts a birth once for every different letter appearing anywhere in the name, so percentages across letters can total more than 100%; repeated instances of the same letter within one name are counted only once. The sex-balance view compares female and male shares among names beginning or ending with each letter. Boxes are sized according to total births.",
     "iframeHeight": 700,
     "embedMode": "scale",
     "embedWidth": 1200,
@@ -371,6 +371,14 @@ export const visualizations = [
         "id": "first-letter",
         "label": "First Letter Popularity",
         "path": "../visualizations/showcase/first-letter-patterns.html",
+        "iframeHeight": 690,
+        "embedMode": "scale",
+        "embedWidth": 1150
+      },
+      {
+        "id": "letters-included",
+        "label": "Letters Included",
+        "path": "../visualizations/showcase/letters-included.html",
         "iframeHeight": 690,
         "embedMode": "scale",
         "embedWidth": 1150
