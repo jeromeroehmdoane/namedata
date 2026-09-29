@@ -191,8 +191,22 @@
       statusEl.classList.toggle("error", Boolean(isError));
     }
 
-    function formatPercent(value) {
-      return `${Number(Number(value).toFixed(2))}%`;
+    function formatHoverPercent(value) {
+      return `${Number(value).toFixed(1)}%`;
+    }
+
+    function formatCellPercent(value) {
+      const numeric = Number(value);
+
+      if (numeric < 0.1) {
+        return "&lt;0.1%";
+      }
+
+      if (numeric >= 10) {
+        return `${Math.round(numeric)}%`;
+      }
+
+      return `${numeric.toFixed(1)}%`;
     }
 
     async function configureLatestData() {
@@ -261,7 +275,7 @@
             sex,
             letter,
             period,
-            formatPercent(share),
+            formatHoverPercent(share),
             topNames
           ]);
         }
@@ -291,13 +305,12 @@
         z: mode === "universal" ? raw : normalized,
         customdata,
         colorscale: COLORSCALE,
-        zmin: 0,
         xaxis,
         yaxis,
         hoverongaps: false,
         hovertemplate:
           "<b>%{customdata[1]} • %{customdata[0]} • %{customdata[2]}</b>" +
-          "<br>Names containing this letter: %{customdata[3]} of births" +
+          "<br>%{customdata[3]} of %{customdata[0]} %{customdata[2]} births" +
           "<br><br><b>Top names</b><br>%{customdata[4]}" +
           "<extra></extra>"
       };
@@ -305,6 +318,10 @@
       if (mode === "universal") {
         trace.coloraxis = "coloraxis";
       } else {
+        trace.coloraxis = null;
+        trace.zauto = false;
+        trace.zmin = 0;
+        trace.zmax = 1;
         trace.showscale = false;
       }
 
@@ -336,7 +353,7 @@
             y: LETTERS[rowIndex],
             xref,
             yref,
-            text: `<b>${formatPercent(item.value)}</b>`,
+            text: `<b>${formatCellPercent(item.value)}</b>`,
             showarrow: false,
             font: { size: 9, color },
             xanchor: "center",
@@ -460,7 +477,9 @@
         };
       }
 
-      await Plotly.react(
+      Plotly.purge(plotEl);
+
+      await Plotly.newPlot(
         plotEl,
         [male.trace, female.trace],
         layout,
